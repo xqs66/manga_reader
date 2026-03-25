@@ -38,7 +38,8 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
       bottomNavigationBar: BottomAppBar(
         height: UiConfig.bottomBarHeight,
         child: ElevatedButton(
-          onPressed: () => '',
+          onPressed: () =>
+              Get.dialog(_buildNameTargetDialog(), barrierDismissible: false),
           child: Text('合并选中的漫画为合集'),
         ).paddingSymmetric(horizontal: 50),
       ),
@@ -53,7 +54,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
           return Text(
             _state.isDirSelected
                 ? _state.hasSelectedManga
-                      ? '已选 (${_state.selectedMangaPaths.length})'
+                      ? '已选 (${_state.selectedMangas.length})'
                       : '请选择要合并的漫画'
                 : '将漫画合并为合集',
           );
@@ -196,7 +197,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
       builder: (context) {
         return GestureDetector(
           onTap: () => _controller.toggleMangaSelection(index, manga),
-          child: _state.selectedMangaPaths.contains(manga.path)
+          child: _state.selectedMangas.contains(manga)
               ? _buildSelectedMangaListTile(manga)
               : MangaListTileCard(manga: manga),
         );
@@ -213,7 +214,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
           children: [
             Icon(Icons.circle_outlined, color: Color(0xFF5C6BC0)),
             Text(
-              '${_state.selectedMangaPaths.indexOf(manga.path) + 1}',
+              '${_state.selectedMangas.indexOf(manga) + 1}',
               style: TextStyle(color: Color(0xFF5C6BC0), fontSize: 12),
             ),
           ],
@@ -222,5 +223,29 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
         Flexible(child: MangaListTileCard(manga: manga)),
       ],
     ).paddingSymmetric(horizontal: 10);
+  }
+
+  Widget _buildNameTargetDialog() {
+    return GetBuilder<MergeMangasPageController>(
+      id: _controller.mergeStartDialogId,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('请输入合集名称'),
+          content: TextField(
+            controller: _state.targetDirNameController,
+            decoration: InputDecoration(hintText: '请输入合集名称'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Get.back(), child: Text('取消')),
+            _state.isMerging
+                ? const CircularProgressIndicator()
+                : TextButton(
+                    onPressed: _controller.handleTapStartMerge,
+                    child: Text('开始合并'),
+                  ),
+          ],
+        );
+      },
+    );
   }
 }

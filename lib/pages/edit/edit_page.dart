@@ -1,12 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
-import 'package:manga_reader/shared/extensions/widget_ext.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
 
 class EditPage extends StatefulWidget {

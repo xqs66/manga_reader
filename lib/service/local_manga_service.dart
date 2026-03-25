@@ -138,9 +138,55 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         Directory(manga.path)
             .listSync()
             .whereType<File>()
-            .where((file) => FileUtil.isImageExtension(file.path))
+            .where((file) => file.isImageExtension)
             .toList()
           ..sort(FileUtil.naturalCompareFileOrDir);
     return imageFiles.map((file) => LocalImage(path: file.path)).toList();
+  }
+
+  Future<List<LocalImage>> getMangaImagesAsync(Manga manga) async {
+    final imageFiles = <File>[];
+
+    await for (final entity in Directory(manga.path).list()) {
+      if (entity is File && entity.isImageExtension) {
+        imageFiles.add(entity);
+      }
+    }
+    imageFiles.sort(FileUtil.naturalCompareFileOrDir);
+
+    return imageFiles.map((file) => LocalImage(path: file.path)).toList();
+  }
+
+  // TODO 
+  // 1.添加进度回调 
+  // 2.优化性能
+  Future<void> mergeMangas(
+    List<Manga> mangas,
+    Directory output, {
+    int imageNameStartFrom = 0,
+  }) async {
+    output = await output.create(recursive: true);
+
+    final totalImageCount = mangas.fold(
+      0,
+      (sum, manga) => sum + manga.pageCount,
+    );
+    final digits = totalImageCount.toString().length;
+
+    final List<List<LocalImage>> sourceImageFiles = [];
+
+    for (final manga in mangas) {
+      final imageFiles = await getMangaImagesAsync(manga);
+      sourceImageFiles.add(imageFiles);
+
+      for (final image in imageFiles) {
+        final imageFile = File(image.path);
+        final newName =
+            '${imageNameStartFrom.toString().padLeft(digits, '0')}${extension(image.path)}';
+        final target = File(join(output.path, newName));
+        await imageFile.copy(target.path);
+        imageNameStartFrom++;
+      }
+    }
   }
 }

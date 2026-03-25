@@ -1,9 +1,17 @@
 import 'dart:io';
-
-import 'package:manga_reader/shared/utils/file_util.dart';
+import 'package:path/path.dart' as p;
 
 extension FileSystemEntityExt on FileSystemEntity {
   String get fileOrDirName => path.split(Platform.pathSeparator).last;
 
-  bool get isImageExtension => FileUtil.isImageExtension(path);
+  bool get isImageExtension {
+    String s = path.toLowerCase();
+    return s.endsWith('.jpg') ||
+        s.endsWith('.png') ||
+        s.endsWith('.gif') ||
+        s.endsWith('.jpeg') ||
+        s.endsWith('.webp');
+  }
+
+  String get extension => p.extension(path);
 }

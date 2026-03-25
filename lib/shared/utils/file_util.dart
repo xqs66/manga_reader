@@ -22,20 +22,11 @@ class FileUtil {
   static Future<void> fileRename(File file, String newName) async {
     try {
       file.rename(
-        p.join(p.dirname(file.path), '$newName${p.extension(file.path)}'),
+        p.join(p.dirname(file.path), newName),
       );
     } on Exception catch (e, stackTrace) {
       LogUtil.e(Constants.renameFailed, error: e, stackTrace: stackTrace);
     }
-  }
-
-  static bool isImageExtension(String path) {
-    String s = path.toLowerCase();
-    return s.endsWith('.jpg') ||
-        s.endsWith('.png') ||
-        s.endsWith('.gif') ||
-        s.endsWith('.jpeg') ||
-        s.endsWith('.webp');
   }
 
   static int naturalCompareFileOrDir(FileSystemEntity a, FileSystemEntity b) {
