@@ -13,6 +13,7 @@ class UiConfig {
 
   ///read page
   static const double topAreaMenuHeight = 50;
+  static const double bottomAreaMenuHeight = 80;
   static const double defaultImageContainerRadio = 1.78;
   static final Color readMenuColor = const Color(0xDB000000);
   static const Color readPageForegroundColor = Color(0xFFE0E0E0);
@@ -22,7 +23,7 @@ class UiConfig {
   );
 
   ///manga card list tile
-  static const double mangaListCardHeight = 120;
+  static const double mangaListCardHeight = 150;
   static const TextStyle listTileSubtitleStyle = TextStyle(
     color: Color(0xFF757575),
     fontSize: 12,
