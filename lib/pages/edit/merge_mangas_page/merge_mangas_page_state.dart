@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:manga_reader/models/manga.dart';
 
 class MergeMangasPageState {
+  final scrollController = ScrollController();
+
   Directory? selectedDir;
   Directory? outputDir;
 

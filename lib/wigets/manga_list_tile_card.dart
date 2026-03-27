@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:extended_image/extended_image.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/shared/extensions/text_ext.dart';
 import 'package:manga_reader/shared/extensions/widget_ext.dart';
 
 import '../models/local_image.dart';
@@ -12,8 +14,17 @@ import '../shared/utils/file_util.dart';
 
 class MangaListTileCard extends StatelessWidget {
   final Manga manga;
+  final List<SheetAction>? longPressActions;
+  final void Function()? onTap;
+  final void Function()? onLongPressed;
 
-  const MangaListTileCard({super.key, required this.manga});
+  const MangaListTileCard({
+    super.key,
+    required this.manga,
+    this.longPressActions,
+    this.onTap,
+    this.onLongPressed,
+  });
 
   // @override
   // Widget build(BuildContext context) {
@@ -32,14 +43,20 @@ class MangaListTileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: SizedBox(
-        height: UiConfig.mangaListCardHeight,
-        child: Row(
-          children: [
-            _buildCoverImage(manga.cover).paddingAll(5.0),
-            Expanded(child: _buildMangaInfo().paddingAll(10.0)),
-          ],
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: () =>
+          onLongPressed ??
+          LongPressActionSheet.show(context: context, actions: longPressActions),
+      child: Card(
+        child: SizedBox(
+          height: UiConfig.mangaListCardHeight,
+          child: Row(
+            children: [
+              _buildCoverImage(manga.cover).paddingAll(5.0),
+              Expanded(child: _buildMangaInfo().paddingAll(10.0)),
+            ],
+          ),
         ),
       ),
     );
@@ -90,4 +107,43 @@ class MangaListTileCard extends StatelessWidget {
       ],
     );
   }
+}
+
+class LongPressActionSheet {
+  static void show({
+    required BuildContext context,
+    List<SheetAction>? actions,
+  }) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) {
+        return CupertinoActionSheet(
+          actions: [
+            ...(actions ?? []).map(
+              (action) => CupertinoActionSheetAction(
+                onPressed: () async {
+                  await action.onPressed();
+                  Get.back();
+                },
+                child: Text(action.label).color(action.labelColor),
+              ),
+            ),
+            CupertinoActionSheetAction(onPressed: Get.back, child: Text('取消')),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class SheetAction {
+  final String label;
+  final Future<void> Function() onPressed;
+  final Color? labelColor;
+
+  const SheetAction({
+    required this.label,
+    required this.onPressed,
+    this.labelColor,
+  });
 }

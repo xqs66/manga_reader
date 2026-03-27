@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
+import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 
 import 'merge_mangas_page_controller.dart';
@@ -106,14 +108,21 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
           if (snapshot.data == null || snapshot.data?.isEmpty == true) {
             return Center(child: Text('未发现漫画'));
           }
-          return ListView.builder(
-            itemCount: snapshot.data?.length,
-            itemBuilder: (context, index) {
-              if (snapshot.data?[index] == null) {
-                return const SizedBox();
-              }
-              return _buildMangaListTile(index, snapshot.data?[index] as Manga);
-            },
+          return CupertinoScrollbar(
+            controller: _state.scrollController,
+            child: ListView.builder(
+              controller: _state.scrollController,
+              itemCount: snapshot.data?.length,
+              itemBuilder: (context, index) {
+                if (snapshot.data?[index] == null) {
+                  return const SizedBox();
+                }
+                return _buildMangaListTile(
+                  index,
+                  snapshot.data?[index] as Manga,
+                );
+              },
+            ),
           );
         } else {
           return Center(child: Text('Error'));
@@ -195,17 +204,24 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
     return GetBuilder<MergeMangasPageController>(
       id: '${_controller.mangaListTileIdPrefix}::$index',
       builder: (context) {
-        return GestureDetector(
+        final mangaListTileCard = MangaListTileCard(
+          manga: manga,
           onTap: () => _controller.toggleMangaSelection(index, manga),
-          child: _state.selectedMangas.contains(manga)
-              ? _buildSelectedMangaListTile(manga)
-              : MangaListTileCard(manga: manga),
+          longPressActions: [
+            SheetAction(
+              label: '复制漫画名',
+              onPressed: () => FileUtil.copyMangaName(manga.title),
+            ),
+          ],
         );
+        return _state.selectedMangas.contains(manga)
+            ? _buildSelectedMangaListTile(manga, mangaListTileCard)
+            : mangaListTileCard;
       },
     );
   }
 
-  Widget _buildSelectedMangaListTile(Manga manga) {
+  Widget _buildSelectedMangaListTile(Manga manga, MangaListTileCard card) {
     return Row(
       mainAxisAlignment: .spaceBetween,
       children: [
@@ -220,7 +236,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
           ],
         ),
         SizedBox(width: 10),
-        Flexible(child: MangaListTileCard(manga: manga)),
+        Flexible(child: card),
       ],
     ).paddingSymmetric(horizontal: 10);
   }

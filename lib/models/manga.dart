@@ -2,9 +2,9 @@ import 'local_image.dart';
 
 class Manga {
   final String path;
-  final String title;
+  String title;
   int pageCount;
-  final int size;
+  int size;
   final LocalImage cover;
 
   Manga({

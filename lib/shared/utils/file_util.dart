@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:path/path.dart' as p;
 import 'package:manga_reader/shared/extensions/file_system_entity_ext.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
@@ -21,9 +23,7 @@ class FileUtil {
 
   static Future<void> fileRename(File file, String newName) async {
     try {
-      file.rename(
-        p.join(p.dirname(file.path), newName),
-      );
+      file.rename(p.join(p.dirname(file.path), newName));
     } on Exception catch (e, stackTrace) {
       LogUtil.e(Constants.renameFailed, error: e, stackTrace: stackTrace);
     }
@@ -72,6 +72,33 @@ class FileUtil {
       return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
     } else {
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    }
+  }
+
+  static Future<void> copyMangaName(String name) {
+    return Clipboard.setData(ClipboardData(text: name))
+        .then((_) {
+          Fluttertoast.showToast(msg: '已复制漫画名');
+        })
+        .catchError((e) {
+          LogUtil.e('复制漫画名失败', error: e);
+          Fluttertoast.showToast(msg: '复制失败');
+        });
+  }
+
+  static Future<void> deleteDir(Directory dir) async {
+    try {
+      await dir.delete(recursive: true);
+    } on Exception catch (e, stackTrace) {
+      LogUtil.e('删除目录失败', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  static Future<void> deleteFile(File file) async {
+    try {
+      await file.delete();
+    } on Exception catch (e, stackTrace) {
+      LogUtil.e('删除文件失败', error: e, stackTrace: stackTrace);
     }
   }
 }

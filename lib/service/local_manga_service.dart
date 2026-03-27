@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/path_service.dart';
@@ -102,6 +103,13 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   // }
 
   Future<void> _loadMangaInfo(Directory dir, List<Manga> mangas) async {
+    final manga = await loadManga(dir);
+    if (manga != null) {
+      mangas.add(manga);
+    }
+  }
+
+  Future<Manga?> loadManga(Directory dir) async {
     List<File> images = [];
     int size = 0;
 
@@ -118,18 +126,19 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       }
       if (images.isNotEmpty) {
         images.sort(FileUtil.naturalCompareFileOrDir);
-        mangas.add(
-          Manga(
-            path: dir.path,
-            cover: LocalImage(path: images.first.path),
-            title: basename(dir.path),
-            pageCount: images.length,
-            size: size,
-          ),
+        return Manga(
+          path: dir.path,
+          cover: LocalImage(path: images.first.path),
+          title: basename(dir.path),
+          pageCount: images.length,
+          size: size,
         );
+      } else {
+        return null;
       }
     } catch (e) {
       LogUtil.e('Failed to load manga from ${dir.path}');
+      return null;
     }
   }
 
@@ -157,8 +166,8 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     return imageFiles.map((file) => LocalImage(path: file.path)).toList();
   }
 
-  // TODO 
-  // 1.添加进度回调 
+  // TODO
+  // 1.添加进度回调
   // 2.优化性能
   Future<void> mergeMangas(
     List<Manga> mangas,
@@ -188,5 +197,27 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         imageNameStartFrom++;
       }
     }
+  }
+
+  Future<void> deleteManga(Manga manga) {
+    return FileUtil.deleteDir(Directory(manga.path))
+        .then((_) {
+          Fluttertoast.showToast(msg: '已删除漫画：${manga.title}');
+        })
+        .catchError((e) {
+          LogUtil.e('删除漫画：${manga.title}失败', error: e);
+          Fluttertoast.showToast(msg: '删除漫画：${manga.title}失败');
+        });
+  }
+
+  Future<void> deleteImage(LocalImage image) {
+    return FileUtil.deleteFile(File(image.path))
+        .then((_) {
+          Fluttertoast.showToast(msg: '删除成功');
+        })
+        .catchError((e) {
+          LogUtil.e('删除图片失败', error: e);
+          Fluttertoast.showToast(msg: '删除图片失败');
+        });
   }
 }

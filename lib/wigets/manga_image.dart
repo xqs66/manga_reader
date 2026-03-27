@@ -4,6 +4,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 
 import '../models/local_image.dart';
 import '../shared/extensions/widget_ext.dart';
@@ -18,6 +19,8 @@ class MangaImage extends StatelessWidget {
   final double? height;
   final BoxFit fit;
   final Color backgroundColor;
+  final void Function()? onLongPress;
+  final List<SheetAction>? longPressActions;
   final LoadingWidgetBuilder? loadingWidgetBuilder;
   final LoadFailedWidgetBuilder? loadFailedWidgetBuilder;
   final LoadCompleteCallBack? loadCompleteCallBack;
@@ -29,6 +32,8 @@ class MangaImage extends StatelessWidget {
     this.height,
     this.fit = .fitWidth,
     this.backgroundColor = Colors.black,
+    this.onLongPress,
+    this.longPressActions,
     this.loadingWidgetBuilder,
     this.loadFailedWidgetBuilder,
     this.loadCompleteCallBack,
@@ -36,27 +41,35 @@ class MangaImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      width: width,
-      color: backgroundColor,
-      child: ExtendedImage.file(
-        File(image.path),
-        width: width,
+    return GestureDetector(
+      onLongPress:
+          onLongPress ??
+          () => LongPressActionSheet.show(
+            context: context,
+            actions: longPressActions,
+          ),
+      child: Container(
         height: height,
-        fit: fit,
-        clearMemoryCacheWhenDispose: true,
-        loadStateChanged: (state) {
-          switch (state.extendedImageLoadState) {
-            case .loading:
-              return _buildDefaultLoadingWidget();
-            case .completed:
-              loadCompleteCallBack?.call(state);
-              return _buildExtendedRawImage(state);
-            case .failed:
-              return Icon(Icons.broken_image);
-          }
-        },
+        width: width,
+        color: backgroundColor,
+        child: ExtendedImage.file(
+          File(image.path),
+          width: width,
+          height: height,
+          fit: fit,
+          clearMemoryCacheWhenDispose: true,
+          loadStateChanged: (state) {
+            switch (state.extendedImageLoadState) {
+              case .loading:
+                return _buildDefaultLoadingWidget();
+              case .completed:
+                loadCompleteCallBack?.call(state);
+                return _buildExtendedRawImage(state);
+              case .failed:
+                return Icon(Icons.broken_image);
+            }
+          },
+        ),
       ),
     );
   }

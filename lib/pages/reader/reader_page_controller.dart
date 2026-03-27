@@ -1,10 +1,17 @@
+import 'dart:io';
+
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/pages/books/books_page_controller.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
+import 'package:manga_reader/service/local_manga_service.dart';
+import 'package:manga_reader/shared/utils/file_util.dart';
+import 'package:manga_reader/shared/utils/log_util.dart';
 
 class ReaderPageController extends GetxController {
   final state = ReaderPageState();
+  final String imageListId = 'imageListId';
   final String topMenuId = 'topMenuId';
   final String bottomRightInfoId = 'bottomRightInfoId';
   final String bottomMenuId = 'bottomMenuId';
@@ -81,5 +88,48 @@ class ReaderPageController extends GetxController {
     return isAtEnd
         ? state.readInfo.pageCount - 1
         : sortedPositions.firstOrNull!.index;
+  }
+
+  Future<void> handleDeleteImage(int index) {
+    return Get.dialog(
+      barrierDismissible: true,
+      AlertDialog(
+        title: Text('删除图片'),
+        content: Text('确定要删除图片吗？'),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: Text('取消')),
+          TextButton(
+            onPressed: () async {
+              deleteImage(index);
+              Get.back();
+            },
+            child: Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> deleteImage(int index) async {
+    final image = state.readInfo.images[index];
+    final readingManga = state.readInfo.mangaInfo;
+    final controller = Get.find<BooksPageController>();
+    final mangaList = controller.state.books;
+    final indexOfReadingManga = mangaList.indexOf(readingManga);
+
+    LogUtil.d(mangaList[indexOfReadingManga].title);
+
+    await localMangaService.deleteImage(image);
+    state.readInfo.images.removeAt(index);
+    state.readInfo.pageCount--;
+    update([imageListId]);
+
+    final afterManga = await localMangaService.loadManga(
+      Directory(readingManga.path),
+    );
+    if (afterManga != null) {
+      mangaList[indexOfReadingManga] = afterManga;
+    }
+    controller.update(['${controller.mangaIdPrefix}::$indexOfReadingManga']);
   }
 }

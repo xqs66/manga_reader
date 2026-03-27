@@ -1,17 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:manga_reader/models/read_info.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
+import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:manga_reader/wigets/group_header.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
-import 'package:simple_animations/animation_mixin/animation_mixin.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/pages/books/books_page_controller.dart';
 
 import '../../config/ui_config.dart';
 import '../../models/manga.dart';
-import '../../routes/routes.dart';
 import '../../settings/path_setting.dart';
 
 class BooksPage extends StatefulWidget {
@@ -21,17 +21,12 @@ class BooksPage extends StatefulWidget {
   State<BooksPage> createState() => _BooksPageState();
 }
 
-class _BooksPageState extends State<BooksPage>
-    with
-        AutomaticKeepAliveClientMixin,
-        AnimationMixin,
-        SingleTickerProviderStateMixin {
+class _BooksPageState extends State<BooksPage> {
   final _controller = Get.put(BooksPageController(), permanent: true);
   final _state = Get.find<BooksPageController>().state;
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return Scaffold(appBar: _buildAppbar(), body: _buildBody());
   }
 
@@ -122,9 +117,13 @@ class _BooksPageState extends State<BooksPage>
 
   Widget _buildGroupedBooksList() {
     /// TODO: 可配置项，不过设置稍微多点会卡顿
-    return CustomScrollView(
-      slivers: _buildSlivers(),
-      cacheExtent: Get.height * 0.5,
+    return CupertinoScrollbar(
+      controller: _state.scrollController,
+      child: CustomScrollView(
+        slivers: _buildSlivers(),
+        controller: _state.scrollController,
+        cacheExtent: Get.height * 0.5,
+      ),
     );
   }
 
@@ -142,7 +141,7 @@ class _BooksPageState extends State<BooksPage>
   Widget _buildElementSliver(int groupIndex, List<Manga> books) {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, index) => _buildElement(context, groupIndex, books[index]),
+        (context, index) => _buildElement(context, groupIndex, index),
         childCount: books.length,
         addAutomaticKeepAlives: true,
       ),
@@ -178,43 +177,29 @@ class _BooksPageState extends State<BooksPage>
     );
   }
 
-  Widget _buildElement(BuildContext context, int groupIndex, Manga manga) {
+  Widget _buildElement(BuildContext context, int groupIndex, int mangaIndex) {
     return GetBuilder<BooksPageController>(
-      id: 'Group::$groupIndex',
+      id: 'Manga::$mangaIndex',
       builder: (_) {
         final isDisplay = _state.displayGroups.contains(groupIndex);
+        final manga = _state.books[mangaIndex];
         if (!isDisplay) return const SizedBox();
-        return GestureDetector(
-          onLongPress: () => showCupertinoModalPopup(context: context, builder: (context) {
-            return CupertinoActionSheet(
-              actions: [
-                CupertinoActionSheetAction(
-                  onPressed: () {
-                    Get.back();
-                  },
-                  child: Text('取消'),
-                ),
-              ],
-            );
-          }),
-          onTap: () {
-            Get.toNamed(
-              Routes.reader,
-              arguments: ReadInfo(
-                title: manga.title,
-                images: localMangaService.getMangaImages(manga),
-                pageCount: manga.pageCount,
-              ),
-            );
-          },
-          child: MangaListTileCard(
-            manga: manga,
-          ).paddingSymmetric(horizontal: 10),
-        );
+        return MangaListTileCard(
+          onTap: () => _controller.handleMangaCardTap(manga),
+          longPressActions: [
+            SheetAction(
+              label: '复制漫画名',
+              onPressed: () => FileUtil.copyMangaName(manga.title),
+            ),
+            SheetAction(
+              label: '删除',
+              labelColor: Colors.red,
+              onPressed: () => _controller.handleDeleteManga(manga),
+            ),
+          ],
+          manga: manga,
+        ).paddingSymmetric(horizontal: 10);
       },
     );
   }
-
-  @override
-  bool get wantKeepAlive => true;
 }
