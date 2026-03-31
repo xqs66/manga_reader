@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/shared/extensions/text_ext.dart';
 import 'package:manga_reader/shared/extensions/widget_ext.dart';
+import 'package:manga_reader/wigets/loading_widget.dart';
 
 import '../models/local_image.dart';
 import '../models/manga.dart';
@@ -14,14 +16,14 @@ import '../shared/utils/file_util.dart';
 
 class MangaListTileCard extends StatelessWidget {
   final Manga manga;
-  final List<SheetAction>? longPressActions;
+  final ActionPane? endActionPane;
   final void Function()? onTap;
   final void Function()? onLongPressed;
 
   const MangaListTileCard({
     super.key,
     required this.manga,
-    this.longPressActions,
+    this.endActionPane,
     this.onTap,
     this.onLongPressed,
   });
@@ -45,17 +47,18 @@ class MangaListTileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      onLongPress: () =>
-          onLongPressed ??
-          LongPressActionSheet.show(context: context, actions: longPressActions),
-      child: Card(
-        child: SizedBox(
-          height: UiConfig.mangaListCardHeight,
-          child: Row(
-            children: [
-              _buildCoverImage(manga.cover).paddingAll(5.0),
-              Expanded(child: _buildMangaInfo().paddingAll(10.0)),
-            ],
+      onLongPress: onLongPressed,
+      child: Slidable(
+        endActionPane: endActionPane,
+        child: Card(
+          child: SizedBox(
+            height: UiConfig.mangaListCardHeight,
+            child: Row(
+              children: [
+                _buildCoverImage(manga.cover).paddingAll(5.0),
+                Expanded(child: _buildMangaInfo().paddingAll(10.0)),
+              ],
+            ),
           ),
         ),
       ),
@@ -72,6 +75,23 @@ class MangaListTileCard extends StatelessWidget {
             fit: .cover,
             width: constraints.maxHeight * 0.75,
             height: constraints.maxHeight,
+            clearMemoryCacheIfFailed: true,
+            loadStateChanged: (state) {
+              switch (state.extendedImageLoadState) {
+                case .loading:
+                  return LoadingWidget(
+                    width: constraints.maxHeight * 0.75,
+                    height: constraints.maxHeight,
+                  );
+                case .completed:
+                  ExtendedRawImage(
+                    image: state.extendedImageInfo?.image,
+                    fit: .cover,
+                  );
+                case .failed:
+                  return Icon(Icons.broken_image);
+              }
+            },
           ),
         );
       },

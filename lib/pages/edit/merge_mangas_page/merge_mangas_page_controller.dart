@@ -1,11 +1,15 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/models/manga.dart';
+import 'package:manga_reader/pages/books/books_page_controller.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
+import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
+import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 import 'package:path/path.dart' as p;
 
 import 'merge_mangas_page_state.dart';
@@ -50,6 +54,13 @@ class MergeMangasPageController extends GetxController {
     update([titleId, cancelButtonId]);
   }
 
+  void handleLongPressManga(BuildContext context, List<SheetAction> actions) {
+    LongPressActionSheet.show(
+      context: context,
+      actions: actions,
+    );
+  }
+
   void cancelSelected() {
     final idsNeedUpdate = _getSelectedMangaItemIds();
     state.selectedMangas.clear();
@@ -87,7 +98,7 @@ class MergeMangasPageController extends GetxController {
       state.targetDirNameController.text.trim(),
     );
 
-    localMangaService
+    final mergeFuture = localMangaService
         .mergeMangas(mangas, Directory(outputDir))
         .then((_) {
           Fluttertoast.showToast(msg: '合并成功');
@@ -97,9 +108,29 @@ class MergeMangasPageController extends GetxController {
           Fluttertoast.showToast(msg: '合并失败');
         })
         .whenComplete(() {
+          state.hasMerged = true;
           state.isMerging = false;
+          state.targetDirNameController.clear();
+          state.selectedMangaIndexes.clear();
+          state.selectedMangas.clear();
           update([mergeStartDialogId]);
           Get.back();
         });
+  }
+
+  @override
+  void onClose() {
+    if (state.hasMerged) {
+      final List<Future> futures = [];
+      final controller = Get.find<BooksPageController>();
+      if (pathSetting.paths.contains(state.selectedDir?.path)) {
+        futures.add(localMangaService.refreshMangasInDir(state.selectedDir!));
+      }
+      if (pathSetting.paths.contains(state.outputDir?.path)) {
+        futures.add(localMangaService.refreshMangasInDir(state.outputDir!));
+      }
+      Future.wait(futures).then((_) => controller.refreshMangas());
+    }
+    super.onClose();
   }
 }

@@ -38,9 +38,15 @@ void main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarDividerColor: Colors.transparent,
+          statusBarColor: Colors.transparent,
+        ),
+      );
       SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.immersiveSticky,
-        overlays: [SystemUiOverlay.bottom],
+        SystemUiMode.edgeToEdge,
       );
 
       serviceBeans = topologicSort(serviceBeans);

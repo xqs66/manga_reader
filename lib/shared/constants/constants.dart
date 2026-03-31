@@ -8,4 +8,6 @@ class Constants {
 
   static const String tagBeanLifeCycle = 'bean_lifecycle';
 
+  static const String defaultGroupName = '默认分组';
+
 }

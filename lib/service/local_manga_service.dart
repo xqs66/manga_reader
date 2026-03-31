@@ -2,11 +2,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:manga_reader/database/dao/manga_dao.dart';
+import 'package:manga_reader/database/database.dart';
 import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/path_service.dart';
 import 'package:manga_reader/settings/path_setting.dart';
+import 'package:manga_reader/shared/constants/constants.dart';
 import 'package:manga_reader/shared/extensions/file_system_entity_ext.dart';
+import 'package:manga_reader/shared/extensions/string_ext.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:path/path.dart';
 
@@ -36,10 +40,8 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     mangasInLocalSettingPaths.clear();
     List<Future<void>> futures = pathSetting.paths
         .map(
-          (path) => _loadMangasInDir(
-            Directory(path),
-            mangasInLocalSettingPaths[path] ??= [],
-          ),
+          (path) async => mangasInLocalSettingPaths[path] =
+              await loadMangasInDir(Directory(path)),
         )
         .toList();
     return Future.wait(futures).whenComplete(() {
@@ -49,23 +51,31 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     });
   }
 
-  Future<void> _loadMangasInDir(Directory parentDir, List<Manga> mangas) {
-    final List<Future<void>> futures = parentDir
+  Future<List<Manga>> loadMangasInDir(Directory dir) async {
+    final List<Manga> mangas = [];
+    final List<Future<void>> futures = dir
         .listSync()
         .whereType<Directory>()
-        .map((dir) => _loadMangaInfo(dir, mangas))
+        .map((dirOfMang) async {
+          final manga = await loadManga(dirOfMang);
+          if (manga != null) {
+            mangas.add(manga);
+          }
+        })
         .toList();
-    return Future.wait(futures);
+    await Future.wait(futures);
+    return mangas..sort((a, b) => FileUtil.naturalCompare(a.title, b.title));
   }
 
   Future<List<Manga>> getMangasInDir(Directory dir) async {
     if (mangasInLocalSettingPaths.containsKey(dir.path)) {
       return mangasInLocalSettingPaths[dir.path]!;
     }
+    return await loadMangasInDir(dir);
+  }
 
-    final List<Manga> mangas = [];
-    await _loadMangasInDir(dir, mangas);
-    return mangas;
+  Future<void> refreshMangasInDir(Directory dir) async {
+    mangasInLocalSettingPaths[dir.path] = await loadMangasInDir(dir);
   }
 
   // Future<void> _loadMangaInfo(Directory dir, List<Manga> mangas) {
@@ -109,27 +119,59 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     }
   }
 
-  Future<Manga?> loadManga(Directory dir) async {
+  Future<Manga?> loadManga(Directory dirOfManga) async {
     List<File> images = [];
     int size = 0;
+    final List<Future> sizeCaculFutures = [];
 
     try {
-      await for (final entity in dir.list()) {
+      final mangaFromQurey = await MangaDao.getManga(dirOfManga.path.hash());
+
+      await for (final entity in dirOfManga.list()) {
         if (entity is File && entity.isImageExtension) {
           images.add(entity);
-          final stat = await entity.stat();
-          size += stat.size;
+          sizeCaculFutures.add(() async {
+            size += (await entity.stat()).size;
+          }());
         }
         if (entity is Directory) {
           // TODO 递归获取子目录的图片
         }
       }
-      if (images.isNotEmpty) {
-        images.sort(FileUtil.naturalCompareFileOrDir);
+      images.sort(FileUtil.naturalCompareFileOrDir);
+
+      if (mangaFromQurey != null) {
         return Manga(
-          path: dir.path,
+          id: mangaFromQurey.id,
+          path: join(mangaFromQurey.parentPath, mangaFromQurey.title),
+          title: mangaFromQurey.title,
+          groupName: mangaFromQurey.groupName,
+          size: mangaFromQurey.size,
+          pageCount: images.length,
           cover: LocalImage(path: images.first.path),
-          title: basename(dir.path),
+        );
+      }
+
+      await Future.wait(sizeCaculFutures);
+
+      if (images.isNotEmpty) {
+        MangaDao.insertManga(
+          MangaCompanion.insert(
+            id: dirOfManga.path.hash(),
+            parentPath: dirOfManga.parent.path,
+            title: basename(dirOfManga.path),
+            pageCount: images.length,
+            size: size,
+            sortOrder: 0,
+            type: 1,
+          ),
+        );
+        return Manga(
+          id: dirOfManga.path.hash(),
+          path: dirOfManga.path,
+          cover: LocalImage(path: images.first.path),
+          title: basename(dirOfManga.path),
+          groupName: Constants.defaultGroupName,
           pageCount: images.length,
           size: size,
         );
@@ -137,7 +179,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         return null;
       }
     } catch (e) {
-      LogUtil.e('Failed to load manga from ${dir.path}');
+      LogUtil.e('Failed to load manga from ${dirOfManga.path}');
       return null;
     }
   }
@@ -200,14 +242,18 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   Future<void> deleteManga(Manga manga) {
-    return FileUtil.deleteDir(Directory(manga.path))
-        .then((_) {
-          Fluttertoast.showToast(msg: '已删除漫画：${manga.title}');
-        })
-        .catchError((e) {
-          LogUtil.e('删除漫画：${manga.title}失败', error: e);
-          Fluttertoast.showToast(msg: '删除漫画：${manga.title}失败');
-        });
+    return MangaDao.deleteManga(manga.path.hash()).then((value) {
+      if (value == 1) {
+        FileUtil.deleteDir(Directory(manga.path))
+            .then((_) {
+              Fluttertoast.showToast(msg: '已删除漫画：${manga.title}');
+            })
+            .catchError((e) {
+              LogUtil.e('删除漫画：${manga.title}失败', error: e);
+              Fluttertoast.showToast(msg: '删除漫画：${manga.title}失败');
+            });
+      }
+    });
   }
 
   Future<void> deleteImage(LocalImage image) {

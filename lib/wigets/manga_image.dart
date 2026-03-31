@@ -4,6 +4,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:manga_reader/wigets/loading_widget.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 
 import '../models/local_image.dart';
@@ -61,7 +62,10 @@ class MangaImage extends StatelessWidget {
           loadStateChanged: (state) {
             switch (state.extendedImageLoadState) {
               case .loading:
-                return _buildDefaultLoadingWidget();
+                return LoadingWidget(
+                  height: height ?? Get.width * 1.78,
+                  width: width ?? Get.width,
+                );
               case .completed:
                 loadCompleteCallBack?.call(state);
                 return _buildExtendedRawImage(state);
@@ -70,21 +74,6 @@ class MangaImage extends StatelessWidget {
             }
           },
         ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultLoadingWidget() {
-    return SizedBox(
-      height: height ?? Get.width * 1.78,
-      width: width ?? Get.width,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return LoadingAnimationWidget.waveDots(
-            color: Colors.grey,
-            size: constraints.maxWidth * 0.1,
-          ).center();
-        },
       ),
     );
   }

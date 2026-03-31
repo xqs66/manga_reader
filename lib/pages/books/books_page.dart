@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:manga_reader/wigets/group_header.dart';
@@ -27,10 +24,21 @@ class _BooksPageState extends State<BooksPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: _buildAppbar(), body: _buildBody());
+    return GetBuilder<BooksPageController>(
+      id: _controller.appBarId,
+      builder: (_) {
+        return Scaffold(
+          appBar: _state.isSelectMode
+              ? _buildSelectModeAppbar()
+              : _buildNormalAppbar(),
+          body: _buildBody(),
+          bottomNavigationBar: _buildBottomBar(),
+        );
+      },
+    );
   }
 
-  AppBar _buildAppbar() {
+  AppBar _buildNormalAppbar() {
     return AppBar(
       title: Text('Books'),
       centerTitle: true,
@@ -39,46 +47,79 @@ class _BooksPageState extends State<BooksPage> {
           id: _controller.popUpMenuId,
           builder: (_) {
             return PopupMenuButton(
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  onTap: _controller.back2Root,
-                  height: UiConfig.popUpMenuHeight,
-                  child: Row(
-                    children: [
-                      Icon(Icons.arrow_back),
-                      SizedBox(width: 10),
-                      Text('返回根目录'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  onTap: () => _controller.refreshMangas(),
-                  height: UiConfig.popUpMenuHeight,
-                  child: Row(
-                    children: [
-                      Icon(Icons.refresh),
-                      SizedBox(width: 10),
-                      Text('刷新'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  onTap: () => '',
-                  height: UiConfig.popUpMenuHeight,
-                  child: Row(
-                    children: [
-                      Icon(Icons.search),
-                      SizedBox(width: 10),
-                      Text('搜索'),
-                    ],
-                  ),
-                ),
-              ],
+              itemBuilder: (context) => _buildPopUpMenuItems(),
             );
           },
         ),
       ],
     );
+  }
+
+  AppBar _buildSelectModeAppbar() {
+    return AppBar(
+      leading: IconButton(
+        onPressed: _controller.toggleSelectMode,
+        icon: Icon(Icons.close),
+      ),
+      title: Text(_state.selectedMangaIds.length.toString()),
+      actions: [
+        IconButton(
+          onPressed: _controller.handleSelectAll,
+          icon: Icon(Icons.select_all),
+        ),
+      ],
+    );
+  }
+
+  List<PopupMenuItem> _buildPopUpMenuItems() {
+    return [
+      PopupMenuItem(
+        onTap: _controller.back2Root,
+        height: UiConfig.popUpMenuHeight,
+        child: Row(
+          children: [
+            Icon(Icons.arrow_back),
+            SizedBox(width: 10),
+            Text('返回根目录'),
+          ],
+        ),
+      ),
+      PopupMenuItem(
+        onTap: _controller.refreshMangas,
+        height: UiConfig.popUpMenuHeight,
+        child: Row(
+          children: [Icon(Icons.refresh), SizedBox(width: 10), Text('刷新')],
+        ),
+      ),
+      PopupMenuItem(
+        onTap: () {
+          final textController = TextEditingController();
+          Get.dialog(
+            AlertDialog(
+              title: Text('新增分组'),
+              content: TextField(
+                controller: textController,
+                decoration: InputDecoration(hintText: '请输入分组名称'),
+              ),
+              actions: [
+                TextButton(onPressed: () => Get.back(), child: Text('取消')),
+                TextButton(
+                  onPressed: () {
+                    _controller.handleAddGroup(textController.text.trim());
+                    Get.back();
+                  },
+                  child: Text('确定'),
+                ),
+              ],
+            ),
+          );
+        },
+        height: UiConfig.popUpMenuHeight,
+        child: Row(
+          children: [Icon(Icons.add), SizedBox(width: 10), Text('新增分组')],
+        ),
+      ),
+    ];
   }
 
   Widget _buildBody() {
@@ -130,21 +171,34 @@ class _BooksPageState extends State<BooksPage> {
   List<Widget> _buildSlivers() {
     List<Widget> slivers = [];
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < _state.groups.length; i++) {
       slivers.add(_buildGroupSliver(i));
-      slivers.add(_buildElementSliver(i, _state.books));
+      slivers.add(
+        _buildElementSliver(
+          i,
+          _state.books
+              .where((manga) => manga.groupName == _state.groups[i])
+              .toList(),
+        ),
+      );
     }
 
     return slivers;
   }
 
-  Widget _buildElementSliver(int groupIndex, List<Manga> books) {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) => _buildElement(context, groupIndex, index),
-        childCount: books.length,
-        addAutomaticKeepAlives: true,
-      ),
+  Widget _buildElementSliver(int groupIndex, List<Manga> mangas) {
+    return GetBuilder<BooksPageController>(
+      id: '${_controller.mangasInGroupIdPrefix}::${_state.groups[groupIndex]}',
+      builder: (_) {
+        return SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) =>
+                _buildElement(context, groupIndex, mangas[index]),
+            childCount: mangas.length,
+            addAutomaticKeepAlives: true,
+          ),
+        );
+      },
     );
   }
 
@@ -153,10 +207,11 @@ class _BooksPageState extends State<BooksPage> {
   }
 
   Widget _buildGroup(int index) {
+    final String groupName = _state.groups[index];
     return GetBuilder<BooksPageController>(
-      id: 'Group::$index',
+      id: '${_controller.groupidPrefix}::$groupName',
       builder: (_) {
-        final isDisplay = _state.displayGroups.contains(index);
+        final isDisplay = _state.displayGroups.contains(groupName);
         return GestureDetector(
           onTap: () {
             _controller.toggleOpen(index);
@@ -165,7 +220,7 @@ class _BooksPageState extends State<BooksPage> {
             child: Row(
               mainAxisAlignment: .spaceBetween,
               children: [
-                Text('Group $index'),
+                Text(groupName),
                 isDisplay
                     ? Icon(Icons.keyboard_arrow_up)
                     : Icon(Icons.keyboard_arrow_down),
@@ -177,29 +232,74 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
 
-  Widget _buildElement(BuildContext context, int groupIndex, int mangaIndex) {
+  Widget _buildElement(BuildContext context, int groupIndex, Manga manga) {
     return GetBuilder<BooksPageController>(
-      id: 'Manga::$mangaIndex',
+      id: '${_controller.mangaIdPrefix}::${manga.id}',
       builder: (_) {
-        final isDisplay = _state.displayGroups.contains(groupIndex);
-        final manga = _state.books[mangaIndex];
+        final isDisplay = _state.displayGroups.contains(
+          _state.groups[groupIndex],
+        );
         if (!isDisplay) return const SizedBox();
-        return MangaListTileCard(
-          onTap: () => _controller.handleMangaCardTap(manga),
-          longPressActions: [
-            SheetAction(
-              label: '复制漫画名',
-              onPressed: () => FileUtil.copyMangaName(manga.title),
+
+        final isSelected =
+            _state.selectedMangaIds.contains(manga.id) && _state.isSelectMode;
+
+        return Stack(
+          children: [
+            MangaListTileCard(
+              onTap: () => _state.isSelectMode
+                  ? _controller.handleSelectManga(manga)
+                  : _controller.handleMangaCardTap(manga),
+              onLongPressed: () => _state.isSelectMode
+                  ? null
+                  : _controller.handleLongPressManga(manga),
+              manga: manga,
             ),
-            SheetAction(
-              label: '删除',
-              labelColor: Colors.red,
-              onPressed: () => _controller.handleDeleteManga(manga),
-            ),
+            isSelected
+                ? Positioned.fill(
+                    child: GestureDetector(
+                      onTap: () => _state.isSelectMode
+                          ? _controller.handleSelectManga(manga)
+                          : null,
+                      child: Card(
+                        color: const Color(
+                          0xFF84C4FF,
+                        ).withAlpha((0.35 * 255).toInt()),
+                      ),
+                    ),
+                  )
+                : const SizedBox(),
           ],
-          manga: manga,
         ).paddingSymmetric(horizontal: 10);
       },
     );
   }
+
+  Widget _buildBottomBar() {
+    return GetBuilder<BooksPageController>(
+      id: _controller.bottomBarId,
+      builder: (_) {
+        if (!_state.isSelectMode) return const SizedBox();
+        return BottomAppBar(
+          height: 58,
+          child: Row(
+            mainAxisAlignment: .spaceEvenly,
+            crossAxisAlignment: .center,
+            children: [
+              IconButton(
+                onPressed: _controller.handleDeleteMangas,
+                icon: Icon(Icons.drive_file_move),
+              ),
+              IconButton(
+                onPressed: _controller.handleDeleteMangas,
+                icon: Icon(Icons.delete, color: Colors.red),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// TODO: 添加移动分组功能
 }

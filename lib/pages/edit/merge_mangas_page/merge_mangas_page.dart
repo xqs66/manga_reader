@@ -22,14 +22,10 @@ class MergeMangasPage extends StatefulWidget {
 class _MergeMangasPageState extends State<MergeMangasPage> {
   final _controller = Get.put(MergeMangasPageController());
   final _state = Get.find<MergeMangasPageController>().state;
-  late final Future<List<Manga>> loadMangasFuture;
 
   @override
   void initState() {
     super.initState();
-    loadMangasFuture = localMangaService.getMangasInDir(
-      Directory(localMangaService.mangasInLocalSettingPaths.keys.first),
-    );
   }
 
   @override
@@ -203,22 +199,29 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
   Widget _buildMangaListTile(int index, Manga manga) {
     return GetBuilder<MergeMangasPageController>(
       id: '${_controller.mangaListTileIdPrefix}::$index',
-      builder: (context) {
+      builder: (_) {
         final mangaListTileCard = MangaListTileCard(
           manga: manga,
           onTap: () => _controller.toggleMangaSelection(index, manga),
-          longPressActions: [
-            SheetAction(
-              label: '复制漫画名',
-              onPressed: () => FileUtil.copyMangaName(manga.title),
-            ),
-          ],
+          onLongPressed: () => _controller.handleLongPressManga(
+            context,
+            _buildLongPressActions(manga),
+          ),
         );
         return _state.selectedMangas.contains(manga)
             ? _buildSelectedMangaListTile(manga, mangaListTileCard)
             : mangaListTileCard;
       },
     );
+  }
+
+  List<SheetAction> _buildLongPressActions(Manga manga) {
+    return [
+      SheetAction(
+        label: '复制漫画名',
+        onPressed: () => FileUtil.copyMangaName(manga.title),
+      ),
+    ];
   }
 
   Widget _buildSelectedMangaListTile(Manga manga, MangaListTileCard card) {

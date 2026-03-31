@@ -19,4 +19,6 @@ class MergeMangasPageState {
   final TextEditingController targetDirNameController = TextEditingController();
 
   bool isMerging = false;
+
+  bool hasMerged = false;
 }

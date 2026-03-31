@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/pages/reader/reader_page_controller.dart';
+import 'package:manga_reader/shared/utils/log_util.dart';
 import 'package:manga_reader/wigets/manga_image.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -21,16 +23,35 @@ class _ReaderPageState extends State<ReaderPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black,
-      child: Stack(
-        children: [
-          _buildReadMangaImages(),
-          _buildBottomRightInfo(),
-          _buildTopMenu(),
-          _buildBottomMenu(),
-        ],
-      ),
+    return GetBuilder<ReaderPageController>(
+      id: _controller.pageId,
+      builder: (_) {
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarDividerColor: Colors.transparent,
+            statusBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.light,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.light,
+          ),
+          child: Container(
+            color: Colors.white,
+            child: SizedBox(
+              height: 50,
+              width: 100,
+              child: Stack(
+                children: [
+                  _buildReadMangaImages(),
+                  _buildBottomRightInfo(),
+                  _buildTopMenu(),
+                  _buildBottomMenu(),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -56,12 +77,13 @@ class _ReaderPageState extends State<ReaderPage> {
                 initialAlignment: 0,
                 minCacheExtent: Get.height * 5, // TODO 可配置项
                 itemBuilder: (context, index) => _buildImageItem(index),
-                separatorBuilder: (_, _) => const SizedBox(height: 6), // TODO 可配置项
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: 6), // TODO 可配置项
               ),
             );
           },
         );
-      }
+      },
     );
   }
 
@@ -195,7 +217,7 @@ class _ReaderPageState extends State<ReaderPage> {
               ).paddingSymmetric(horizontal: 20),
             ),
           );
-        }
+        },
       ),
     );
   }

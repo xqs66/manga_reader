@@ -62,30 +62,32 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildBottomNavigationBar(BuildContext context) {
     return GetBuilder<HomePageController>(
-      id: 'bottom_bar',
+      id: _controller.bottomBarId,
       builder: (_) {
-        return BottomNavigationBar(
-          currentIndex: _state.pageIndex,
-          onTap: _controller.handleBottomBarTabIndexChanged,
-          showSelectedLabels: true,
-          showUnselectedLabels: false,
-          // selectedItemColor: UiConfig.primaryColor,
-          type: .fixed,
-          items: [
-            BottomNavigationBarItem(
-              label: 'edit',
-              icon: Icon(Icons.edit),
-            ),
-            BottomNavigationBarItem(
-              label: 'books',
-              icon: Icon(Icons.book_sharp),
-            ),
-            BottomNavigationBarItem(
-              label: 'settings',
-              icon: Icon(Icons.settings),
-            ),
-          ],
-        );
+        return _state.showBottomBar
+            ? BottomNavigationBar(
+                currentIndex: _state.pageIndex,
+                onTap: _controller.handleBottomBarTabIndexChanged,
+                showSelectedLabels: true,
+                showUnselectedLabels: false,
+                // selectedItemColor: UiConfig.primaryColor,
+                type: .fixed,
+                items: [
+                  BottomNavigationBarItem(
+                    label: 'edit',
+                    icon: Icon(Icons.edit),
+                  ),
+                  BottomNavigationBarItem(
+                    label: 'books',
+                    icon: Icon(Icons.book_sharp),
+                  ),
+                  BottomNavigationBarItem(
+                    label: 'settings',
+                    icon: Icon(Icons.settings),
+                  ),
+                ],
+              )
+            : const SizedBox();
       },
     );
   }

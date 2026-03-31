@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/pages/books/books_page_controller.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
@@ -11,6 +13,7 @@ import 'package:manga_reader/shared/utils/log_util.dart';
 
 class ReaderPageController extends GetxController {
   final state = ReaderPageState();
+  final String pageId = 'pageId';
   final String imageListId = 'imageListId';
   final String topMenuId = 'topMenuId';
   final String bottomRightInfoId = 'bottomRightInfoId';
@@ -19,7 +22,14 @@ class ReaderPageController extends GetxController {
   @override
   void onReady() {
     super.onReady();
+    SystemChrome.setEnabledSystemUIMode(.immersiveSticky);
     state.itemPositionsListener.itemPositions.addListener(_positionListener);
+  }
+
+  @override
+  void onClose() {
+    super.onClose();
+    SystemChrome.setEnabledSystemUIMode(.edgeToEdge);
   }
 
   void _positionListener() {
