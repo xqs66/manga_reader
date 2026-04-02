@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class UiConfig {
-  static const Color primaryColor = Color(0xFF5C6BC0);
+  static const Color primaryColor = Colors.indigo;
   static const double bottomBarHeight = 65;
   static const double popUpMenuHeight = 50;
 

@@ -1,15 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:manga_reader/wigets/group_header.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/pages/books/books_page_controller.dart';
+import 'package:manga_reader/wigets/select_dialog.dart';
 
 import '../../config/ui_config.dart';
 import '../../models/manga.dart';
 import '../../settings/path_setting.dart';
+import '../../wigets/common_dialog.dart';
 
 class BooksPage extends StatefulWidget {
   const BooksPage({super.key});
@@ -214,7 +217,7 @@ class _BooksPageState extends State<BooksPage> {
         final isDisplay = _state.displayGroups.contains(groupName);
         return GestureDetector(
           onTap: () {
-            _controller.toggleOpen(index);
+            _controller.toggleGroupExpand(index);
           },
           child: GroupHeader(
             child: Row(
@@ -253,6 +256,22 @@ class _BooksPageState extends State<BooksPage> {
               onLongPressed: () => _state.isSelectMode
                   ? null
                   : _controller.handleLongPressManga(manga),
+              endActionPane: ActionPane(
+                motion: const ScrollMotion(),
+                children: [
+                  SlidableAction(
+                    onPressed: (_) => FileUtil.copyMangaName(manga.title),
+                    // foregroundColor: Colors.red,
+                    icon: Icons.copy,
+                  ),
+                  SlidableAction(
+                    onPressed: (_) =>
+                        Get.dialog(_buildDeleteMangaDialog(manga)),
+                    foregroundColor: Colors.red,
+                    icon: Icons.delete,
+                  ),
+                ],
+              ),
               manga: manga,
             ),
             isSelected
@@ -287,11 +306,11 @@ class _BooksPageState extends State<BooksPage> {
             crossAxisAlignment: .center,
             children: [
               IconButton(
-                onPressed: _controller.handleDeleteMangas,
+                onPressed: () => Get.dialog(_buildMoveGroupDialog()),
                 icon: Icon(Icons.drive_file_move),
               ),
               IconButton(
-                onPressed: _controller.handleDeleteMangas,
+                onPressed: () => Get.dialog(_buildDeleteMangasDialog()),
                 icon: Icon(Icons.delete, color: Colors.red),
               ),
             ],
@@ -301,5 +320,28 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
 
-  /// TODO: 添加移动分组功能
+  Widget _buildMoveGroupDialog() {
+    return SelectDialog(
+      title: '请选择分组',
+      items: _state.groups,
+      onConfirm: (index) =>
+          _controller.handleMoveMangas2Group(_state.groups[index]),
+    );
+  }
+
+  Widget _buildDeleteMangaDialog(Manga manga) {
+    return CommonDialog(
+      title: '删除漫画',
+      content: Text('确定要删除漫画吗？'),
+      onConfirm: () => _controller.handleDeleteManga(manga),
+    );
+  }
+
+  Widget _buildDeleteMangasDialog() {
+    return CommonDialog(
+      title: '删除所选漫画',
+      content: Text('确定要删除所选漫画吗？'),
+      onConfirm: _controller.handleDeleteMangas,
+    );
+  }
 }

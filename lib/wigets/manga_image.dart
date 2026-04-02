@@ -3,12 +3,10 @@ import 'dart:io';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:manga_reader/wigets/loading_widget.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 
 import '../models/local_image.dart';
-import '../shared/extensions/widget_ext.dart';
 
 typedef LoadingWidgetBuilder = Widget Function(ExtendedImageState state);
 typedef LoadFailedWidgetBuilder = Widget Function(ExtendedImageState state);

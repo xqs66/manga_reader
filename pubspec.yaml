@@ -8,7 +8,7 @@ environment:
 
 dependencies:
   animate_do: ^4.2.0
-  drift: ^2.30.0
+  drift: 2.30.0
   extended_image: ^10.0.1
   file_picker: ^10.3.10
   flutter:
@@ -31,8 +31,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  drift_dev: ^2.30.0
+  drift_dev: 2.30.0
   build_runner: ^2.4.0
+
+depandencies_overrides:
+  sqlite3: 2.9.4  #sqlite3.x 之后采用hook方式，运行时无法无法正常下载原生库，所以降级为2.9.4
 
 flutter:
   uses-material-design: true

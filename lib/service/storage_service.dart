@@ -1,8 +1,6 @@
 import 'package:get_storage/get_storage.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/path_service.dart';
-import 'package:manga_reader/shared/constants/constants.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
 
 StorageService storageService = StorageService();
 

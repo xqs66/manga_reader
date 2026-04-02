@@ -8,7 +8,6 @@ import 'package:get/get.dart';
 import 'package:manga_reader/pages/books/books_page_controller.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
-import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
 
 class ReaderPageController extends GetxController {

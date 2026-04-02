@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:manga_reader/mixin/scroll_handler.dart';
 
 import '../../models/manga.dart';
@@ -16,5 +15,8 @@ class BooksPageState with ScrollState {
 
   bool isSelectMode = false;
 
-  List<String> selectedMangaIds = [];
+  Set<String> selectedMangaIds = {};
+
+  List<Manga> get selectedMangas =>
+      books.where((manga) => selectedMangaIds.contains(manga.id)).toList();
 }

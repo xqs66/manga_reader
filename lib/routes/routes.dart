@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import 'package:manga_reader/pages/books/books_page.dart';
 import 'package:manga_reader/pages/edit/merge_mangas_page/merge_mangas_page.dart';
 import 'package:manga_reader/pages/home_page.dart';
 import 'package:manga_reader/pages/reader/reader_page.dart';

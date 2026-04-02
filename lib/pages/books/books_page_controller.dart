@@ -6,6 +6,7 @@ import 'package:get/get.dart' hide Value;
 import 'package:manga_reader/database/dao/group_dao.dart';
 import 'package:manga_reader/database/dao/manga_dao.dart';
 import 'package:manga_reader/database/database.dart';
+import 'package:manga_reader/database/table/group.dart';
 import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/read_info.dart';
@@ -34,7 +35,11 @@ class BooksPageController extends GetxController with ScrollHandler {
   void onInit() async {
     super.onInit();
 
-    state.groups = await GroupDao.selectAllGroups();
+    final groups = await GroupDao.selectAllGroups();
+    final expandedGroups = groups.where((group) => group.isExpanded);
+    state.groups = groups.map((group) => group.groupName).toList();
+
+    state.displayGroups.addAll(expandedGroups.map((group) => group.groupName));
   }
 
   void enterMangaDir(String path) {
@@ -49,12 +54,14 @@ class BooksPageController extends GetxController with ScrollHandler {
     update([bodyId, popUpMenuId]);
   }
 
-  void toggleOpen(int index) {
+  void toggleGroupExpand(int index) {
     final groupName = state.groups[index];
     if (state.displayGroups.contains(groupName)) {
       state.displayGroups.remove(groupName);
+      GroupDao.updateGroup(groupName, GroupCompanion(isExpanded: Value(false)));
     } else {
       state.displayGroups.add(groupName);
+      GroupDao.updateGroup(groupName, GroupCompanion(isExpanded: Value(true)));
     }
     update([
       '$groupidPrefix::$groupName',
@@ -82,6 +89,10 @@ class BooksPageController extends GetxController with ScrollHandler {
     state.selectedMangaIds.contains(manga.id)
         ? state.selectedMangaIds.remove(manga.id)
         : state.selectedMangaIds.add(manga.id);
+
+    if (state.selectedMangaIds.isEmpty) {
+      toggleSelectMode();
+    }
     update([appBarId, '$mangaIdPrefix::${manga.id}']);
   }
 
@@ -89,8 +100,6 @@ class BooksPageController extends GetxController with ScrollHandler {
     state.selectedMangaIds.assignAll(state.books.map((e) => e.id));
     update([appBarId, bodyId]);
   }
-
-  void handleDeleteMangas() {}
 
   void handleMangaCardTap(Manga manga) {
     Get.toNamed(
@@ -103,7 +112,12 @@ class BooksPageController extends GetxController with ScrollHandler {
     );
   }
 
-  void moveMangas2Group(String groupName) async {
+  void handleMoveMangas2Group(String groupName) async {
+    if (state.selectedMangaIds.isEmpty) {
+      Fluttertoast.showToast(msg: '请选择漫画');
+      return;
+    }
+
     if (!state.groups.contains(groupName)) {
       GroupDao.insertGroup(groupName);
       state.groups.add(groupName);
@@ -123,14 +137,16 @@ class BooksPageController extends GetxController with ScrollHandler {
           LogUtil.e('改变分组失败', error: e);
           Fluttertoast.showToast(msg: '改变分组失败');
         });
-    state.books.forEach((manga) {
+    for (var manga in state.books) {
       if (state.selectedMangaIds.contains(manga.id)) {
         manga.groupName = groupName;
       }
-    });
+    }
     state.selectedMangaIds.clear();
     toggleSelectMode();
     update([bodyId]);
+
+    Get.back();
   }
 
   void handleAddGroup(String? groupName) {
@@ -157,25 +173,19 @@ class BooksPageController extends GetxController with ScrollHandler {
     update([bodyId]);
   }
 
-  Future<void> handleDeleteManga(Manga manga) {
-    return Get.dialog(
-      barrierDismissible: true,
-      AlertDialog(
-        title: Text('删除漫画'),
-        content: Text('确定要删除漫画吗？'),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('取消')),
-          TextButton(
-            onPressed: () async {
-              localMangaService.deleteManga(manga);
-              state.books.remove(manga);
-              update([bodyId]);
-              Get.back();
-            },
-            child: Text('确定'),
-          ),
-        ],
-      ),
-    );
+  Future<void> handleDeleteManga(Manga manga) async {
+    localMangaService.deleteManga(manga);
+    state.books.remove(manga);
+    update([bodyId]);
+    Get.back();
+  }
+
+  Future<void> handleDeleteMangas() async {
+    localMangaService.deleteMangas(state.selectedMangas);
+    state.selectedMangaIds.forEach((id) {
+      state.books.removeWhere((manga) => manga.id == id);
+    });
+    update([bodyId]);
+    Get.back();
   }
 }

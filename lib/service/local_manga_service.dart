@@ -256,6 +256,19 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     });
   }
 
+  Future<void> deleteMangas(List<Manga> mangas, {bool showToast = true}) {
+    return Future.wait(mangas.map((manga) => deleteManga(manga)))
+        .then((_) {
+          if (showToast) {
+            Fluttertoast.showToast(msg: '已删除漫画');
+          }
+        })
+        .catchError((e) {
+          LogUtil.e('删除漫画失败', error: e);
+          Fluttertoast.showToast(msg: '删除漫画失败');
+        });
+  }
+
   Future<void> deleteImage(LocalImage image) {
     return FileUtil.deleteFile(File(image.path))
         .then((_) {

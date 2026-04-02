@@ -91,6 +91,7 @@ class MangaListTileCard extends StatelessWidget {
                 case .failed:
                   return Icon(Icons.broken_image);
               }
+              return null;
             },
           ),
         );

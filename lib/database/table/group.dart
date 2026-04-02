@@ -10,4 +10,6 @@ class Group extends Table {
   TextColumn get groupName => text()();
 
   IntColumn get sortOrder => integer()();
+
+  BoolColumn get isExpanded => boolean().withDefault(Constant(false))();
 }

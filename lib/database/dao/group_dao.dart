@@ -1,9 +1,8 @@
 import 'package:manga_reader/database/database.dart';
 
 class GroupDao {
-  static Future<List<String>> selectAllGroups() async {
-    final groups = await appDb.select(appDb.group).get();
-    return groups.map((e) => e.groupName).toList();
+  static Future<List<GroupData>> selectAllGroups() {
+    return appDb.select(appDb.group).get();
   }
 
   static Future<void> insertGroup(String groupName) {
@@ -16,5 +15,14 @@ class GroupDao {
     return (appDb.delete(
       appDb.group,
     )..where((group) => group.groupName.equals(groupName))).go();
+  }
+
+  static Future<int> updateGroup(
+    String groupName,
+    GroupCompanion companion,
+  ) async {
+    return (appDb.update(
+      appDb.group,
+    )..where((group) => group.groupName.equals(groupName))).write(companion);
   }
 }

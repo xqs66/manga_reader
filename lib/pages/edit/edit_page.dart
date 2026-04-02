@@ -27,15 +27,19 @@ class _EditPageState extends State<EditPage> {
             ),
             buildButton(
               label: '沉浸式',
-              onPressed: () => SystemChrome.setEnabledSystemUIMode(.immersiveSticky),
+              onPressed: () =>
+                  SystemChrome.setEnabledSystemUIMode(.immersiveSticky),
             ),
             buildButton(
               label: '将漫画合并为合集',
               onPressed: () => Get.toNamed(Routes.mergeMangas),
             ),
             buildButton(
-              label: '将漫画合并为合集',
-              onPressed: () => Get.toNamed(Routes.mergeMangas),
+              label: '测试',
+              onPressed: () => Get.dialog(
+                const Center(child: CircularProgressIndicator()),
+                barrierDismissible: false,
+              ),
             ),
           ],
         ),

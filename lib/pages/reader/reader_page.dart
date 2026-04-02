@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/pages/reader/reader_page_controller.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
 import 'package:manga_reader/wigets/manga_image.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -115,7 +114,7 @@ class _ReaderPageState extends State<ReaderPage> {
                     _controller.onLoadCompleteCallBack(
                       index,
                       state,
-                      Size(constraints.maxWidth, constraints.maxWidth * 1.78),
+                      Size(constraints.maxWidth, double.infinity),
                     ),
               ),
             );
@@ -133,7 +132,7 @@ class _ReaderPageState extends State<ReaderPage> {
           top: 0,
           height: _state.isMenuOpen ? UiConfig.topAreaMenuHeight : 0,
           width: Get.width,
-          curve: Curves.easeInOut,
+          curve: Curves.ease,
           duration: Duration(milliseconds: 200),
           child: AppBar(
             title: Text(
@@ -160,7 +159,7 @@ class _ReaderPageState extends State<ReaderPage> {
           bottom: _state.isMenuOpen ? 0 : -UiConfig.bottomAreaMenuHeight,
           height: _state.isMenuOpen ? UiConfig.bottomAreaMenuHeight : 0,
           width: Get.width,
-          curve: Curves.easeInOut,
+          curve: Curves.ease,
           duration: Duration(milliseconds: 200),
           child: Material(
             color: Colors.transparent,

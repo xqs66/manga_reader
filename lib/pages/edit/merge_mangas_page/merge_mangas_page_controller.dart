@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/models/manga.dart';
@@ -55,10 +56,7 @@ class MergeMangasPageController extends GetxController {
   }
 
   void handleLongPressManga(BuildContext context, List<SheetAction> actions) {
-    LongPressActionSheet.show(
-      context: context,
-      actions: actions,
-    );
+    LongPressActionSheet.show(context: context, actions: actions);
   }
 
   void cancelSelected() {
@@ -90,7 +88,11 @@ class MergeMangasPageController extends GetxController {
     }
 
     state.isMerging = true;
-    update([mergeStartDialogId]);
+    Get.back();
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
 
     final mangas = state.selectedMangas;
     final outputDir = p.join(
@@ -98,7 +100,7 @@ class MergeMangasPageController extends GetxController {
       state.targetDirNameController.text.trim(),
     );
 
-    final mergeFuture = localMangaService
+    localMangaService
         .mergeMangas(mangas, Directory(outputDir))
         .then((_) {
           Fluttertoast.showToast(msg: '合并成功');
@@ -108,14 +110,22 @@ class MergeMangasPageController extends GetxController {
           Fluttertoast.showToast(msg: '合并失败');
         })
         .whenComplete(() {
+          if (state.deleteSourceMangas) {
+            localMangaService.deleteMangas(mangas, showToast: false);
+          }
           state.hasMerged = true;
           state.isMerging = false;
           state.targetDirNameController.clear();
           state.selectedMangaIndexes.clear();
           state.selectedMangas.clear();
-          update([mergeStartDialogId]);
+          update([bodyId, titleId, cancelButtonId]);
           Get.back();
         });
+  }
+
+  void handleToggleDeleteSource(bool? value) {
+    state.deleteSourceMangas = value ?? false;
+    update([mergeStartDialogId]);
   }
 
   @override

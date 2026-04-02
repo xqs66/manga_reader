@@ -8,6 +8,7 @@ import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
+import 'package:manga_reader/wigets/common_dialog.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 
 import 'merge_mangas_page_controller.dart';
@@ -248,21 +249,33 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
     return GetBuilder<MergeMangasPageController>(
       id: _controller.mergeStartDialogId,
       builder: (context) {
-        return AlertDialog(
-          title: Text('请输入合集名称'),
-          content: TextField(
-            controller: _state.targetDirNameController,
-            decoration: InputDecoration(hintText: '请输入合集名称'),
+        return CommonDialog(
+          title: '请输入合集名称',
+          content: Container(
+            height: 110,
+            child: Column(
+              crossAxisAlignment: .end,
+              mainAxisSize: .max,
+              mainAxisAlignment: .spaceBetween,
+              children: [
+                TextField(
+                  controller: _state.targetDirNameController,
+                  decoration: InputDecoration(hintText: '请输入合集名称'),
+                ),
+                Row(
+                  mainAxisSize: .min,
+                  children: [
+                    Checkbox(
+                      value: _state.deleteSourceMangas,
+                      onChanged: _controller.handleToggleDeleteSource,
+                    ),
+                    Text('合并后删除原漫画'),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(onPressed: () => Get.back(), child: Text('取消')),
-            _state.isMerging
-                ? const CircularProgressIndicator()
-                : TextButton(
-                    onPressed: _controller.handleTapStartMerge,
-                    child: Text('开始合并'),
-                  ),
-          ],
+          onConfirm: _controller.handleTapStartMerge,
         );
       },
     );

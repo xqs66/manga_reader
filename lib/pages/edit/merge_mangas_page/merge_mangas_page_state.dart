@@ -21,4 +21,6 @@ class MergeMangasPageState {
   bool isMerging = false;
 
   bool hasMerged = false;
+
+  bool deleteSourceMangas = false;
 }

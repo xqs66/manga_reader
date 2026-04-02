@@ -687,8 +687,23 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isExpandedMeta = const VerificationMeta(
+    'isExpanded',
+  );
   @override
-  List<GeneratedColumn> get $columns => [groupName, sortOrder];
+  late final GeneratedColumn<bool> isExpanded = GeneratedColumn<bool>(
+    'is_expanded',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_expanded" IN (0, 1))',
+    ),
+    defaultValue: Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [groupName, sortOrder, isExpanded];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -717,6 +732,12 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
     } else if (isInserting) {
       context.missing(_sortOrderMeta);
     }
+    if (data.containsKey('is_expanded')) {
+      context.handle(
+        _isExpandedMeta,
+        isExpanded.isAcceptableOrUnknown(data['is_expanded']!, _isExpandedMeta),
+      );
+    }
     return context;
   }
 
@@ -734,6 +755,10 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
       )!,
+      isExpanded: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_expanded'],
+      )!,
     );
   }
 
@@ -746,12 +771,18 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
 class GroupData extends DataClass implements Insertable<GroupData> {
   final String groupName;
   final int sortOrder;
-  const GroupData({required this.groupName, required this.sortOrder});
+  final bool isExpanded;
+  const GroupData({
+    required this.groupName,
+    required this.sortOrder,
+    required this.isExpanded,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['group_name'] = Variable<String>(groupName);
     map['sort_order'] = Variable<int>(sortOrder);
+    map['is_expanded'] = Variable<bool>(isExpanded);
     return map;
   }
 
@@ -759,6 +790,7 @@ class GroupData extends DataClass implements Insertable<GroupData> {
     return GroupCompanion(
       groupName: Value(groupName),
       sortOrder: Value(sortOrder),
+      isExpanded: Value(isExpanded),
     );
   }
 
@@ -770,6 +802,7 @@ class GroupData extends DataClass implements Insertable<GroupData> {
     return GroupData(
       groupName: serializer.fromJson<String>(json['groupName']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isExpanded: serializer.fromJson<bool>(json['isExpanded']),
     );
   }
   @override
@@ -778,17 +811,23 @@ class GroupData extends DataClass implements Insertable<GroupData> {
     return <String, dynamic>{
       'groupName': serializer.toJson<String>(groupName),
       'sortOrder': serializer.toJson<int>(sortOrder),
+      'isExpanded': serializer.toJson<bool>(isExpanded),
     };
   }
 
-  GroupData copyWith({String? groupName, int? sortOrder}) => GroupData(
-    groupName: groupName ?? this.groupName,
-    sortOrder: sortOrder ?? this.sortOrder,
-  );
+  GroupData copyWith({String? groupName, int? sortOrder, bool? isExpanded}) =>
+      GroupData(
+        groupName: groupName ?? this.groupName,
+        sortOrder: sortOrder ?? this.sortOrder,
+        isExpanded: isExpanded ?? this.isExpanded,
+      );
   GroupData copyWithCompanion(GroupCompanion data) {
     return GroupData(
       groupName: data.groupName.present ? data.groupName.value : this.groupName,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isExpanded: data.isExpanded.present
+          ? data.isExpanded.value
+          : this.isExpanded,
     );
   }
 
@@ -796,44 +835,51 @@ class GroupData extends DataClass implements Insertable<GroupData> {
   String toString() {
     return (StringBuffer('GroupData(')
           ..write('groupName: $groupName, ')
-          ..write('sortOrder: $sortOrder')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isExpanded: $isExpanded')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(groupName, sortOrder);
+  int get hashCode => Object.hash(groupName, sortOrder, isExpanded);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is GroupData &&
           other.groupName == this.groupName &&
-          other.sortOrder == this.sortOrder);
+          other.sortOrder == this.sortOrder &&
+          other.isExpanded == this.isExpanded);
 }
 
 class GroupCompanion extends UpdateCompanion<GroupData> {
   final Value<String> groupName;
   final Value<int> sortOrder;
+  final Value<bool> isExpanded;
   final Value<int> rowid;
   const GroupCompanion({
     this.groupName = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.isExpanded = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupCompanion.insert({
     required String groupName,
     required int sortOrder,
+    this.isExpanded = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : groupName = Value(groupName),
        sortOrder = Value(sortOrder);
   static Insertable<GroupData> custom({
     Expression<String>? groupName,
     Expression<int>? sortOrder,
+    Expression<bool>? isExpanded,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (groupName != null) 'group_name': groupName,
       if (sortOrder != null) 'sort_order': sortOrder,
+      if (isExpanded != null) 'is_expanded': isExpanded,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -841,11 +887,13 @@ class GroupCompanion extends UpdateCompanion<GroupData> {
   GroupCompanion copyWith({
     Value<String>? groupName,
     Value<int>? sortOrder,
+    Value<bool>? isExpanded,
     Value<int>? rowid,
   }) {
     return GroupCompanion(
       groupName: groupName ?? this.groupName,
       sortOrder: sortOrder ?? this.sortOrder,
+      isExpanded: isExpanded ?? this.isExpanded,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -859,6 +907,9 @@ class GroupCompanion extends UpdateCompanion<GroupData> {
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
+    if (isExpanded.present) {
+      map['is_expanded'] = Variable<bool>(isExpanded.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -870,6 +921,7 @@ class GroupCompanion extends UpdateCompanion<GroupData> {
     return (StringBuffer('GroupCompanion(')
           ..write('groupName: $groupName, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('isExpanded: $isExpanded, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1228,12 +1280,14 @@ typedef $$GroupTableCreateCompanionBuilder =
     GroupCompanion Function({
       required String groupName,
       required int sortOrder,
+      Value<bool> isExpanded,
       Value<int> rowid,
     });
 typedef $$GroupTableUpdateCompanionBuilder =
     GroupCompanion Function({
       Value<String> groupName,
       Value<int> sortOrder,
+      Value<bool> isExpanded,
       Value<int> rowid,
     });
 
@@ -1252,6 +1306,11 @@ class $$GroupTableFilterComposer extends Composer<_$AppDatabase, $GroupTable> {
 
   ColumnFilters<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isExpanded => $composableBuilder(
+    column: $table.isExpanded,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1274,6 +1333,11 @@ class $$GroupTableOrderingComposer
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isExpanded => $composableBuilder(
+    column: $table.isExpanded,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GroupTableAnnotationComposer
@@ -1290,6 +1354,11 @@ class $$GroupTableAnnotationComposer
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isExpanded => $composableBuilder(
+    column: $table.isExpanded,
+    builder: (column) => column,
+  );
 }
 
 class $$GroupTableTableManager
@@ -1322,20 +1391,24 @@ class $$GroupTableTableManager
               ({
                 Value<String> groupName = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<bool> isExpanded = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupCompanion(
                 groupName: groupName,
                 sortOrder: sortOrder,
+                isExpanded: isExpanded,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String groupName,
                 required int sortOrder,
+                Value<bool> isExpanded = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupCompanion.insert(
                 groupName: groupName,
                 sortOrder: sortOrder,
+                isExpanded: isExpanded,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
