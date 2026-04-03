@@ -17,6 +17,7 @@ import '../shared/utils/file_util.dart';
 class MangaListTileCard extends StatelessWidget {
   final Manga manga;
   final ActionPane? endActionPane;
+  final bool buildCover;
   final void Function()? onTap;
   final void Function()? onLongPressed;
 
@@ -25,6 +26,7 @@ class MangaListTileCard extends StatelessWidget {
     required this.manga,
     this.endActionPane,
     this.onTap,
+    this.buildCover = true,
     this.onLongPressed,
   });
 
@@ -70,30 +72,37 @@ class MangaListTileCard extends StatelessWidget {
       builder: (context, constraints) {
         return ClipRRect(
           borderRadius: .all(.circular(5.0)),
-          child: ExtendedImage.file(
-            File(cover.path),
-            fit: .cover,
-            width: constraints.maxHeight * 0.75,
-            height: constraints.maxHeight,
-            clearMemoryCacheIfFailed: true,
-            loadStateChanged: (state) {
-              switch (state.extendedImageLoadState) {
-                case .loading:
-                  return LoadingWidget(
-                    width: constraints.maxHeight * 0.75,
-                    height: constraints.maxHeight,
-                  );
-                case .completed:
-                  ExtendedRawImage(
-                    image: state.extendedImageInfo?.image,
-                    fit: .cover,
-                  );
-                case .failed:
-                  return Icon(Icons.broken_image);
-              }
-              return null;
-            },
-          ),
+          child: buildCover
+              ? ExtendedImage.file(
+                  File(cover.path),
+                  fit: .cover,
+                  width: constraints.maxHeight * 0.75,
+                  height: constraints.maxHeight,
+                  clearMemoryCacheIfFailed: true,
+                  loadStateChanged: (state) {
+                    switch (state.extendedImageLoadState) {
+                      case .loading:
+                        return LoadingWidget(
+                          width: constraints.maxHeight * 0.75,
+                          height: constraints.maxHeight,
+                        );
+                      case .completed:
+                        ExtendedRawImage(
+                          image: state.extendedImageInfo?.image,
+                          fit: .cover,
+                        );
+                      case .failed:
+                        return Icon(Icons.broken_image);
+                    }
+                    return null;
+                  },
+                )
+              : const SizedBox(
+                  width:
+                      (UiConfig.mangaListCardHeight -
+                          2 * UiConfig.mangaListCardPadding) *
+                      0.75,
+                ),
         );
       },
     );

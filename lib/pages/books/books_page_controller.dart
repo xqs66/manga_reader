@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -187,5 +188,12 @@ class BooksPageController extends GetxController with ScrollHandler {
     });
     update([bodyId]);
     Get.back();
+  }
+
+  @override
+  void handleScrollFinish() {
+    if (!state.isScrolling) {
+      update([bodyId]);
+    }
   }
 }

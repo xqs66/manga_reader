@@ -7,8 +7,6 @@ mixin ScrollState {
 
   bool isScrolling = false;
 
-  bool isScrollingByProgramming = false;
-
   bool isAtEnd = false;
 }
 
@@ -18,12 +16,12 @@ mixin ScrollHandler {
   Timer? debounceTimer;
 
   bool handleScrollEvent(ScrollNotification notification) {
-    if (scrollState.isScrollingByProgramming) return false;
-
     if (notification is ScrollStartNotification) {
       debounceTimer?.cancel();
       handleScrollStart();
-      scrollState.isScrolling = true;
+      Future.delayed(const Duration(milliseconds: 200)).then((_) {
+        scrollState.isScrolling = true;
+      });
     }
 
     if (notification is ScrollUpdateNotification) {
@@ -36,21 +34,16 @@ mixin ScrollHandler {
     }
 
     if (notification is ScrollEndNotification) {
-      debounceTimer = Timer(const Duration(milliseconds: 150), () {
-        scrollState.isScrolling = false;
+      scrollState.isScrolling = false;
 
-        final metrics = notification.metrics;
-        if (metrics.pixels >= metrics.maxScrollExtent - 10) {
-          handleScroll2End();
-          return;
-        }
-        if (metrics.pixels <= 10) {
-          handleScroll2Head();
-          return;
-        }
-
-        handleScrollFinish();
-      });
+      final metrics = notification.metrics;
+      if (metrics.pixels >= metrics.maxScrollExtent - 10) {
+        handleScroll2End();
+      }
+      if (metrics.pixels <= 10) {
+        handleScroll2Head();
+      }
+      handleScrollFinish();
     }
     return false;
   }

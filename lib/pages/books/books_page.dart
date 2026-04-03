@@ -163,10 +163,14 @@ class _BooksPageState extends State<BooksPage> {
     /// TODO: 可配置项，不过设置稍微多点会卡顿
     return CupertinoScrollbar(
       controller: _state.scrollController,
-      child: CustomScrollView(
-        slivers: _buildSlivers(),
-        controller: _state.scrollController,
-        cacheExtent: Get.height * 0.5,
+      child: NotificationListener(
+        onNotification: (ScrollNotification notification) =>
+            _controller.handleScrollEvent(notification),
+        child: CustomScrollView(
+          slivers: _buildSlivers(),
+          controller: _state.scrollController,
+          cacheExtent: Get.height * 0.5,
+        ),
       ),
     );
   }
@@ -199,6 +203,7 @@ class _BooksPageState extends State<BooksPage> {
                 _buildElement(context, groupIndex, mangas[index]),
             childCount: mangas.length,
             addAutomaticKeepAlives: true,
+            addRepaintBoundaries: true
           ),
         );
       },
@@ -250,6 +255,8 @@ class _BooksPageState extends State<BooksPage> {
         return Stack(
           children: [
             MangaListTileCard(
+              key: ValueKey(manga.id),
+              buildCover: !_state.isScrolling,
               onTap: () => _state.isSelectMode
                   ? _controller.handleSelectManga(manga)
                   : _controller.handleMangaCardTap(manga),

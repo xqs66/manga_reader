@@ -24,6 +24,7 @@ class UiConfig {
 
   ///manga card list tile
   static const double mangaListCardHeight = 150;
+  static const double mangaListCardPadding = 5;
   static const TextStyle listTileSubtitleStyle = TextStyle(
     color: Color(0xFF757575),
     fontSize: 12,
