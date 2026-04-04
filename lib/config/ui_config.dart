@@ -12,7 +12,7 @@ class UiConfig {
   static const Color groupHeaderColor = Color(0xB871B0F7);
 
   ///read page
-  static const double topAreaMenuHeight = 50;
+  static const double topAreaMenuHeight = 60;
   static const double bottomAreaMenuHeight = 80;
   static const double defaultImageContainerRadio = 1.78;
   static final Color readMenuColor = const Color(0xDB000000);

@@ -18,6 +18,8 @@ class Manga extends Table {
 
   TextColumn get title => text()();
 
+  TextColumn get coverPath => text()();
+
   TextColumn get groupName =>
       text().withDefault(Constant(Constants.defaultGroupName))();
 

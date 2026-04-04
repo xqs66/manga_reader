@@ -8,6 +8,8 @@ mixin ScrollState {
   bool isScrolling = false;
 
   bool isAtEnd = false;
+
+  DateTime? lastScrollEndTime;
 }
 
 mixin ScrollHandler {
@@ -17,24 +19,15 @@ mixin ScrollHandler {
 
   bool handleScrollEvent(ScrollNotification notification) {
     if (notification is ScrollStartNotification) {
-      debounceTimer?.cancel();
-      handleScrollStart();
-      Future.delayed(const Duration(milliseconds: 200)).then((_) {
-        scrollState.isScrolling = true;
-      });
+      handleScrollStart(notification);
     }
 
     if (notification is ScrollUpdateNotification) {
-      final metrics = notification.metrics;
-      if (metrics.pixels >= metrics.maxScrollExtent - 10) {
-        scrollState.isAtEnd = true;
-      } else {
-        scrollState.isAtEnd = false;
-      }
+      handleScrollUpdate(notification);
     }
 
     if (notification is ScrollEndNotification) {
-      scrollState.isScrolling = false;
+      handleScrollFinish(notification);
 
       final metrics = notification.metrics;
       if (metrics.pixels >= metrics.maxScrollExtent - 10) {
@@ -43,14 +36,46 @@ mixin ScrollHandler {
       if (metrics.pixels <= 10) {
         handleScroll2Head();
       }
-      handleScrollFinish();
     }
     return false;
   }
 
-  void handleScrollStart() {}
+  void delayedHandleScrollStart(ScrollStartNotification notification) {
+    final duration = DateTime.now().difference(
+      scrollState.lastScrollEndTime ?? DateTime.now(),
+    );
+    if (duration.inMilliseconds < 100) {
+      debounceTimer?.cancel();
+      debounceTimer = Timer(Duration(milliseconds: 100), () {
+        scrollState.isScrolling = true;
+      });
+      return;
+    }
+    scrollState.isScrolling = true;
+  }
 
-  void handleScrollFinish() {}
+  void handleEndWithDelayedStart(ScrollEndNotification notification) {
+    debounceTimer?.cancel();
+    scrollState.lastScrollEndTime = DateTime.now();
+    scrollState.isScrolling = false;
+  }
+
+  void handleScrollStart(ScrollStartNotification notification) {
+    scrollState.isScrolling = true;
+  }
+
+  void handleScrollUpdate(ScrollUpdateNotification notification) {
+    final metrics = notification.metrics;
+    if (metrics.pixels >= metrics.maxScrollExtent - 10) {
+      scrollState.isAtEnd = true;
+    } else {
+      scrollState.isAtEnd = false;
+    }
+  }
+
+  void handleScrollFinish(ScrollEndNotification notification) {
+    scrollState.isScrolling = false;
+  }
 
   void handleScroll2Head() {}
 

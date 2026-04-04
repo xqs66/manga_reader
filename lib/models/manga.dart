@@ -42,7 +42,7 @@ class Manga {
 
   @override
   bool operator ==(Object other) {
-    return other is Manga && other.path == path;
+    return other is Manga && other.id == id;
   }
 
   @override

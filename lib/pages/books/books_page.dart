@@ -1,8 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:manga_reader/routes/app_route_observer.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
+import 'package:manga_reader/shared/utils/log_util.dart';
 import 'package:manga_reader/wigets/group_header.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 import 'package:get/get.dart';
@@ -21,9 +23,25 @@ class BooksPage extends StatefulWidget {
   State<BooksPage> createState() => _BooksPageState();
 }
 
-class _BooksPageState extends State<BooksPage> {
+class _BooksPageState extends State<BooksPage> with RouteAware {
   final _controller = Get.put(BooksPageController(), permanent: true);
   final _state = Get.find<BooksPageController>().state;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void didPopNext() {
+    _controller.handlePopNext();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +221,7 @@ class _BooksPageState extends State<BooksPage> {
                 _buildElement(context, groupIndex, mangas[index]),
             childCount: mangas.length,
             addAutomaticKeepAlives: true,
-            addRepaintBoundaries: true
+            addRepaintBoundaries: true,
           ),
         );
       },

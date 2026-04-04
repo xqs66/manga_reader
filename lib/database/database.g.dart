@@ -37,6 +37,17 @@ class $MangaTable extends Manga with TableInfo<$MangaTable, MangaData> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _coverPathMeta = const VerificationMeta(
+    'coverPath',
+  );
+  @override
+  late final GeneratedColumn<String> coverPath = GeneratedColumn<String>(
+    'cover_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _groupNameMeta = const VerificationMeta(
     'groupName',
   );
@@ -126,6 +137,7 @@ class $MangaTable extends Manga with TableInfo<$MangaTable, MangaData> {
     id,
     parentPath,
     title,
+    coverPath,
     groupName,
     tags,
     lastReadTime,
@@ -167,6 +179,14 @@ class $MangaTable extends Manga with TableInfo<$MangaTable, MangaData> {
       );
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('cover_path')) {
+      context.handle(
+        _coverPathMeta,
+        coverPath.isAcceptableOrUnknown(data['cover_path']!, _coverPathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_coverPathMeta);
     }
     if (data.containsKey('group_name')) {
       context.handle(
@@ -251,6 +271,10 @@ class $MangaTable extends Manga with TableInfo<$MangaTable, MangaData> {
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
+      coverPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_path'],
+      )!,
       groupName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}group_name'],
@@ -296,6 +320,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
   final String id;
   final String parentPath;
   final String title;
+  final String coverPath;
   final String groupName;
   final String? tags;
   final DateTime? lastReadTime;
@@ -310,6 +335,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
     required this.id,
     required this.parentPath,
     required this.title,
+    required this.coverPath,
     required this.groupName,
     this.tags,
     this.lastReadTime,
@@ -325,6 +351,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
     map['id'] = Variable<String>(id);
     map['parent_path'] = Variable<String>(parentPath);
     map['title'] = Variable<String>(title);
+    map['cover_path'] = Variable<String>(coverPath);
     map['group_name'] = Variable<String>(groupName);
     if (!nullToAbsent || tags != null) {
       map['tags'] = Variable<String>(tags);
@@ -345,6 +372,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
       id: Value(id),
       parentPath: Value(parentPath),
       title: Value(title),
+      coverPath: Value(coverPath),
       groupName: Value(groupName),
       tags: tags == null && nullToAbsent ? const Value.absent() : Value(tags),
       lastReadTime: lastReadTime == null && nullToAbsent
@@ -367,6 +395,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
       id: serializer.fromJson<String>(json['id']),
       parentPath: serializer.fromJson<String>(json['parentPath']),
       title: serializer.fromJson<String>(json['title']),
+      coverPath: serializer.fromJson<String>(json['coverPath']),
       groupName: serializer.fromJson<String>(json['groupName']),
       tags: serializer.fromJson<String?>(json['tags']),
       lastReadTime: serializer.fromJson<DateTime?>(json['lastReadTime']),
@@ -384,6 +413,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
       'id': serializer.toJson<String>(id),
       'parentPath': serializer.toJson<String>(parentPath),
       'title': serializer.toJson<String>(title),
+      'coverPath': serializer.toJson<String>(coverPath),
       'groupName': serializer.toJson<String>(groupName),
       'tags': serializer.toJson<String?>(tags),
       'lastReadTime': serializer.toJson<DateTime?>(lastReadTime),
@@ -399,6 +429,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
     String? id,
     String? parentPath,
     String? title,
+    String? coverPath,
     String? groupName,
     Value<String?> tags = const Value.absent(),
     Value<DateTime?> lastReadTime = const Value.absent(),
@@ -411,6 +442,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
     id: id ?? this.id,
     parentPath: parentPath ?? this.parentPath,
     title: title ?? this.title,
+    coverPath: coverPath ?? this.coverPath,
     groupName: groupName ?? this.groupName,
     tags: tags.present ? tags.value : this.tags,
     lastReadTime: lastReadTime.present ? lastReadTime.value : this.lastReadTime,
@@ -427,6 +459,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
           ? data.parentPath.value
           : this.parentPath,
       title: data.title.present ? data.title.value : this.title,
+      coverPath: data.coverPath.present ? data.coverPath.value : this.coverPath,
       groupName: data.groupName.present ? data.groupName.value : this.groupName,
       tags: data.tags.present ? data.tags.value : this.tags,
       lastReadTime: data.lastReadTime.present
@@ -448,6 +481,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
           ..write('id: $id, ')
           ..write('parentPath: $parentPath, ')
           ..write('title: $title, ')
+          ..write('coverPath: $coverPath, ')
           ..write('groupName: $groupName, ')
           ..write('tags: $tags, ')
           ..write('lastReadTime: $lastReadTime, ')
@@ -465,6 +499,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
     id,
     parentPath,
     title,
+    coverPath,
     groupName,
     tags,
     lastReadTime,
@@ -481,6 +516,7 @@ class MangaData extends DataClass implements Insertable<MangaData> {
           other.id == this.id &&
           other.parentPath == this.parentPath &&
           other.title == this.title &&
+          other.coverPath == this.coverPath &&
           other.groupName == this.groupName &&
           other.tags == this.tags &&
           other.lastReadTime == this.lastReadTime &&
@@ -495,6 +531,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
   final Value<String> id;
   final Value<String> parentPath;
   final Value<String> title;
+  final Value<String> coverPath;
   final Value<String> groupName;
   final Value<String?> tags;
   final Value<DateTime?> lastReadTime;
@@ -508,6 +545,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
     this.id = const Value.absent(),
     this.parentPath = const Value.absent(),
     this.title = const Value.absent(),
+    this.coverPath = const Value.absent(),
     this.groupName = const Value.absent(),
     this.tags = const Value.absent(),
     this.lastReadTime = const Value.absent(),
@@ -522,6 +560,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
     required String id,
     required String parentPath,
     required String title,
+    required String coverPath,
     this.groupName = const Value.absent(),
     this.tags = const Value.absent(),
     this.lastReadTime = const Value.absent(),
@@ -534,6 +573,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
   }) : id = Value(id),
        parentPath = Value(parentPath),
        title = Value(title),
+       coverPath = Value(coverPath),
        sortOrder = Value(sortOrder),
        type = Value(type),
        size = Value(size),
@@ -542,6 +582,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
     Expression<String>? id,
     Expression<String>? parentPath,
     Expression<String>? title,
+    Expression<String>? coverPath,
     Expression<String>? groupName,
     Expression<String>? tags,
     Expression<DateTime>? lastReadTime,
@@ -556,6 +597,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
       if (id != null) 'id': id,
       if (parentPath != null) 'parent_path': parentPath,
       if (title != null) 'title': title,
+      if (coverPath != null) 'cover_path': coverPath,
       if (groupName != null) 'group_name': groupName,
       if (tags != null) 'tags': tags,
       if (lastReadTime != null) 'last_read_time': lastReadTime,
@@ -572,6 +614,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
     Value<String>? id,
     Value<String>? parentPath,
     Value<String>? title,
+    Value<String>? coverPath,
     Value<String>? groupName,
     Value<String?>? tags,
     Value<DateTime?>? lastReadTime,
@@ -586,6 +629,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
       id: id ?? this.id,
       parentPath: parentPath ?? this.parentPath,
       title: title ?? this.title,
+      coverPath: coverPath ?? this.coverPath,
       groupName: groupName ?? this.groupName,
       tags: tags ?? this.tags,
       lastReadTime: lastReadTime ?? this.lastReadTime,
@@ -609,6 +653,9 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
+    }
+    if (coverPath.present) {
+      map['cover_path'] = Variable<String>(coverPath.value);
     }
     if (groupName.present) {
       map['group_name'] = Variable<String>(groupName.value);
@@ -646,6 +693,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
           ..write('id: $id, ')
           ..write('parentPath: $parentPath, ')
           ..write('title: $title, ')
+          ..write('coverPath: $coverPath, ')
           ..write('groupName: $groupName, ')
           ..write('tags: $tags, ')
           ..write('lastReadTime: $lastReadTime, ')
@@ -968,6 +1016,7 @@ typedef $$MangaTableCreateCompanionBuilder =
       required String id,
       required String parentPath,
       required String title,
+      required String coverPath,
       Value<String> groupName,
       Value<String?> tags,
       Value<DateTime?> lastReadTime,
@@ -983,6 +1032,7 @@ typedef $$MangaTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> parentPath,
       Value<String> title,
+      Value<String> coverPath,
       Value<String> groupName,
       Value<String?> tags,
       Value<DateTime?> lastReadTime,
@@ -1014,6 +1064,11 @@ class $$MangaTableFilterComposer extends Composer<_$AppDatabase, $MangaTable> {
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverPath => $composableBuilder(
+    column: $table.coverPath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1082,6 +1137,11 @@ class $$MangaTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get coverPath => $composableBuilder(
+    column: $table.coverPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get groupName => $composableBuilder(
     column: $table.groupName,
     builder: (column) => ColumnOrderings(column),
@@ -1143,6 +1203,9 @@ class $$MangaTableAnnotationComposer
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
+  GeneratedColumn<String> get coverPath =>
+      $composableBuilder(column: $table.coverPath, builder: (column) => column);
+
   GeneratedColumn<String> get groupName =>
       $composableBuilder(column: $table.groupName, builder: (column) => column);
 
@@ -1203,6 +1266,7 @@ class $$MangaTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> parentPath = const Value.absent(),
                 Value<String> title = const Value.absent(),
+                Value<String> coverPath = const Value.absent(),
                 Value<String> groupName = const Value.absent(),
                 Value<String?> tags = const Value.absent(),
                 Value<DateTime?> lastReadTime = const Value.absent(),
@@ -1216,6 +1280,7 @@ class $$MangaTableTableManager
                 id: id,
                 parentPath: parentPath,
                 title: title,
+                coverPath: coverPath,
                 groupName: groupName,
                 tags: tags,
                 lastReadTime: lastReadTime,
@@ -1231,6 +1296,7 @@ class $$MangaTableTableManager
                 required String id,
                 required String parentPath,
                 required String title,
+                required String coverPath,
                 Value<String> groupName = const Value.absent(),
                 Value<String?> tags = const Value.absent(),
                 Value<DateTime?> lastReadTime = const Value.absent(),
@@ -1244,6 +1310,7 @@ class $$MangaTableTableManager
                 id: id,
                 parentPath: parentPath,
                 title: title,
+                coverPath: coverPath,
                 groupName: groupName,
                 tags: tags,
                 lastReadTime: lastReadTime,

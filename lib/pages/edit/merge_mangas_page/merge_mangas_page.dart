@@ -85,7 +85,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
             _buildSelectPathsArea(),
             Expanded(
               child: _state.isDirSelected
-                  ? _buildMangaList(_state.selectedDir!)
+                  ? _buildMangaListArea(_state.selectedDir!)
                   : Center(child: Text('请先选择需要合并的漫画所在目录')),
             ),
           ],
@@ -94,7 +94,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
     );
   }
 
-  Widget _buildMangaList(Directory dir) {
+  Widget _buildMangaListArea(Directory dir) {
     return FutureBuilder(
       future: localMangaService.getMangasInDir(dir),
       builder: (context, snapshot) {
@@ -102,28 +102,35 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
           return Center(child: CircularProgressIndicator());
         }
         if (snapshot.connectionState == .done) {
+          _state.mangas.assignAll(snapshot.data ?? []);
           if (snapshot.data == null || snapshot.data?.isEmpty == true) {
             return Center(child: Text('未发现漫画'));
           }
           return CupertinoScrollbar(
             controller: _state.scrollController,
-            child: ListView.builder(
-              controller: _state.scrollController,
-              itemCount: snapshot.data?.length,
-              itemBuilder: (context, index) {
-                if (snapshot.data?[index] == null) {
-                  return const SizedBox();
-                }
-                return _buildMangaListTile(
-                  index,
-                  snapshot.data?[index] as Manga,
-                );
-              },
+            child: NotificationListener(
+              onNotification: (ScrollNotification notification) =>
+                  _controller.handleScrollEvent(notification),
+              child: _buildMangaList(),
             ),
           );
         } else {
           return Center(child: Text('Error'));
         }
+      },
+    );
+  }
+
+  Widget _buildMangaList() {
+    return GetBuilder<MergeMangasPageController>(
+      id: _controller.mangasId,
+      builder: (_) {
+        return ListView.builder(
+          controller: _state.scrollController,
+          itemCount: _state.mangas.length,
+          itemBuilder: (context, index) =>
+              _buildMangaListTile(index, _state.mangas[index]),
+        );
       },
     );
   }
@@ -203,6 +210,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
       builder: (_) {
         final mangaListTileCard = MangaListTileCard(
           manga: manga,
+          buildCover: !_state.isScrolling,
           onTap: () => _controller.toggleMangaSelection(index, manga),
           onLongPressed: () => _controller.handleLongPressManga(
             context,
@@ -251,7 +259,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
       builder: (context) {
         return CommonDialog(
           title: '请输入合集名称',
-          content: Container(
+          content: SizedBox(
             height: 110,
             child: Column(
               crossAxisAlignment: .end,

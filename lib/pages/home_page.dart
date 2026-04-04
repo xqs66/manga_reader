@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/pages/edit/edit_page.dart';
 import 'package:manga_reader/pages/settings/settings_page.dart';
+import 'package:manga_reader/routes/app_route_observer.dart';
+import 'package:manga_reader/shared/utils/log_util.dart';
 
 import 'books/books_page.dart';
 import 'home_page_controller.dart';

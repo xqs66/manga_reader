@@ -11,7 +11,7 @@ class BooksPageState with ScrollState {
 
   bool isAtRoot = true;
 
-  String currentPath = '';
+  String? currentPath = '';
 
   bool isSelectMode = false;
 

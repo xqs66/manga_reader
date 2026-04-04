@@ -43,6 +43,12 @@ class BooksPageController extends GetxController with ScrollHandler {
     state.displayGroups.addAll(expandedGroups.map((group) => group.groupName));
   }
 
+  void handlePopNext() {
+    state.books.assignAll(
+      localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [],
+    );
+  }
+
   void enterMangaDir(String path) {
     state.isAtRoot = false;
     state.currentPath = path;
@@ -168,7 +174,8 @@ class BooksPageController extends GetxController with ScrollHandler {
   }
 
   Future<void> refreshMangas() async {
-    await localMangaService.refreshMangasInDir(Directory(state.currentPath));
+    if (state.currentPath == null) return;
+    await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
     state.books =
         localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [];
     update([bodyId]);
@@ -191,7 +198,13 @@ class BooksPageController extends GetxController with ScrollHandler {
   }
 
   @override
-  void handleScrollFinish() {
+  void handleScrollStart(ScrollStartNotification notification) {
+    delayedHandleScrollStart(notification);
+  }
+
+  @override
+  void handleScrollFinish(ScrollEndNotification notification) {
+    handleEndWithDelayedStart(notification);
     if (!state.isScrolling) {
       update([bodyId]);
     }

@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/routes/app_route_observer.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/service/path_service.dart';
@@ -98,6 +99,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF5C6BC0)),
       ),
       getPages: Routes.pages,
+      navigatorObservers: [routeObserver],
       home: HomePage(),
       onReady: () {
         for (final bean in serviceBeans) {

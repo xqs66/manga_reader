@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/pages/books/books_page_controller.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
@@ -15,9 +16,14 @@ import 'package:path/path.dart' as p;
 
 import 'merge_mangas_page_state.dart';
 
-class MergeMangasPageController extends GetxController {
+class MergeMangasPageController extends GetxController with ScrollHandler {
+  @override
+  ScrollState get scrollState => state;
+
   final state = MergeMangasPageState();
+
   final String bodyId = 'bodyId';
+  final String mangasId = 'mangasId';
   final String selectDirId = 'selectDirId';
   final String selectOutputDirId = 'selectOutputDirId';
   final String mangaListTileIdPrefix = 'mangaListTile';
@@ -52,6 +58,7 @@ class MergeMangasPageController extends GetxController {
       state.selectedMangaIndexes.add(index);
       update(['$mangaListTileIdPrefix::$index']);
     }
+    LogUtil.d('当前state:${state.isScrolling}', tag: '测试');
     update([titleId, cancelButtonId]);
   }
 
@@ -73,6 +80,8 @@ class MergeMangasPageController extends GetxController {
   }
 
   void handleTapStartMerge() async {
+    late final Manga? outputManga;
+
     if (state.selectedDir == null || state.outputDir == null) {
       Fluttertoast.showToast(msg: '请选择目录');
       return;
@@ -102,7 +111,8 @@ class MergeMangasPageController extends GetxController {
 
     localMangaService
         .mergeMangas(mangas, Directory(outputDir))
-        .then((_) {
+        .then((result) {
+          outputManga = result;
           Fluttertoast.showToast(msg: '合并成功');
         })
         .catchError((e) {
@@ -110,22 +120,63 @@ class MergeMangasPageController extends GetxController {
           Fluttertoast.showToast(msg: '合并失败');
         })
         .whenComplete(() {
-          if (state.deleteSourceMangas) {
-            localMangaService.deleteMangas(mangas, showToast: false);
-          }
-          state.hasMerged = true;
-          state.isMerging = false;
-          state.targetDirNameController.clear();
-          state.selectedMangaIndexes.clear();
-          state.selectedMangas.clear();
-          update([bodyId, titleId, cancelButtonId]);
-          Get.back();
+          handleMergeCompeleted(mangas, outputManga);
         });
+  }
+
+  void handleMergeCompeleted(List<Manga> selectedMangas, Manga? outputManga) {
+    if (outputManga == null) {
+      return;
+    }
+    if (state.deleteSourceMangas) {
+      localMangaService.deleteMangas(selectedMangas, showToast: false);
+      if (pathSetting.paths.contains(state.selectedDir?.path)) {
+        localMangaService.mangasInLocalSettingPaths[state.selectedDir?.path]
+            ?.removeWhere((manga) => selectedMangas.contains(manga));
+      }
+      state.mangas.removeWhere((manga) => selectedMangas.contains(manga));
+    }
+    if (pathSetting.paths.contains(state.outputDir?.path)) {
+      localMangaService.mangasInLocalSettingPaths[state.outputDir?.path]
+        ?..add(outputManga)
+        ..sort(
+          (mangaA, mangaB) =>
+              FileUtil.naturalCompare(mangaA.title, mangaB.title),
+        );
+    }
+    if (state.outputDir?.path == state.selectedDir?.path) {
+      state.mangas
+        ..add(outputManga)
+        ..sort(
+          (mangaA, mangaB) =>
+              FileUtil.naturalCompare(mangaA.title, mangaB.title),
+        );
+    }
+    state.hasMerged = true;
+    state.isMerging = false;
+    state.targetDirNameController.clear();
+    state.selectedMangaIndexes.clear();
+    state.selectedMangas.clear();
+    update([mangasId, titleId, cancelButtonId]);
+    Get.back();
   }
 
   void handleToggleDeleteSource(bool? value) {
     state.deleteSourceMangas = value ?? false;
     update([mergeStartDialogId]);
+  }
+
+  @override
+  void handleScrollStart(ScrollStartNotification notification) {
+    delayedHandleScrollStart(notification);
+  }
+
+  @override
+  void handleScrollFinish(ScrollEndNotification notification) {
+    handleEndWithDelayedStart(notification);
+    if (!state.isScrolling) {
+      update([mangasId]);
+    }
   }
 
   @override

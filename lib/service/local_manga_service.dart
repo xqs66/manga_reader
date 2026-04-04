@@ -159,6 +159,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         MangaDao.insertManga(
           MangaCompanion.insert(
             id: dirOfManga.path.hash(),
+            coverPath: images.first.path,
             parentPath: dirOfManga.parent.path,
             title: basename(dirOfManga.path),
             pageCount: images.length,
@@ -212,7 +213,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   // TODO
   // 1.添加进度回调
   // 2.优化性能
-  Future<void> mergeMangas(
+  Future<Manga?> mergeMangas(
     List<Manga> mangas,
     Directory output, {
     int imageNameStartFrom = 0,
@@ -240,6 +241,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         imageNameStartFrom++;
       }
     }
+    return loadManga(output);
   }
 
   Future<void> deleteManga(Manga manga, {bool showToast = true}) {
