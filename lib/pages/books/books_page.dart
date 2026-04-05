@@ -51,6 +51,8 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
         return Scaffold(
           appBar: _state.isSelectMode
               ? _buildSelectModeAppbar()
+              : _state.isSerchMode
+              ? _buildSearchModeAppbar()
               : _buildNormalAppbar(),
           body: _buildBody(),
           bottomNavigationBar: _buildBottomBar(),
@@ -92,19 +94,39 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
     );
   }
 
-  List<PopupMenuItem> _buildPopUpMenuItems() {
-    return [
-      PopupMenuItem(
-        onTap: _controller.back2Root,
-        height: UiConfig.popUpMenuHeight,
-        child: Row(
-          children: [
-            Icon(Icons.arrow_back),
-            SizedBox(width: 10),
-            Text('返回根目录'),
-          ],
-        ),
+  AppBar _buildSearchModeAppbar() {
+    return AppBar(
+      leading: IconButton(
+        onPressed: _controller.toggleSearchMode,
+        icon: Icon(Icons.arrow_back),
       ),
+      title: _buildSearchBox(),
+      actions: [],
+    );
+  }
+
+  Widget _buildSearchBox() {
+    return TextField(
+      controller: _state.searchTextController,
+      onChanged: (value) => _controller.handleSearch(value),
+      decoration: InputDecoration(
+        hintText: '搜索...',
+        contentPadding: .symmetric(vertical: 12.0),
+        suffixIcon: IconButton(
+          onPressed: () {
+            _state.searchTextController.clear();
+            _controller.handleSearch('');
+          },
+          icon: Icon(Icons.clear),
+        ),
+        border: .none,
+      ),
+    );
+  }
+
+  List<PopupMenuItem> _buildPopUpMenuItems() {
+    LogUtil.d(_state.isAtRoot.toString());
+    return [
       PopupMenuItem(
         onTap: _controller.refreshMangas,
         height: UiConfig.popUpMenuHeight,
@@ -112,34 +134,43 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
           children: [Icon(Icons.refresh), SizedBox(width: 10), Text('刷新')],
         ),
       ),
-      PopupMenuItem(
-        onTap: () {
-          final textController = TextEditingController();
-          Get.dialog(
-            AlertDialog(
-              title: Text('新增分组'),
-              content: TextField(
-                controller: textController,
-                decoration: InputDecoration(hintText: '请输入分组名称'),
-              ),
-              actions: [
-                TextButton(onPressed: () => Get.back(), child: Text('取消')),
-                TextButton(
-                  onPressed: () {
-                    _controller.handleAddGroup(textController.text.trim());
-                    Get.back();
-                  },
-                  child: Text('确定'),
+      ..._state.isAtRoot
+          ? []
+          : [
+              PopupMenuItem(
+                onTap: _controller.back2Root,
+                height: UiConfig.popUpMenuHeight,
+                child: Row(
+                  children: [
+                    Icon(Icons.arrow_back),
+                    SizedBox(width: 10),
+                    Text('返回根目录'),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-        height: UiConfig.popUpMenuHeight,
-        child: Row(
-          children: [Icon(Icons.add), SizedBox(width: 10), Text('新增分组')],
-        ),
-      ),
+              ),
+              PopupMenuItem(
+                onTap: _controller.toggleSearchMode,
+                height: UiConfig.popUpMenuHeight,
+                child: Row(
+                  children: [
+                    Icon(Icons.search),
+                    SizedBox(width: 10),
+                    Text('搜索'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                onTap: () => Get.dialog(_buildNewGroupDialog()),
+                height: UiConfig.popUpMenuHeight,
+                child: Row(
+                  children: [
+                    Icon(Icons.add),
+                    SizedBox(width: 10),
+                    Text('新增分组'),
+                  ],
+                ),
+              ),
+            ],
     ];
   }
 
@@ -150,7 +181,9 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
         if (_state.isAtRoot) {
           return _buildLocalPaths();
         } else {
-          return _buildGroupedBooksList();
+          return _state.isSerchMode
+              ? _buildMangaListWithoutGroup()
+              : _buildGroupedBooksList();
         }
       },
     );
@@ -174,6 +207,14 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMangaListWithoutGroup() {
+    return ListView.builder(
+      itemCount: _state.searchedMangas.length,
+      itemBuilder: (context, index) =>
+          _buildElement(context, true, _state.searchedMangas[index]),
     );
   }
 
@@ -215,10 +256,13 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
     return GetBuilder<BooksPageController>(
       id: '${_controller.mangasInGroupIdPrefix}::${_state.groups[groupIndex]}',
       builder: (_) {
+        final isDisplay = _state.displayGroups.contains(
+          _state.groups[groupIndex],
+        );
         return SliverList(
           delegate: SliverChildBuilderDelegate(
             (context, index) =>
-                _buildElement(context, groupIndex, mangas[index]),
+                _buildElement(context, isDisplay, mangas[index]),
             childCount: mangas.length,
             addAutomaticKeepAlives: true,
             addRepaintBoundaries: true,
@@ -238,33 +282,28 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
       id: '${_controller.groupidPrefix}::$groupName',
       builder: (_) {
         final isDisplay = _state.displayGroups.contains(groupName);
-        return GestureDetector(
-          onTap: () {
-            _controller.toggleGroupExpand(index);
-          },
-          child: GroupHeader(
-            child: Row(
-              mainAxisAlignment: .spaceBetween,
-              children: [
-                Text(groupName),
-                isDisplay
-                    ? Icon(Icons.keyboard_arrow_up)
-                    : Icon(Icons.keyboard_arrow_down),
-              ],
-            ),
+        return GroupHeader(
+          onTap: () => _controller.toggleGroupExpand(index),
+          child: Row(
+            mainAxisAlignment: .spaceBetween,
+            children: [
+              Expanded(
+                child: Text(groupName, maxLines: 1, overflow: .ellipsis),
+              ),
+              isDisplay
+                  ? Icon(Icons.keyboard_arrow_up)
+                  : Icon(Icons.keyboard_arrow_down),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildElement(BuildContext context, int groupIndex, Manga manga) {
+  Widget _buildElement(BuildContext context, bool isDisplay, Manga manga) {
     return GetBuilder<BooksPageController>(
       id: '${_controller.mangaIdPrefix}::${manga.id}',
       builder: (_) {
-        final isDisplay = _state.displayGroups.contains(
-          _state.groups[groupIndex],
-        );
         if (!isDisplay) return const SizedBox();
 
         final isSelected =
@@ -274,7 +313,8 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
           children: [
             MangaListTileCard(
               key: ValueKey(manga.id),
-              buildCover: !_state.isScrolling,
+              buildCover:
+                  !(_state.isScrolling && _state.currentVelocity.abs() > 500),
               onTap: () => _state.isSelectMode
                   ? _controller.handleSelectManga(manga)
                   : _controller.handleMangaCardTap(manga),
@@ -325,7 +365,7 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
       builder: (_) {
         if (!_state.isSelectMode) return const SizedBox();
         return BottomAppBar(
-          height: 58,
+          height: UiConfig.bottomBarHeight,
           child: Row(
             mainAxisAlignment: .spaceEvenly,
             crossAxisAlignment: .center,
@@ -340,8 +380,20 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
               ),
             ],
           ),
-        );
+        ).paddingOnly(bottom: Get.bottomBarHeight - UiConfig.bottomBarHeight);
       },
+    );
+  }
+
+  Widget _buildNewGroupDialog() {
+    final textController = TextEditingController();
+    return CommonDialog(
+      title: '新建分组',
+      content: TextField(
+        controller: textController,
+        decoration: InputDecoration(hintText: '请输入分组名称'),
+      ),
+      onConfirm: () => _controller.handleAddGroup(textController.text.trim()),
     );
   }
 

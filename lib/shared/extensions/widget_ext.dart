@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 
 extension WidgetExt on Widget {
-  Widget fadeIn() => FadeIn(child: this);
+  Widget fadeIn([Key? key]) => FadeIn(key: key, child: this);
 
-  Widget fadeOut() => FadeOut(child: this);
+  Widget fadeOut([Key? key]) => FadeOut(key: key, animate: true, child: this);
 
   Widget center() => Center(child: this);
 

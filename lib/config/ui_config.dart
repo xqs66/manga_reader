@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 class UiConfig {
   static const Color primaryColor = Colors.indigo;
-  static const double bottomBarHeight = 65;
-  static const double popUpMenuHeight = 50;
+  static const double bottomBarHeight = 80;
+  static const double popUpMenuHeight = 45;
 
   ///group header
   static const double groupHeaderHeight = 50;
@@ -21,6 +21,9 @@ class UiConfig {
     color: readPageForegroundColor,
     fontSize: 16,
   );
+
+  ///merge page
+  static const double bottomHeightInMergePasge = 65;
 
   ///manga card list tile
   static const double mangaListCardHeight = 150;

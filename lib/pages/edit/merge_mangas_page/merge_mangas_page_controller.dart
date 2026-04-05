@@ -178,20 +178,4 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
       update([mangasId]);
     }
   }
-
-  @override
-  void onClose() {
-    if (state.hasMerged) {
-      final List<Future> futures = [];
-      final controller = Get.find<BooksPageController>();
-      if (pathSetting.paths.contains(state.selectedDir?.path)) {
-        futures.add(localMangaService.refreshMangasInDir(state.selectedDir!));
-      }
-      if (pathSetting.paths.contains(state.outputDir?.path)) {
-        futures.add(localMangaService.refreshMangasInDir(state.outputDir!));
-      }
-      Future.wait(futures).then((_) => controller.refreshMangas());
-    }
-    super.onClose();
-  }
 }

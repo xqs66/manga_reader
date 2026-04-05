@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:manga_reader/database/dao/manga_dao.dart';
 import 'package:manga_reader/database/database.dart';
@@ -130,53 +131,47 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       await for (final entity in dirOfManga.list()) {
         if (entity is File && entity.isImageExtension) {
           images.add(entity);
-          sizeCalcFutures.add(entity.stat().then((stat) => stat.size));
+          sizeCalcFutures.add(entity.length());
         }
         if (entity is Directory) {
           // TODO 递归获取子目录的图片
         }
       }
-      images.sort(FileUtil.naturalCompareFileOrDir);
-
-      if (mangaFromQurey != null) {
-        return Manga(
-          id: mangaFromQurey.id,
-          path: join(mangaFromQurey.parentPath, mangaFromQurey.title),
-          title: mangaFromQurey.title,
-          groupName: mangaFromQurey.groupName,
-          size: mangaFromQurey.size,
-          pageCount: images.length,
-          cover: LocalImage(path: images.first.path),
-        );
-      }
-
-      if (sizeCalcFutures.isNotEmpty) {
-        final sizes = await Future.wait(sizeCalcFutures);
-        size = sizes.fold(0, (sum, fileSize) => sum + fileSize);
-      }
 
       if (images.isNotEmpty) {
-        MangaDao.insertManga(
-          MangaCompanion.insert(
-            id: dirOfManga.path.hash(),
-            coverPath: images.first.path,
-            parentPath: dirOfManga.parent.path,
-            title: basename(dirOfManga.path),
-            pageCount: images.length,
-            size: size,
-            sortOrder: 0,
-            type: 1,
-          ),
-        );
-        return Manga(
+        images.sort(FileUtil.naturalCompareFileOrDir);
+
+        if (sizeCalcFutures.isNotEmpty) {
+          final sizes = await Future.wait(sizeCalcFutures);
+          size = sizes.fold(0, (sum, fileSize) => sum + fileSize);
+        }
+
+        final result = Manga(
           id: dirOfManga.path.hash(),
           path: dirOfManga.path,
           cover: LocalImage(path: images.first.path),
           title: basename(dirOfManga.path),
-          groupName: Constants.defaultGroupName,
+          lastReadPage: mangaFromQurey?.lastReadPage ?? 0,
+          groupName: mangaFromQurey?.groupName ?? Constants.defaultGroupName,
           pageCount: images.length,
           size: size,
         );
+
+        MangaDao.insertManga(
+          MangaCompanion(
+            id: Value(result.id),
+            title: Value(result.title),
+            coverPath: Value(result.cover.path),
+            parentPath: Value(dirOfManga.parent.path),
+            lastReadPage: Value(result.lastReadPage),
+            groupName: Value(result.groupName),
+            pageCount: Value(result.pageCount),
+            size: Value(result.size),
+            sortOrder: Value(0),
+            type: Value(1),
+          ),
+        );
+        return result;
       } else {
         return null;
       }

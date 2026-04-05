@@ -35,7 +35,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
       appBar: _buildAppBar(),
       body: _buildBody(),
       bottomNavigationBar: BottomAppBar(
-        height: UiConfig.bottomBarHeight,
+        height: UiConfig.bottomHeightInMergePasge,
         child: ElevatedButton(
           onPressed: () =>
               Get.dialog(_buildNameTargetDialog(), barrierDismissible: false),
@@ -102,7 +102,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
           return Center(child: CircularProgressIndicator());
         }
         if (snapshot.connectionState == .done) {
-          _state.mangas.assignAll(snapshot.data ?? []);
+          _state.mangas = snapshot.data ?? [];
           if (snapshot.data == null || snapshot.data?.isEmpty == true) {
             return Center(child: Text('未发现漫画'));
           }

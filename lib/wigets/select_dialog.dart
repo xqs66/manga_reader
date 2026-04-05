@@ -32,20 +32,27 @@ class _SelectDialogState extends State<SelectDialog> {
       content: ListView.builder(
         physics: const BouncingScrollPhysics(),
         itemCount: widget.items.length,
-        itemBuilder: (context, index) => ListTile(
-          title: Text(widget.items[index]),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
+        itemBuilder: (context, index) => Container(
+          decoration: selectedIndex == index
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(12.0),
+                  color: Color(0x3B000000),
+                )
+              : null,
+          child: ListTile(
+            title: Text(widget.items[index]),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            textColor: const Color(0xFF323232),
+            selected: selectedIndex == index,
+            selectedColor: Colors.black,
+            onTap: () {
+              setState(() {
+                selectedIndex = index;
+              });
+            },
           ),
-          textColor: const Color(0xFF323232),
-          selected: selectedIndex == index,
-          selectedColor: Colors.black,
-          selectedTileColor: Color(0x3B000000),
-          onTap: () {
-            setState(() {
-              selectedIndex = index;
-            });
-          },
         ),
       ),
     );

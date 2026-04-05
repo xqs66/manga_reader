@@ -32,6 +32,8 @@ class BooksPageController extends GetxController with ScrollHandler {
   final groupidPrefix = 'Group';
   final mangasInGroupIdPrefix = 'MangasInGroup';
 
+  Timer? searshingDebounceTimer;
+
   @override
   void onInit() async {
     super.onInit();
@@ -44,9 +46,12 @@ class BooksPageController extends GetxController with ScrollHandler {
   }
 
   void handlePopNext() {
-    state.books.assignAll(
-      localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [],
-    );
+    // state.books.assignAll(
+    //   localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [],
+    // );
+    state.books =
+        localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [];
+    update([bodyId]);
   }
 
   void enterMangaDir(String path) {
@@ -85,6 +90,32 @@ class BooksPageController extends GetxController with ScrollHandler {
     update([appBarId, bottomBarId]);
   }
 
+  void toggleSearchMode() {
+    state.isSerchMode = !state.isSerchMode;
+    if (!state.isSerchMode) {
+      state.searchTextController.clear();
+      state.searchedMangas.clear();
+    } else {
+      state.searchedMangas.assignAll(state.books);
+    }
+    LogUtil.d(state.books.toString());
+    update([appBarId, bodyId]);
+  }
+
+  void handleSearch(String keyword) async {
+    searshingDebounceTimer?.cancel();
+    searshingDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      state.searchedMangas.assignAll(
+        keyword.isEmpty
+            ? state.books
+            : state.books
+                  .where((manga) => manga.title.contains(keyword))
+                  .toList(),
+      );
+      update([bodyId]);
+    });
+  }
+
   void handleLongPressManga(Manga manga) {
     state.selectedMangaIds.contains(manga.id)
         ? state.selectedMangaIds.remove(manga.id)
@@ -104,7 +135,9 @@ class BooksPageController extends GetxController with ScrollHandler {
   }
 
   void handleSelectAll() {
-    state.selectedMangaIds.assignAll(state.books.map((e) => e.id));
+    state.selectedMangaIds.assignAll(
+      (state.isSerchMode ? state.searchedMangas : state.books).map((e) => e.id),
+    );
     update([appBarId, bodyId]);
   }
 
@@ -161,6 +194,11 @@ class BooksPageController extends GetxController with ScrollHandler {
       Fluttertoast.showToast(msg: '分组名不能为空！');
       return;
     }
+    if (groupName.length > 20) {
+      Fluttertoast.showToast(msg: '分组名不能超过20个字符');
+      return;
+    }
+ 
     state.groups.add(groupName);
     GroupDao.insertGroup(groupName)
         .then((_) {
@@ -171,14 +209,20 @@ class BooksPageController extends GetxController with ScrollHandler {
           Fluttertoast.showToast(msg: '添加分组失败');
         });
     update([bodyId]);
+    Get.back();
   }
 
   Future<void> refreshMangas() async {
     if (state.currentPath == null) return;
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
     await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
     state.books =
         localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [];
     update([bodyId]);
+    Get.back();
   }
 
   Future<void> handleDeleteManga(Manga manga) async {
@@ -208,5 +252,11 @@ class BooksPageController extends GetxController with ScrollHandler {
     if (!state.isScrolling) {
       update([bodyId]);
     }
+  }
+
+  @override
+  void onClose() {
+    searshingDebounceTimer?.cancel();
+    super.onClose();
   }
 }

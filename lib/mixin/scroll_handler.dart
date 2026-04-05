@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:manga_reader/shared/utils/log_util.dart';
 
 mixin ScrollState {
   final scrollController = ScrollController();
@@ -10,6 +12,13 @@ mixin ScrollState {
   bool isAtEnd = false;
 
   DateTime? lastScrollEndTime;
+
+  ///单位： 屏幕高度%
+  double currentVelocity = 0.0;
+
+  double? _lastPosition;
+
+  DateTime? _lastTimestamp;
 }
 
 mixin ScrollHandler {
@@ -40,6 +49,25 @@ mixin ScrollHandler {
     return false;
   }
 
+  void _calculateScrollVelocity(double currentPosition) {
+    final now = DateTime.now();
+
+    if (scrollState._lastPosition != null &&
+        scrollState._lastTimestamp != null) {
+      final positionDelta =
+          (currentPosition - scrollState._lastPosition!) / Get.height * 100;
+      final timeDelta =
+          now.difference(scrollState._lastTimestamp!).inMicroseconds /
+          1000000.0; // 转换为秒
+
+      if (timeDelta > 0) {
+        scrollState.currentVelocity = positionDelta / timeDelta;
+      }
+    }
+    scrollState._lastPosition = currentPosition;
+    scrollState._lastTimestamp = now;
+  }
+
   void delayedHandleScrollStart(ScrollStartNotification notification) {
     final duration = DateTime.now().difference(
       scrollState.lastScrollEndTime ?? DateTime.now(),
@@ -62,6 +90,9 @@ mixin ScrollHandler {
 
   void handleScrollStart(ScrollStartNotification notification) {
     scrollState.isScrolling = true;
+    scrollState._lastPosition = null;
+    scrollState._lastTimestamp = null;
+    scrollState.currentVelocity = 0.0;
   }
 
   void handleScrollUpdate(ScrollUpdateNotification notification) {
@@ -71,10 +102,14 @@ mixin ScrollHandler {
     } else {
       scrollState.isAtEnd = false;
     }
+    _calculateScrollVelocity(metrics.pixels);
   }
 
   void handleScrollFinish(ScrollEndNotification notification) {
     scrollState.isScrolling = false;
+    scrollState._lastPosition = null;
+    scrollState._lastTimestamp = null;
+    scrollState.currentVelocity = 0.0;
   }
 
   void handleScroll2Head() {}

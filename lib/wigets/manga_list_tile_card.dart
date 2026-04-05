@@ -87,14 +87,13 @@ class MangaListTileCard extends StatelessWidget {
                           height: constraints.maxHeight,
                         );
                       case .completed:
-                        ExtendedRawImage(
+                        return ExtendedRawImage(
                           image: state.extendedImageInfo?.image,
                           fit: .cover,
-                        );
+                        ).fadeIn();
                       case .failed:
                         return Icon(Icons.broken_image);
                     }
-                    return null;
                   },
                 )
               : const SizedBox(

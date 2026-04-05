@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:manga_reader/mixin/scroll_handler.dart';
 
 import '../../models/manga.dart';
@@ -11,9 +12,15 @@ class BooksPageState with ScrollState {
 
   bool isAtRoot = true;
 
-  String? currentPath = '';
+  String? currentPath;
 
   bool isSelectMode = false;
+
+  bool isSerchMode = false;
+
+  TextEditingController searchTextController = TextEditingController();
+
+  List<Manga> searchedMangas = [];
 
   Set<String> selectedMangaIds = {};
 

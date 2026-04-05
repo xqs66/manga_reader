@@ -46,9 +46,7 @@ void main() async {
           statusBarColor: Colors.transparent,
         ),
       );
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.edgeToEdge,
-      );
+      SystemChrome.setEnabledSystemUIMode(.edgeToEdge);
 
       serviceBeans = topologicSort(serviceBeans);
       for (final bean in serviceBeans) {
@@ -96,7 +94,12 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'Manga Reader',
       theme: ThemeData(
+        useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF5C6BC0)),
+        appBarTheme: AppBarTheme(
+          surfaceTintColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+        ),
       ),
       getPages: Routes.pages,
       navigatorObservers: [routeObserver],

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/pages/edit/edit_page.dart';
 import 'package:manga_reader/pages/settings/settings_page.dart';
-import 'package:manga_reader/routes/app_route_observer.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
 
 import 'books/books_page.dart';
 import 'home_page_controller.dart';
@@ -42,55 +40,65 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget _buildBottomNavigationBar(BuildContext context) {
-  //   return GetBuilder<HomePageController>(
-  //     id: 'bottom_bar',
-  //     builder: (_) {
-  //       return NavigationBar(
-  //         destinations: [
-  //           NavigationDestination(icon: Icon(Icons.edit), label: 'edit'),
-  //           NavigationDestination(icon: Icon(Icons.book), label: 'books'),
-  //           NavigationDestination(
-  //             icon: Icon(Icons.settings),
-  //             label: 'settings',
-  //           ),
-  //         ],
-  //         onDestinationSelected: _controller.handleBottomBarTabIndexChanged,
-  //         selectedIndex: _state.pageIndex,
-  //       );
-  //     },
-  //   );
-  // }
-
   Widget _buildBottomNavigationBar(BuildContext context) {
     return GetBuilder<HomePageController>(
       id: _controller.bottomBarId,
       builder: (_) {
         return _state.showBottomBar
-            ? BottomNavigationBar(
-                currentIndex: _state.pageIndex,
-                onTap: _controller.handleBottomBarTabIndexChanged,
-                showSelectedLabels: true,
-                showUnselectedLabels: false,
-                // selectedItemColor: UiConfig.primaryColor,
-                type: .fixed,
-                items: [
-                  BottomNavigationBarItem(
-                    label: 'edit',
-                    icon: Icon(Icons.edit),
+            ? NavigationBar(
+                labelBehavior: .alwaysHide,
+                destinations: [
+                  NavigationDestination(
+                    icon: const Icon(Icons.work),
+                    label: 'kit',
                   ),
-                  BottomNavigationBarItem(
+                  NavigationDestination(
+                    icon: const Icon(Icons.book),
                     label: 'books',
-                    icon: Icon(Icons.book_sharp),
                   ),
-                  BottomNavigationBarItem(
+                  NavigationDestination(
+                    icon: const Icon(Icons.settings),
                     label: 'settings',
-                    icon: Icon(Icons.settings),
                   ),
                 ],
+                onDestinationSelected:
+                    _controller.handleBottomBarTabIndexChanged,
+                selectedIndex: _state.pageIndex,
               )
             : const SizedBox();
       },
     );
   }
+
+  // Widget _buildBottomNavigationBar(BuildContext context) {
+  //   return GetBuilder<HomePageController>(
+  //     id: _controller.bottomBarId,
+  //     builder: (_) {
+  //       return _state.showBottomBar
+  //           ? BottomNavigationBar(
+  //               currentIndex: _state.pageIndex,
+  //               onTap: _controller.handleBottomBarTabIndexChanged,
+  //               showSelectedLabels: true,
+  //               showUnselectedLabels: false,
+  //               // selectedItemColor: UiConfig.primaryColor,
+  //               type: .fixed,
+  //               items: [
+  //                 BottomNavigationBarItem(
+  //                   label: 'edit',
+  //                   icon: Icon(Icons.edit),
+  //                 ),
+  //                 BottomNavigationBarItem(
+  //                   label: 'books',
+  //                   icon: Icon(Icons.book_sharp),
+  //                 ),
+  //                 BottomNavigationBarItem(
+  //                   label: 'settings',
+  //                   icon: Icon(Icons.settings),
+  //                 ),
+  //               ],
+  //             )
+  //           : const SizedBox();
+  //     },
+  //   );
+  // }
 }
