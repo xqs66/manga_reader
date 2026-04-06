@@ -16,6 +16,7 @@ import 'package:manga_reader/pages/home_page_controller.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:drift/drift.dart';
+import 'package:manga_reader/shared/constants/constants.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
 
 class BooksPageController extends GetxController with ScrollHandler {
@@ -31,6 +32,7 @@ class BooksPageController extends GetxController with ScrollHandler {
   final mangaIdPrefix = 'Manga';
   final groupidPrefix = 'Group';
   final mangasInGroupIdPrefix = 'MangasInGroup';
+  final deleteGroupDialogId = 'deleteGroupDialogId';
 
   Timer? searshingDebounceTimer;
 
@@ -49,15 +51,14 @@ class BooksPageController extends GetxController with ScrollHandler {
     // state.books.assignAll(
     //   localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [],
     // );
-    state.books =
-        localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [];
+    state.books = localMangaService.settingPath2Mangas[state.currentPath] ?? [];
     update([bodyId]);
   }
 
   void enterMangaDir(String path) {
     state.isAtRoot = false;
     state.currentPath = path;
-    state.books = localMangaService.mangasInLocalSettingPaths[path] ?? [];
+    state.books = localMangaService.settingPath2Mangas[path] ?? [];
     update([bodyId, popUpMenuId]);
   }
 
@@ -198,7 +199,7 @@ class BooksPageController extends GetxController with ScrollHandler {
       Fluttertoast.showToast(msg: '分组名不能超过20个字符');
       return;
     }
- 
+
     state.groups.add(groupName);
     GroupDao.insertGroup(groupName)
         .then((_) {
@@ -212,6 +213,48 @@ class BooksPageController extends GetxController with ScrollHandler {
     Get.back();
   }
 
+  void handleChangeDeleteGroupOption(bool toDefaultGroup) {
+    state.toDefaultGroupOnceDelete = toDefaultGroup;
+    update([deleteGroupDialogId]);
+  }
+
+  void handleDeleteGroup(String groupName) async {
+    if (state.toDefaultGroupOnceDelete) {
+      await MangaDao.updateMangas(
+        state.books
+            .where((manga) => manga.groupName == groupName)
+            .map(
+              (manga) => MangaCompanion(
+                id: Value(manga.id),
+                groupName: Value(Constants.defaultGroupName),
+              ),
+            )
+            .toList(),
+      );
+      final allMangas =
+          localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+      for (int i = 0; i < allMangas.length; i++) {
+        if (allMangas[i].groupName == groupName) {
+          allMangas[i].groupName = Constants.defaultGroupName;
+        }
+      }
+    } else {
+      /// TODO: 删除分组下漫画
+      return;
+    }
+    GroupDao.deleteGroup(groupName)
+        .then((_) {
+          state.groups.remove(groupName);
+          update([bodyId]);
+          Get.back();
+          Fluttertoast.showToast(msg: '删除分组成功');
+        })
+        .catchError((e) {
+          LogUtil.e('删除分组失败', error: e);
+          Fluttertoast.showToast(msg: '删除分组失败');
+        });
+  }
+
   Future<void> refreshMangas() async {
     if (state.currentPath == null) return;
     Get.dialog(
@@ -219,8 +262,7 @@ class BooksPageController extends GetxController with ScrollHandler {
       barrierDismissible: false,
     );
     await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
-    state.books =
-        localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [];
+    state.books = localMangaService.settingPath2Mangas[state.currentPath] ?? [];
     update([bodyId]);
     Get.back();
   }

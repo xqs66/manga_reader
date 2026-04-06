@@ -62,7 +62,7 @@ class _EditPageState extends State<EditPage> {
   }
 
   void _test() async {
-    final paths = localMangaService.mangasInLocalSettingPaths.keys;
+    final paths = localMangaService.settingPath2Mangas.keys;
     LogUtil.d(paths.toString(), tag: 'Mangas');
   }
 }

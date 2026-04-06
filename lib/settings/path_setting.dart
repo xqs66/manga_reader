@@ -1,11 +1,14 @@
+import 'dart:io';
+
 import 'package:get/get.dart';
+import 'package:manga_reader/service/base/config_bean.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/shared/utils/permission_util.dart';
 
 PathSetting pathSetting = PathSetting();
 
-class PathSetting with ServiceBeanMixin implements ServiceLifeCircleBean {
+class PathSetting extends ConfigBean with ServiceBeanMixin{
   late final RxList<String> paths;
 
   @override
@@ -18,6 +21,7 @@ class PathSetting with ServiceBeanMixin implements ServiceLifeCircleBean {
   Future<void> doInit() async {
     final List<String> savedPaths = (storageService.read('manga_paths') ?? [])
         .cast<String>();
+    savedPaths.removeWhere((path) => !Directory(path).existsSync());
     paths = savedPaths.obs;
   }
 
@@ -25,24 +29,19 @@ class PathSetting with ServiceBeanMixin implements ServiceLifeCircleBean {
     final isPermissionGranted = await PermissionUtil.checkAndRequestStoragePermission();
     if (!isPermissionGranted) return;
 
-    if (paths.contains(path)) return;
+    if (paths.contains(path) || path.isEmpty) return;
     paths.add(path);
-    savePathConfig();
+    saveConfig('manga_paths', paths);
   }
 
   void removePath(String path) {
     if (!paths.contains(path)) return;
     paths.remove(path);
-    savePathConfig();
-  }
-
-  Future<void> savePathConfig() async {
-    await storageService.write('manga_paths', paths);
+    saveConfig('manga_paths', paths);
   }
 
   void loadPathConfig() {
-    final List<String> savedPaths = (storageService.read('manga_paths') ?? [])
-        .cast<String>();
+    final List<String> savedPaths = storageService.read<List<String>>('manga_paths') ?? [];
     paths.assignAll(savedPaths);
   }
 }

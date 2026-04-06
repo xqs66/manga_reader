@@ -14,7 +14,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Settings'), centerTitle: true),
+      appBar: AppBar(title: Text('设置'), centerTitle: true),
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -22,13 +22,13 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: Icon(Icons.settings),
             title: Text('本地'),
             trailing: Icon(Icons.arrow_forward_ios, size: 15),
-            onTap: () => Get.toNamed(Routes.settingsPath),
+            onTap: () => Get.toNamed(Routes.localSetting),
           ),
           ListTile(
-            leading: Icon(Icons.settings),
+            leading: Icon(Icons.book),
             title: Text('阅读'),
             trailing: Icon(Icons.arrow_forward_ios, size: 15),
-            onTap: () => Get.toNamed(Routes.settingsPath),
+            onTap: () => Get.toNamed(Routes.readSetting),
           ),
         ],
       ),

@@ -2,7 +2,7 @@ import 'package:manga_reader/shared/utils/log_util.dart';
 
 import '../../shared/constants/constants.dart';
 
-abstract class ServiceLifeCircleBean {
+abstract interface class ServiceLifeCircleBean {
   List<ServiceLifeCircleBean> get initDependencies;
 
   Future<void> initBean();
@@ -20,8 +20,12 @@ mixin ServiceBeanMixin {
   }
 
   Future<void> afterBeanReady() async {
-    await doAfterReady();
-    LogUtil.i('$runtimeType准备就绪', tag: Constants.tagBeanLifeCycle);
+    try {
+      await doAfterReady();
+      LogUtil.i('$runtimeType准备就绪', tag: Constants.tagBeanLifeCycle);
+    } catch (e, stackTrace) {
+      LogUtil.e('$runtimeType afterReady错误', error: e, stackTrace: stackTrace);
+    }
   }
 
   Future<void> doInit();

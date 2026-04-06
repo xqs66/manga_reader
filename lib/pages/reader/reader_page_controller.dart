@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:manga_reader/pages/books/books_page_controller.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
+import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
 
 class ReaderPageController extends GetxController {
@@ -18,10 +19,18 @@ class ReaderPageController extends GetxController {
   final String bottomRightInfoId = 'bottomRightInfoId';
   final String bottomMenuId = 'bottomMenuId';
 
+  late Worker toggleImmersiveModeListener;
+
   @override
   void onReady() {
     super.onReady();
-    SystemChrome.setEnabledSystemUIMode(.immersiveSticky);
+
+    applyEnableImmersive();
+
+    toggleImmersiveModeListener = ever(readSetting.enableImmersiveMode, (value) {
+      applyEnableImmersive();
+    });
+
     state.itemPositionsListener.itemPositions.addListener(_positionListener);
   }
 
@@ -29,6 +38,12 @@ class ReaderPageController extends GetxController {
   void onClose() {
     super.onClose();
     SystemChrome.setEnabledSystemUIMode(.edgeToEdge);
+  }
+
+  void applyEnableImmersive() {
+    readSetting.enableImmersiveMode.value
+        ? SystemChrome.setEnabledSystemUIMode(.immersiveSticky)
+        : SystemChrome.setEnabledSystemUIMode(.edgeToEdge);
   }
 
   void _positionListener() {

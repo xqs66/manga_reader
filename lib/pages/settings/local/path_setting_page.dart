@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
 
-import '../../settings/path_setting.dart';
+import '../../../settings/path_setting.dart';
 
 class PathSettingPage extends StatefulWidget {
   const PathSettingPage({super.key});
@@ -16,13 +16,13 @@ class _PathSettingPageState extends State<PathSettingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Path Setting'),
+        title: const Text('管理源路径'),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: Icon(Icons.add),
+          TextButton(
             onPressed: () async =>
                 pathSetting.addPath((await FileUtil.selectDir())?.path ?? ''),
+            child: Text('添加'),
           ),
         ],
       ),
@@ -34,7 +34,7 @@ class _PathSettingPageState extends State<PathSettingPage> {
                   title: Text(path),
                   trailing: IconButton(
                     onPressed: () => pathSetting.removePath(path),
-                    icon: Icon(Icons.remove),
+                    icon: Icon(Icons.clear),
                   ),
                 ),
               )

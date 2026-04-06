@@ -1,4 +1,3 @@
-
 import 'local_image.dart';
 
 class Manga {
@@ -46,7 +45,10 @@ class Manga {
 
   @override
   bool operator ==(Object other) {
-    return other is Manga && other.id == id;
+    return other is Manga &&
+        other.id == id &&
+        other.pageCount == pageCount &&
+        other.size == size;
   }
 
   @override

@@ -96,7 +96,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
 
   Widget _buildMangaListArea(Directory dir) {
     return FutureBuilder(
-      future: localMangaService.getMangasInDir(dir),
+      future: localMangaService.getMangasInDir(dir),  //这里是引用传递拿的mangasInLocalSettingPaths[state.selectedDir?.path]
       builder: (context, snapshot) {
         if (snapshot.connectionState == .waiting) {
           return Center(child: CircularProgressIndicator());
@@ -270,15 +270,12 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
                   controller: _state.targetDirNameController,
                   decoration: InputDecoration(hintText: '请输入合集名称'),
                 ),
-                Row(
-                  mainAxisSize: .min,
-                  children: [
-                    Checkbox(
-                      value: _state.deleteSourceMangas,
-                      onChanged: _controller.handleToggleDeleteSource,
-                    ),
-                    Text('合并后删除原漫画'),
-                  ],
+                CheckboxListTile(
+                  value: _state.deleteSourceMangas,
+                  onChanged: _controller.handleToggleDeleteSource,
+                  title: Text('合并后删除原漫画'),
+                  contentPadding: .zero,
+                  horizontalTitleGap: 0,
                 ),
               ],
             ),

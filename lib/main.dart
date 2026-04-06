@@ -9,6 +9,7 @@ import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/service/path_service.dart';
 import 'package:manga_reader/service/storage_service.dart';
+import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
 import 'package:manga_reader/pages/home_page.dart';
 import 'package:manga_reader/routes/routes.dart';
@@ -19,6 +20,7 @@ List<ServiceLifeCircleBean> serviceBeans = [
   pathService,
   storageService,
   localMangaService,
+  readSetting
 ];
 
 void main() async {

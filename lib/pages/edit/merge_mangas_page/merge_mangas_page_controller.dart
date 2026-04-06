@@ -58,7 +58,6 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
       state.selectedMangaIndexes.add(index);
       update(['$mangaListTileIdPrefix::$index']);
     }
-    LogUtil.d('当前state:${state.isScrolling}', tag: '测试');
     update([titleId, cancelButtonId]);
   }
 
@@ -87,7 +86,13 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
       return;
     }
     if (state.targetDirNameController.text.trim().isEmpty) {
-      Fluttertoast.showToast(msg: '请输入目录名');
+      Fluttertoast.showToast(msg: '请输入合集名');
+      return;
+    }
+    if (Directory(
+      p.join(state.outputDir!.path, state.targetDirNameController.text.trim()),
+    ).existsSync()) {
+      Fluttertoast.showToast(msg: '目标目录下存在同名目录，请重新输入合集名');
       return;
     }
     if (state.selectedMangas.isEmpty) {
@@ -131,22 +136,14 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
     if (state.deleteSourceMangas) {
       localMangaService.deleteMangas(selectedMangas, showToast: false);
       if (pathSetting.paths.contains(state.selectedDir?.path)) {
-        localMangaService.mangasInLocalSettingPaths[state.selectedDir?.path]
+        localMangaService.settingPath2Mangas[state.selectedDir?.path]
             ?.removeWhere((manga) => selectedMangas.contains(manga));
       }
       state.mangas.removeWhere((manga) => selectedMangas.contains(manga));
     }
     if (pathSetting.paths.contains(state.outputDir?.path)) {
-      localMangaService.mangasInLocalSettingPaths[state.outputDir?.path]
+      localMangaService.settingPath2Mangas[state.outputDir?.path]
         ?..add(outputManga)
-        ..sort(
-          (mangaA, mangaB) =>
-              FileUtil.naturalCompare(mangaA.title, mangaB.title),
-        );
-    }
-    if (state.outputDir?.path == state.selectedDir?.path) {
-      state.mangas
-        ..add(outputManga)
         ..sort(
           (mangaA, mangaB) =>
               FileUtil.naturalCompare(mangaA.title, mangaB.title),

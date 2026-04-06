@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:get/get_rx/get_rx.dart';
 import 'package:manga_reader/database/dao/manga_dao.dart';
 import 'package:manga_reader/database/database.dart';
 import 'package:manga_reader/models/local_image.dart';
@@ -27,7 +28,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     pathSetting,
   ];
 
-  final Map<String, List<Manga>> mangasInLocalSettingPaths = {};
+  final Map<String, List<Manga>> settingPath2Mangas = {};
 
   @override
   Future<void> doInit() async {
@@ -38,86 +39,52 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   Future<void> doAfterReady() async {}
 
   Future<void> loadMangasInLocalSettingPaths() {
-    mangasInLocalSettingPaths.clear();
+    settingPath2Mangas.clear();
     List<Future<void>> futures = pathSetting.paths
-        .map(
-          (path) async => mangasInLocalSettingPaths[path] =
-              await loadMangasInDir(Directory(path)),
-        )
+        .map((path) => loadMangasInDir(Directory(path)))
         .toList();
-    return Future.wait(futures).whenComplete(() {
-      for (final dirs in mangasInLocalSettingPaths.values) {
-        dirs.sort((a, b) => FileUtil.naturalCompare(a.title, b.title));
-      }
-    });
+    return Future.wait(futures);
   }
 
   Future<List<Manga>> loadMangasInDir(Directory dir) async {
+    final Completer<List<Manga>> completer = Completer();
     final List<Manga> mangas = [];
-    final List<Future<void>> futures = dir
-        .listSync()
-        .whereType<Directory>()
-        .map((dirOfMang) async {
-          final manga = await loadManga(dirOfMang);
-          if (manga != null) {
-            mangas.add(manga);
+    final List<Future> futures = [];
+    dir.list().listen(
+      (entity) {
+        if (entity is Directory) {
+          futures.add(
+            loadManga(entity).then((manga) {
+              if (manga != null) {
+                mangas.add(manga);
+              }
+            }),
+          );
+        }
+      },
+      onDone: () {
+        Future.wait(futures).then((_) {
+          mangas.sort((a, b) => FileUtil.naturalCompare(a.title, b.title));
+          if (pathSetting.paths.contains(dir.path)) {
+            (settingPath2Mangas[dir.path] ??= []).assignAll(mangas);
           }
-        })
-        .toList();
-    await Future.wait(futures);
-    return mangas..sort((a, b) => FileUtil.naturalCompare(a.title, b.title));
+          completer.complete(mangas);
+        });
+      },
+      onError: completer.completeError,
+    );
+    return completer.future;
   }
 
   Future<List<Manga>> getMangasInDir(Directory dir) async {
-    if (mangasInLocalSettingPaths.containsKey(dir.path)) {
-      return mangasInLocalSettingPaths[dir.path]!;
+    if (settingPath2Mangas.containsKey(dir.path)) {
+      return settingPath2Mangas[dir.path]!;
     }
     return await loadMangasInDir(dir);
   }
 
   Future<void> refreshMangasInDir(Directory dir) async {
-    mangasInLocalSettingPaths[dir.path] = await loadMangasInDir(dir);
-  }
-
-  // Future<void> _loadMangaInfo(Directory dir, List<Manga> mangas) {
-  //   final completer = Completer<void>();
-  //   List<File> images = [];
-  //   int size = 0;
-  //   dir.list().listen(
-  //     (entity) {
-  //       if (entity is File && entity.isImageExtension) {
-  //         images.add(entity);
-  //         size += entity.statSync().size;
-  //       }
-  //       if (entity is Directory) {
-  //         // TODO 递归获取子目录的图片
-  //       }
-  //     },
-  //     onDone: () {
-  //       if (images.isNotEmpty) {
-  //         images.sort(FileUtil.naturalCompareFileOrDir);
-  //         mangas.add(
-  //           Manga(
-  //             path: dir.path,
-  //             cover: LocalImage(path: images.first.path),
-  //             title: basename(dir.path),
-  //             pageCount: images.length,
-  //             size: size,
-  //           ),
-  //         );
-  //       }
-  //       completer.complete();
-  //     },
-  //     onError: completer.completeError,
-  //   );
-  //   return completer.future;
-  // }
-
-  Future<void> _loadMangaInfo(Directory dir, List<Manga> mangas) async {
-    final manga = await loadManga(dir);
-    if (manga != null) {
-      mangas.add(manga);
-    }
+    await loadMangasInDir(dir);
   }
 
   Future<Manga?> loadManga(Directory dirOfManga) async {
@@ -157,20 +124,20 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
           size: size,
         );
 
-        MangaDao.insertManga(
-          MangaCompanion(
-            id: Value(result.id),
-            title: Value(result.title),
-            coverPath: Value(result.cover.path),
-            parentPath: Value(dirOfManga.parent.path),
-            lastReadPage: Value(result.lastReadPage),
-            groupName: Value(result.groupName),
-            pageCount: Value(result.pageCount),
-            size: Value(result.size),
-            sortOrder: Value(0),
-            type: Value(1),
-          ),
-        );
+        if (mangaFromQurey == null) {
+          MangaDao.insertManga(
+            MangaCompanion.insert(
+              id: result.id,
+              title: result.title,
+              coverPath: result.cover.path,
+              parentPath: dirOfManga.parent.path,
+              pageCount: result.pageCount,
+              size: result.size,
+              sortOrder: 0,
+              type: 1,
+            ),
+          );
+        }
         return result;
       } else {
         return null;

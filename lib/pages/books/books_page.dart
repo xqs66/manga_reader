@@ -2,7 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
+import 'package:manga_reader/shared/constants/constants.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
+import 'package:manga_reader/shared/extensions/text_ext.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
 import 'package:manga_reader/wigets/group_header.dart';
@@ -284,6 +286,19 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
         final isDisplay = _state.displayGroups.contains(groupName);
         return GroupHeader(
           onTap: () => _controller.toggleGroupExpand(index),
+          onLongPress: () {
+            if (groupName == Constants.defaultGroupName) return;
+            LongPressActionSheet.show(
+              context: context,
+              actions: [
+                SheetAction(
+                  label: '删除分组',
+                  onPressed: () =>
+                      Get.dialog(_buildDeleteGroupDialog(groupName)),
+                ),
+              ],
+            );
+          },
           child: Row(
             mainAxisAlignment: .spaceBetween,
             children: [
@@ -419,6 +434,45 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
       title: '删除所选漫画',
       content: Text('确定要删除所选漫画吗？'),
       onConfirm: _controller.handleDeleteMangas,
+    );
+  }
+
+  Widget _buildDeleteGroupDialog(String groupName) {
+    return GetBuilder<BooksPageController>(
+      id: _controller.deleteGroupDialogId,
+      builder: (_) {
+        return CommonDialog(
+          title: '删除分组“$groupName”',
+          content: Column(
+            crossAxisAlignment: .start,
+            mainAxisSize: .min,
+            mainAxisAlignment: .spaceBetween,
+            children: [
+              Text('请选择对该分组下漫画的处理方式：').size(18),
+              CheckboxListTile(
+                value: _state.toDefaultGroupOnceDelete,
+                onChanged: (value) =>
+                    _controller.handleChangeDeleteGroupOption(value ?? false),
+                title: Text('移动至默认分组'),
+                contentPadding: .zero,
+                horizontalTitleGap: 0,
+                controlAffinity: .leading,
+              ),
+              CheckboxListTile(
+                value: _state.deleteOnceGroupDeleted,
+                onChanged: (value) =>
+                    _controller.handleChangeDeleteGroupOption(!(value ?? false)),
+                title: Text('同时删除分组下漫画'),
+                subtitle: Text('此操作不可恢复'),
+                contentPadding: .zero,
+                horizontalTitleGap: 0,
+                controlAffinity: .leading,
+              ),
+            ],
+          ),
+          onConfirm: () => _controller.handleDeleteGroup(groupName),
+        );
+      },
     );
   }
 }

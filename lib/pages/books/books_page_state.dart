@@ -26,4 +26,8 @@ class BooksPageState with ScrollState {
 
   List<Manga> get selectedMangas =>
       books.where((manga) => selectedMangaIds.contains(manga.id)).toList();
+  
+  bool toDefaultGroupOnceDelete = true;
+
+  bool get deleteOnceGroupDeleted => !toDefaultGroupOnceDelete;
 }

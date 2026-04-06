@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/pages/reader/reader_page_controller.dart';
+import 'package:manga_reader/pages/settings/read/read_settings_page.dart';
+import 'package:manga_reader/settings/read_setting.dart';
+import 'package:manga_reader/shared/constants/constants.dart';
 import 'package:manga_reader/wigets/manga_image.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -34,18 +37,20 @@ class _ReaderPageState extends State<ReaderPage> {
             statusBarIconBrightness: Brightness.light,
             statusBarBrightness: Brightness.light,
           ),
-          child: Container(
-            color: Colors.white,
-            child: SizedBox(
-              height: 50,
-              width: 100,
-              child: Stack(
-                children: [
-                  _buildReadMangaImages(),
-                  _buildBottomRightInfo(),
-                  _buildTopMenu(),
-                  _buildBottomMenu(),
-                ],
+          child: SafeArea(
+            child: Container(
+              color: Colors.white,
+              child: SizedBox(
+                height: 50,
+                width: 100,
+                child: Stack(
+                  children: [
+                    _buildReadMangaImages(),
+                    _buildBottomRightInfo(),
+                    _buildTopMenu(),
+                    _buildBottomMenu(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -76,8 +81,11 @@ class _ReaderPageState extends State<ReaderPage> {
                 initialAlignment: 0,
                 minCacheExtent: Get.height * 5, // TODO 可配置项
                 itemBuilder: (context, index) => _buildImageItem(index),
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: 6), // TODO 可配置项
+                separatorBuilder: (_, _) => Obx(
+                  () => SizedBox(
+                    height: readSetting.imageSpacing.value.toDouble(),
+                  ),
+                )
               ),
             );
           },
@@ -94,33 +102,43 @@ class _ReaderPageState extends State<ReaderPage> {
           builder: (context, constraints) {
             return GestureDetector(
               onTap: _controller.toggleMenuOpen,
-              child: MangaImage(
-                image: _state.readInfo.images[index],
-                longPressActions: [
-                  SheetAction(
-                    label: '删除图片',
-                    labelColor: Colors.red,
-                    onPressed: () => _controller.handleDeleteImage(index),
-                  ),
-                ],
-                height:
-                    _state.imageContainerSizes[index]?.height ??
-                    constraints.maxWidth * UiConfig.defaultImageContainerRadio,
-                width:
-                    _state.imageContainerSizes[index]?.width ??
-                    constraints.maxWidth,
-                fit: .fitWidth,
-                loadCompleteCallBack: (state) =>
-                    _controller.onLoadCompleteCallBack(
-                      index,
-                      state,
-                      Size(constraints.maxWidth, double.infinity),
-                    ),
+              child: Obx(
+                () => readSetting.enableGrayscaleMode.value
+                    ? ColorFiltered(
+                        colorFilter: ColorFilter.matrix(
+                          Constants.grayscaleMatrix,
+                        ),
+                        child: _buildImage(constraints, index),
+                      )
+                    : _buildImage(constraints, index),
               ),
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildImage(BoxConstraints constraints, index) {
+    return MangaImage(
+      image: _state.readInfo.images[index],
+      longPressActions: [
+        SheetAction(
+          label: '删除图片',
+          labelColor: Colors.red,
+          onPressed: () => _controller.handleDeleteImage(index),
+        ),
+      ],
+      height:
+          _state.imageContainerSizes[index]?.height ??
+          constraints.maxWidth * UiConfig.defaultImageContainerRadio,
+      width: _state.imageContainerSizes[index]?.width ?? constraints.maxWidth,
+      fit: .fitWidth,
+      loadCompleteCallBack: (state) => _controller.onLoadCompleteCallBack(
+        index,
+        state,
+        Size(constraints.maxWidth, double.infinity),
+      ),
     );
   }
 
@@ -143,7 +161,21 @@ class _ReaderPageState extends State<ReaderPage> {
             backgroundColor: UiConfig.readMenuColor,
             foregroundColor: UiConfig.readPageForegroundColor,
             actions: [
-              IconButton(onPressed: () => '', icon: Icon(Icons.settings)),
+              IconButton(
+                onPressed: () {
+                  Get.bottomSheet(
+                    ClipRRect(
+                      borderRadius: .only(
+                        topLeft: .circular(16),
+                        topRight: .circular(16),
+                      ),
+                      child: ReadSettingsPage(isBottomSheet: true),
+                    ),
+                  );
+                  _controller.toggleMenuOpen();
+                },
+                icon: Icon(Icons.settings),
+              ),
             ],
           ),
         );
@@ -221,17 +253,3 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 }
-
-// return ColorFiltered(
-//   colorFilter: ColorFilter.matrix(<double>[
-//     0.2126,0.7152,0.0722,0,0,
-//     0.2126,0.7152,0.0722,0,0,
-//     0.2126,0.7152,0.0722,0,0,
-//     0,0,0,1,0,
-//   ]),
-//   child: ExtendedImage.file(
-//     state.images[index],
-//     width: constraints.maxWidth,
-//     fit: .fitWidth,
-//   ),
-// );

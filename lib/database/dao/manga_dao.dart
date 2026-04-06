@@ -25,7 +25,7 @@ class MangaDao {
 
   static Future<void> updateMangas(List<MangaCompanion> mangas) {
     return appDb.transaction(() async {
-      appDb.batch((batch) {
+       appDb.batch((batch) {
         for (MangaCompanion manga in mangas) {
           batch.update(
             appDb.manga,
@@ -34,6 +34,7 @@ class MangaDao {
           );
         }
       });
+      
     });
   }
 }
