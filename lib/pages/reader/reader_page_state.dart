@@ -15,7 +15,7 @@ class ReaderPageState {
 
   final thumbnailScrollController = ScrollController();
 
-  final PageController pageController = PageController();
+  late final PageController pageController;
 
   final List<File> images = [];
 
@@ -32,6 +32,7 @@ class ReaderPageState {
   double? _lastLayoutWidth;
 
   ReaderPageState() {
+    pageController = PageController(initialPage: readInfo.lastReadIndex);
     imageContainerSizes = List.generate(readInfo.pageCount, (_) => null);
   }
 

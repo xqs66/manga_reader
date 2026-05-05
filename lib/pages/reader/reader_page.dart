@@ -47,7 +47,10 @@ class _ReaderPageState extends State<ReaderPage> {
                 color: Colors.black,
                 child: Stack(
                   children: [
-                    isStrip ? _buildStripMode() : _buildPageMode(),
+                    KeyedSubtree(
+                      key: ValueKey(isStrip ? 'strip' : 'page'),
+                      child: isStrip ? _buildStripMode() : _buildPageMode(),
+                    ),
                     _buildPageInfoOverlay(),
                     _buildTopMenu(),
                     _buildBottomMenu(),
@@ -146,7 +149,7 @@ class _ReaderPageState extends State<ReaderPage> {
     final isRTL = mode == ReadingMode.singleRTL;
 
     return GetBuilder<ReaderPageController>(
-      id: _controller.imageListId,
+      id: _controller.pageListId,
       builder: (_) {
         return PhotoViewGallery.builder(
           scrollDirection: isHorizontal ? .horizontal : .vertical,
@@ -452,12 +455,14 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   void _jumpToPage(int index) {
+    _state.currentIndex = index;
     if (readSetting.readingMode.value == ReadingMode.strip) {
       _controller.handleSlideEnd((index + 1).toDouble());
     } else {
-      _state.pageController.jumpToPage(index);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _state.pageController.jumpToPage(index);
+      });
     }
-    _state.currentIndex = index;
     _controller.update([_controller.bottomMenuId, _controller.bottomRightInfoId]);
   }
 

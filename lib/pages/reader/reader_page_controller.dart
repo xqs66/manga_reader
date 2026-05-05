@@ -18,6 +18,7 @@ class ReaderPageController extends GetxController {
   final state = ReaderPageState();
   final String pageId = 'pageId';
   final String imageListId = 'imageListId';
+  final String pageListId = 'pageListId';
   final String topMenuId = 'topMenuId';
   final String bottomRightInfoId = 'bottomRightInfoId';
   final String bottomMenuId = 'bottomMenuId';
@@ -37,6 +38,9 @@ class ReaderPageController extends GetxController {
 
     _readingModeListener = ever(readSetting.readingMode, (_) {
       update([pageId]);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        update([pageListId]);
+      });
     });
 
     state.itemPositionsListener.itemPositions.addListener(_positionListener);
