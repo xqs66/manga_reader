@@ -37,27 +37,37 @@ class BooksPageController extends GetxController with ScrollHandler {
 
   Timer? searchDebounceTimer;
 
-  @override
-  void onInit() async {
-    super.onInit();
-    final result = await _repo.fetchGroups(null);
-    if (result is Ok<List<String>>) {
-      state.groups = result.value;
-      state.displayGroups.addAll(result.value);
-    }
-  }
-
   void handlePopNext() {
     state.mangas =
         localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+    _syncGroupsFromPath();
     update([bodyId]);
   }
 
-  void enterMangaDir(String path) {
+  void enterMangaDir(String path) async {
     state.isAtRoot = false;
     state.currentPath = path;
     state.mangas = localMangaService.settingPath2Mangas[path] ?? [];
+    await _syncGroupsFromPath();
     update([bodyId, normalAppBarActionsId]);
+  }
+
+  Future<void> _syncGroupsFromPath() async {
+    final path = state.currentPath;
+    if (path == null) return;
+    final result = await _repo.fetchGroups(path);
+    if (result is Ok<List<GroupInfo>>) {
+      if (result.value.isEmpty) {
+        await _repo.addGroup(Constants.defaultGroupName, path);
+        state.groups = [Constants.defaultGroupName];
+      } else {
+        state.groups = result.value.map((g) => g.name).toList();
+        state.displayGroups.clear();
+        for (final g in result.value) {
+          if (g.isExpanded) state.displayGroups.add(g.name);
+        }
+      }
+    }
   }
 
   void backToRoot() {
@@ -72,6 +82,11 @@ class BooksPageController extends GetxController with ScrollHandler {
     } else {
       state.displayGroups.add(groupName);
     }
+    _repo.updateGroupExpand(
+      groupName,
+      state.currentPath!,
+      state.displayGroups.contains(groupName),
+    );
     update([
       '$groupIdPrefix::$groupName',
       '$mangasInGroupIdPrefix::$groupName',
@@ -155,7 +170,7 @@ class BooksPageController extends GetxController with ScrollHandler {
       return;
     }
     if (!state.groups.contains(groupName)) {
-      final added = await _repo.addGroup(groupName);
+      final added = await _repo.addGroup(groupName, state.currentPath!);
       if (added is Ok) state.groups.add(groupName);
     }
     final result = await _repo.moveMangasToGroup(state.selectedMangaIds, groupName);
@@ -187,12 +202,14 @@ class BooksPageController extends GetxController with ScrollHandler {
       Fluttertoast.showToast(msg: '分组名不能超过20个字符');
       return;
     }
-    final result = await _repo.addGroup(groupName);
+    final result = await _repo.addGroup(groupName, state.currentPath!);
     if (result is Err) {
       Fluttertoast.showToast(msg: result.message);
       return;
     }
-    state.groups.add(groupName);
+    if (!state.groups.contains(groupName)) {
+      state.groups.add(groupName);
+    }
     update([bodyId]);
     Get.back();
   }
@@ -214,7 +231,7 @@ class BooksPageController extends GetxController with ScrollHandler {
     } else {
       return;
     }
-    final result = await _repo.removeGroup(groupName);
+    final result = await _repo.removeGroup(groupName, state.currentPath!);
     if (result is Err) {
       Fluttertoast.showToast(msg: result.message);
       return;

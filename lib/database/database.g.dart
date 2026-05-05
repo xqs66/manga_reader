@@ -750,8 +750,28 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
     ),
     defaultValue: Constant(false),
   );
+  static const VerificationMeta _parentPathMeta = const VerificationMeta(
+    'parentPath',
+  );
   @override
-  List<GeneratedColumn> get $columns => [groupName, sortOrder, isExpanded];
+  late final GeneratedColumn<String> parentPath = GeneratedColumn<String>(
+    'parent_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("parent_path" IS NOT NULL)',
+    ),
+    defaultValue: const Constant(''),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    groupName,
+    parentPath,
+    sortOrder,
+    isExpanded,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -786,11 +806,19 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
         isExpanded.isAcceptableOrUnknown(data['is_expanded']!, _isExpandedMeta),
       );
     }
+    if (data.containsKey('parent_path')) {
+      context.handle(
+        _parentPathMeta,
+        parentPath.isAcceptableOrUnknown(data['parent_path']!, _parentPathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_parentPathMeta);
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {groupName};
+  Set<GeneratedColumn> get $primaryKey => {groupName, parentPath};
   @override
   GroupData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -798,6 +826,10 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
       groupName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}group_name'],
+      )!,
+      parentPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_path'],
       )!,
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -818,10 +850,12 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
 
 class GroupData extends DataClass implements Insertable<GroupData> {
   final String groupName;
+  final String parentPath;
   final int sortOrder;
   final bool isExpanded;
   const GroupData({
     required this.groupName,
+    required this.parentPath,
     required this.sortOrder,
     required this.isExpanded,
   });
@@ -829,6 +863,7 @@ class GroupData extends DataClass implements Insertable<GroupData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['group_name'] = Variable<String>(groupName);
+    map['parent_path'] = Variable<String>(parentPath);
     map['sort_order'] = Variable<int>(sortOrder);
     map['is_expanded'] = Variable<bool>(isExpanded);
     return map;
@@ -837,6 +872,7 @@ class GroupData extends DataClass implements Insertable<GroupData> {
   GroupCompanion toCompanion(bool nullToAbsent) {
     return GroupCompanion(
       groupName: Value(groupName),
+      parentPath: Value(parentPath),
       sortOrder: Value(sortOrder),
       isExpanded: Value(isExpanded),
     );
@@ -849,6 +885,7 @@ class GroupData extends DataClass implements Insertable<GroupData> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return GroupData(
       groupName: serializer.fromJson<String>(json['groupName']),
+      parentPath: serializer.fromJson<String>(json['parentPath']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       isExpanded: serializer.fromJson<bool>(json['isExpanded']),
     );
@@ -858,20 +895,28 @@ class GroupData extends DataClass implements Insertable<GroupData> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'groupName': serializer.toJson<String>(groupName),
+      'parentPath': serializer.toJson<String>(parentPath),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'isExpanded': serializer.toJson<bool>(isExpanded),
     };
   }
 
-  GroupData copyWith({String? groupName, int? sortOrder, bool? isExpanded}) =>
+  GroupData copyWith({
+    String? groupName,
+    String? parentPath,
+    int? sortOrder,
+    bool? isExpanded,
+  }) =>
       GroupData(
         groupName: groupName ?? this.groupName,
+        parentPath: parentPath ?? this.parentPath,
         sortOrder: sortOrder ?? this.sortOrder,
         isExpanded: isExpanded ?? this.isExpanded,
       );
   GroupData copyWithCompanion(GroupCompanion data) {
     return GroupData(
       groupName: data.groupName.present ? data.groupName.value : this.groupName,
+      parentPath: data.parentPath.present ? data.parentPath.value : this.parentPath,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       isExpanded: data.isExpanded.present
           ? data.isExpanded.value
@@ -883,6 +928,7 @@ class GroupData extends DataClass implements Insertable<GroupData> {
   String toString() {
     return (StringBuffer('GroupData(')
           ..write('groupName: $groupName, ')
+          ..write('parentPath: $parentPath, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isExpanded: $isExpanded')
           ..write(')'))
@@ -890,42 +936,49 @@ class GroupData extends DataClass implements Insertable<GroupData> {
   }
 
   @override
-  int get hashCode => Object.hash(groupName, sortOrder, isExpanded);
+  int get hashCode => Object.hash(groupName, parentPath, sortOrder, isExpanded);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is GroupData &&
           other.groupName == this.groupName &&
+          other.parentPath == this.parentPath &&
           other.sortOrder == this.sortOrder &&
           other.isExpanded == this.isExpanded);
 }
 
 class GroupCompanion extends UpdateCompanion<GroupData> {
   final Value<String> groupName;
+  final Value<String> parentPath;
   final Value<int> sortOrder;
   final Value<bool> isExpanded;
   final Value<int> rowid;
   const GroupCompanion({
     this.groupName = const Value.absent(),
+    this.parentPath = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isExpanded = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupCompanion.insert({
     required String groupName,
+    required String parentPath,
     required int sortOrder,
     this.isExpanded = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : groupName = Value(groupName),
+       parentPath = Value(parentPath),
        sortOrder = Value(sortOrder);
   static Insertable<GroupData> custom({
     Expression<String>? groupName,
+    Expression<String>? parentPath,
     Expression<int>? sortOrder,
     Expression<bool>? isExpanded,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (groupName != null) 'group_name': groupName,
+      if (parentPath != null) 'parent_path': parentPath,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (isExpanded != null) 'is_expanded': isExpanded,
       if (rowid != null) 'rowid': rowid,
@@ -934,12 +987,14 @@ class GroupCompanion extends UpdateCompanion<GroupData> {
 
   GroupCompanion copyWith({
     Value<String>? groupName,
+    Value<String>? parentPath,
     Value<int>? sortOrder,
     Value<bool>? isExpanded,
     Value<int>? rowid,
   }) {
     return GroupCompanion(
       groupName: groupName ?? this.groupName,
+      parentPath: parentPath ?? this.parentPath,
       sortOrder: sortOrder ?? this.sortOrder,
       isExpanded: isExpanded ?? this.isExpanded,
       rowid: rowid ?? this.rowid,
@@ -951,6 +1006,9 @@ class GroupCompanion extends UpdateCompanion<GroupData> {
     final map = <String, Expression>{};
     if (groupName.present) {
       map['group_name'] = Variable<String>(groupName.value);
+    }
+    if (parentPath.present) {
+      map['parent_path'] = Variable<String>(parentPath.value);
     }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
@@ -968,6 +1026,7 @@ class GroupCompanion extends UpdateCompanion<GroupData> {
   String toString() {
     return (StringBuffer('GroupCompanion(')
           ..write('groupName: $groupName, ')
+          ..write('parentPath: $parentPath, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isExpanded: $isExpanded, ')
           ..write('rowid: $rowid')
@@ -1346,6 +1405,7 @@ typedef $$MangaTableProcessedTableManager =
 typedef $$GroupTableCreateCompanionBuilder =
     GroupCompanion Function({
       required String groupName,
+      required String parentPath,
       required int sortOrder,
       Value<bool> isExpanded,
       Value<int> rowid,
@@ -1353,6 +1413,7 @@ typedef $$GroupTableCreateCompanionBuilder =
 typedef $$GroupTableUpdateCompanionBuilder =
     GroupCompanion Function({
       Value<String> groupName,
+      Value<String> parentPath,
       Value<int> sortOrder,
       Value<bool> isExpanded,
       Value<int> rowid,
@@ -1457,11 +1518,13 @@ class $$GroupTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> groupName = const Value.absent(),
+                Value<String> parentPath = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isExpanded = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupCompanion(
                 groupName: groupName,
+                parentPath: parentPath,
                 sortOrder: sortOrder,
                 isExpanded: isExpanded,
                 rowid: rowid,
@@ -1469,11 +1532,13 @@ class $$GroupTableTableManager
           createCompanionCallback:
               ({
                 required String groupName,
+                required String parentPath,
                 required int sortOrder,
                 Value<bool> isExpanded = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupCompanion.insert(
                 groupName: groupName,
+                parentPath: parentPath,
                 sortOrder: sortOrder,
                 isExpanded: isExpanded,
                 rowid: rowid,

@@ -143,19 +143,36 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
   }
 
   @override
-  Future<Result<List<String>>> fetchGroups(String? path) async {
+  Future<Result<List<GroupInfo>>> fetchGroups(String parentPath) async {
     try {
-      final groups = await GroupDao.selectAllGroups();
-      return Ok(groups.map((g) => g.groupName).toList());
+      final groups = await GroupDao.selectAllGroups(parentPath);
+      return Ok(groups
+          .map((g) => GroupInfo(name: g.groupName, isExpanded: g.isExpanded))
+          .toList());
     } catch (e) {
       return Err('加载分组失败', e);
     }
   }
 
   @override
-  Future<Result<void>> addGroup(String name) async {
+  Future<Result<void>> updateGroupExpand(
+      String name, String parentPath, bool isExpanded) async {
     try {
-      await GroupDao.insertGroup(name);
+      await GroupDao.updateGroup(
+        name,
+        parentPath,
+        GroupCompanion(isExpanded: Value(isExpanded)),
+      );
+      return const Ok(null);
+    } catch (e) {
+      return Err('更新分组状态失败', e);
+    }
+  }
+
+  @override
+  Future<Result<void>> addGroup(String name, String parentPath) async {
+    try {
+      await GroupDao.insertGroup(name, parentPath);
       return const Ok(null);
     } catch (e) {
       return Err('添加分组失败', e);
@@ -163,9 +180,9 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
   }
 
   @override
-  Future<Result<void>> removeGroup(String name) async {
+  Future<Result<void>> removeGroup(String name, String parentPath) async {
     try {
-      await GroupDao.deleteGroup(name);
+      await GroupDao.deleteGroup(name, parentPath);
       return const Ok(null);
     } catch (e) {
       return Err('删除分组失败', e);

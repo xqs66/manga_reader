@@ -5,6 +5,12 @@ import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/manga_id.dart';
 
+class GroupInfo {
+  final String name;
+  final bool isExpanded;
+  const GroupInfo({required this.name, required this.isExpanded});
+}
+
 /// Abstract contract for manga data operations.
 ///
 /// Controllers depend on this interface, never on concrete implementations
@@ -33,9 +39,10 @@ abstract class MangaRepository {
   Future<Result<void>> deleteMangas(List<Manga> mangas);
   Future<Result<void>> deleteImage(LocalImage image);
 
-  Future<Result<List<String>>> fetchGroups(String? path);
-  Future<Result<void>> addGroup(String name);
-  Future<Result<void>> removeGroup(String name);
+  Future<Result<List<GroupInfo>>> fetchGroups(String parentPath);
+  Future<Result<void>> addGroup(String name, String parentPath);
+  Future<Result<void>> removeGroup(String name, String parentPath);
+  Future<Result<void>> updateGroupExpand(String name, String parentPath, bool isExpanded);
   Future<Result<void>> moveMangasToGroup(Set<MangaId> mangaIds, String groupName);
   Future<Result<void>> resetMangasToDefaultGroup(String groupName, String? path);
 }

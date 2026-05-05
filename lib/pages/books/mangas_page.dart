@@ -414,25 +414,36 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
         final isSelected =
             _state.selectedMangaIds.contains(manga.id) && _state.isSelectMode;
 
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
+        return Container(
           margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
           decoration: isSelected
               ? BoxDecoration(
                   borderRadius: .circular(12),
-                  color: UiConfig.primaryColor.withValues(alpha: 0.08),
+                  border: Border.all(
+                    color: UiConfig.primaryColor.withValues(alpha: 0.5),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: UiConfig.primaryColor.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 )
               : null,
-          child: MangaListTileCard(
-            key: ValueKey(manga.id),
-            buildCover:
-                !(_state.isScrolling && _state.currentVelocity.abs() > 500),
-            onTap: () => _state.isSelectMode
-                ? _controller.handleSelectManga(manga)
-                : _controller.handleMangaCardTap(manga),
-            onLongPressed: () => _state.isSelectMode
-                ? null
-                : _controller.handleLongPressManga(manga),
+          child: Stack(
+            children: [
+              MangaListTileCard(
+                key: ValueKey(manga.id),
+                buildCover:
+                    !(_state.isScrolling && _state.currentVelocity.abs() > 500),
+                onTap: () => _state.isSelectMode
+                    ? _controller.handleSelectManga(manga)
+                    : _controller.handleMangaCardTap(manga),
+                onLongPressed: () => _state.isSelectMode
+                    ? null
+                    : _controller.handleLongPressManga(manga),
             endActionPane: ActionPane(
               motion: const ScrollMotion(),
               children: [
@@ -450,6 +461,8 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
               ],
             ),
             manga: manga,
+              ),
+            ],
           ),
         );
       },
