@@ -241,17 +241,17 @@ class BooksPageController extends GetxController with ScrollHandler {
     Get.back();
   }
 
+  final String refreshProgressId = 'refreshProgressId';
+
   Future<void> refreshMangas() async {
     if (state.currentPath == null) return;
-    Get.dialog(
-      const Center(child: CircularProgressIndicator()),
-      barrierDismissible: false,
-    );
+    state.isRefreshing = true;
+    update([refreshProgressId]);
     await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
     state.mangas =
         localMangaService.settingPath2Mangas[state.currentPath] ?? [];
-    update([bodyId]);
-    Get.back();
+    state.isRefreshing = false;
+    update([bodyId, refreshProgressId]);
   }
 
   Future<void> handleDeleteManga(Manga manga) async {

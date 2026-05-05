@@ -33,4 +33,6 @@ class BooksPageState with ScrollState {
   bool toDefaultGroupOnceDelete = true;
 
   bool get deleteOnceGroupDeleted => !toDefaultGroupOnceDelete;
+
+  bool isRefreshing = false;
 }

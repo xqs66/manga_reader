@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get_rx/get_rx.dart';
 import 'package:manga_reader/database/dao/manga_dao.dart';
@@ -85,38 +86,37 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   Future<Manga?> loadManga(Directory dirOfManga) async {
-    final images = <File>[];
-    final sizeCalcFutures = <Future<int>>[];
-
     try {
       final mangaId = MangaId.fromPath(dirOfManga.path);
       final mangaRecord = await MangaDao.getManga(mangaId.value);
 
+      final imageFiles = <File>[];
       await for (final entity in dirOfManga.list()) {
         if (entity is File && entity.isImageExtension) {
-          images.add(entity);
-          sizeCalcFutures.add(entity.length());
+          imageFiles.add(entity);
         }
       }
 
-      if (images.isEmpty) return null;
+      if (imageFiles.isEmpty) return null;
 
-      images.sort(FileUtil.naturalCompareFileOrDir);
+      imageFiles.sort(FileUtil.naturalCompareFileOrDir);
 
-      var totalSize = 0;
-      if (sizeCalcFutures.isNotEmpty) {
-        final sizes = await Future.wait(sizeCalcFutures);
-        totalSize = sizes.fold(0, (sum, s) => sum + s);
-      }
+      // Use stored size IFF image count hasn't changed since last scan.
+      // When images are added/deleted (in-app or externally), recalculate.
+      final countChanged =
+          mangaRecord != null && mangaRecord.pageCount != imageFiles.length;
+      final totalSize = mangaRecord != null && !countChanged
+          ? mangaRecord.size
+          : await _calculateTotalSize(imageFiles);
 
       final result = Manga(
         id: mangaId,
         path: dirOfManga.path,
-        cover: LocalImage(path: images.first.path),
+        cover: LocalImage(path: imageFiles.first.path),
         title: basename(dirOfManga.path),
         lastReadPage: mangaRecord?.lastReadPage ?? 0,
         groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
-        pageCount: images.length,
+        pageCount: imageFiles.length,
         size: totalSize,
       );
 
@@ -133,12 +133,29 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
             type: 1,
           ),
         );
+      } else if (countChanged) {
+        MangaDao.updateManga(
+          MangaCompanion(
+            id: Value(result.id.value),
+            size: Value(result.size),
+            pageCount: Value(result.pageCount),
+          ),
+        );
       }
       return result;
     } catch (e) {
       LogUtil.e('Failed to load manga from ${dirOfManga.path}');
       return null;
     }
+  }
+
+  Future<int> _calculateTotalSize(List<File> images) async {
+    final futures = <Future<int>>[];
+    for (final f in images) {
+      futures.add(f.length());
+    }
+    final sizes = await Future.wait(futures);
+    return sizes.fold<int>(0, (sum, s) => sum + s);
   }
 
   List<LocalImage> getMangaImages(Manga manga) {

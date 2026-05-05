@@ -29,26 +29,31 @@ class _ReaderPageState extends State<ReaderPage> {
     return GetBuilder<ReaderPageController>(
       id: _controller.pageId,
       builder: (_) {
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: const SystemUiOverlayStyle(
-            systemNavigationBarColor: Colors.transparent,
-            systemNavigationBarDividerColor: Colors.transparent,
-            statusBarColor: Colors.transparent,
-            systemNavigationBarIconBrightness: Brightness.light,
-            statusBarIconBrightness: Brightness.light,
-            statusBarBrightness: Brightness.light,
-          ),
-          child: Container(
-            color: Colors.black,
-            child: Stack(
-              children: [
-                _buildReadMangaImages(),
-                _buildPageInfoOverlay(),
-                _buildTopMenu(),
-                _buildBottomMenu(),
-              ],
-            ),
-          ),
+        return LayoutBuilder(
+          builder: (_, constraints) {
+            _state.onLayoutWidthChanged(constraints.maxWidth);
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: const SystemUiOverlayStyle(
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarDividerColor: Colors.transparent,
+                statusBarColor: Colors.transparent,
+                systemNavigationBarIconBrightness: Brightness.light,
+                statusBarIconBrightness: Brightness.light,
+                statusBarBrightness: Brightness.light,
+              ),
+              child: Container(
+                color: Colors.black,
+                child: Stack(
+                  children: [
+                    _buildReadMangaImages(),
+                    _buildPageInfoOverlay(),
+                    _buildTopMenu(),
+                    _buildBottomMenu(),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

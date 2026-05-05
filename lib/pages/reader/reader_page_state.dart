@@ -27,7 +27,20 @@ class ReaderPageState {
 
   int currentIndex = 0;
 
+  double? _lastLayoutWidth;
+
   ReaderPageState() {
     imageContainerSizes = List.generate(readInfo.pageCount, (_) => null);
+  }
+
+  /// Call when layout width changes (e.g. orientation change).
+  /// Clears cached image sizes so they recalculate for the new width.
+  void onLayoutWidthChanged(double newWidth) {
+    if (_lastLayoutWidth != null && _lastLayoutWidth != newWidth) {
+      for (var i = 0; i < imageContainerSizes.length; i++) {
+        imageContainerSizes[i] = null;
+      }
+    }
+    _lastLayoutWidth = newWidth;
   }
 }

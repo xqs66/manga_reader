@@ -187,18 +187,31 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
     return GetBuilder<BooksPageController>(
       id: _controller.bodyId,
       builder: (_) {
-        if (_state.isAtRoot) {
-          return _buildLocalPaths();
-        }
-        if (_state.isSearchMode) {
-          return _buildMangaListWithoutGroup();
-        }
-        if (_state.mangas.isEmpty) {
-          return _buildEmptyState();
-        }
-        return _buildGroupedBooksList();
+        return Column(
+          children: [
+            _buildRefreshIndicator(),
+            Expanded(child: _buildBodyContent()),
+          ],
+        );
       },
     );
+  }
+
+  Widget _buildRefreshIndicator() {
+    return GetBuilder<BooksPageController>(
+      id: _controller.refreshProgressId,
+      builder: (_) {
+        if (!_state.isRefreshing) return const SizedBox.shrink();
+        return const LinearProgressIndicator(minHeight: 3);
+      },
+    );
+  }
+
+  Widget _buildBodyContent() {
+    if (_state.isAtRoot) return _buildLocalPaths();
+    if (_state.isSearchMode) return _buildMangaListWithoutGroup();
+    if (_state.mangas.isEmpty) return _buildEmptyState();
+    return _buildGroupedBooksList();
   }
 
   Widget _buildEmptyState() {
@@ -444,23 +457,24 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
                 onLongPressed: () => _state.isSelectMode
                     ? null
                     : _controller.handleLongPressManga(manga),
-            endActionPane: ActionPane(
-              motion: const ScrollMotion(),
-              children: [
-                SlidableAction(
-                  onPressed: (_) => FileUtil.copyMangaName(manga.title),
-                  icon: Icons.copy_rounded,
-                  label: '复制',
+                endActionPane: ActionPane(
+                  motion: const ScrollMotion(),
+                  children: [
+                    SlidableAction(
+                      onPressed: (_) => FileUtil.copyMangaName(manga.title),
+                      icon: Icons.copy_rounded,
+                      label: '复制',
+                    ),
+                    SlidableAction(
+                      onPressed: (_) =>
+                          Get.dialog(_buildDeleteMangaDialog(manga)),
+                      foregroundColor: Colors.red,
+                      icon: Icons.delete_rounded,
+                      label: '删除',
+                    ),
+                  ],
                 ),
-                SlidableAction(
-                  onPressed: (_) => Get.dialog(_buildDeleteMangaDialog(manga)),
-                  foregroundColor: Colors.red,
-                  icon: Icons.delete_rounded,
-                  label: '删除',
-                ),
-              ],
-            ),
-            manga: manga,
+                manga: manga,
               ),
             ],
           ),
@@ -474,37 +488,41 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
       id: _controller.bottomBarId,
       builder: (_) {
         if (!_state.isSelectMode) return const SizedBox.shrink();
-        return BottomAppBar(
-          height: UiConfig.bottomBarHeight,
-          child: Row(
-            mainAxisAlignment: .spaceEvenly,
-            children: [
-              _buildBottomAction(
-                icon: Icons.drive_file_move_rounded,
-                label: '移动',
-                onPressed: () {
-                  if (_state.selectedMangaIds.isEmpty) {
-                    Fluttertoast.showToast(msg: '请先选择漫画');
-                    return;
-                  }
-                  Get.dialog(_buildMoveGroupDialog());
-                },
-              ),
-              _buildBottomAction(
-                icon: Icons.delete_rounded,
-                label: '删除',
-                color: Colors.red,
-                onPressed: () {
-                  if (_state.selectedMangaIds.isEmpty) {
-                    Fluttertoast.showToast(msg: '请先选择漫画');
-                    return;
-                  }
-                  Get.dialog(_buildDeleteMangasDialog());
-                },
-              ),
-            ],
+        return SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          child: BottomAppBar(
+            child: Row(
+              mainAxisAlignment: .spaceEvenly,
+              children: [
+                _buildBottomAction(
+                  icon: Icons.drive_file_move_rounded,
+                  label: '移动',
+                  onPressed: () {
+                    if (_state.selectedMangaIds.isEmpty) {
+                      Fluttertoast.showToast(msg: '请先选择漫画');
+                      return;
+                    }
+                    Get.dialog(_buildMoveGroupDialog());
+                  },
+                ),
+                _buildBottomAction(
+                  icon: Icons.delete_rounded,
+                  label: '删除',
+                  color: Colors.red,
+                  onPressed: () {
+                    if (_state.selectedMangaIds.isEmpty) {
+                      Fluttertoast.showToast(msg: '请先选择漫画');
+                      return;
+                    }
+                    Get.dialog(_buildDeleteMangasDialog());
+                  },
+                ),
+              ],
+            ),
           ),
-        ).paddingOnly(bottom: Get.bottomBarHeight - UiConfig.bottomBarHeight);
+        );
       },
     );
   }
