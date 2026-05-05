@@ -18,6 +18,7 @@ class MangaImage extends StatelessWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
+  final int? maxBytes;
   final Color backgroundColor;
   final void Function()? onLongPress;
   final List<SheetAction>? longPressActions;
@@ -31,6 +32,7 @@ class MangaImage extends StatelessWidget {
     this.width,
     this.height,
     this.fit = .fitWidth,
+    this.maxBytes,
     this.backgroundColor = Colors.black,
     this.onLongPress,
     this.longPressActions,
@@ -57,6 +59,7 @@ class MangaImage extends StatelessWidget {
           width: width,
           height: height,
           fit: fit,
+          maxBytes: maxBytes,
           clearMemoryCacheWhenDispose: true,
           loadStateChanged: (state) {
             switch (state.extendedImageLoadState) {

@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
 import 'package:manga_reader/core/result.dart';
 import 'package:manga_reader/pages/books/mangas_page_controller.dart';
+import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 
@@ -55,7 +56,23 @@ class ReaderPageController extends GetxController {
 
     if (index != state.currentIndex) {
       state.currentIndex = index;
+      _scrollThumbnailToCurrent();
       update([bottomMenuId, bottomRightInfoId]);
+    }
+  }
+
+  void _scrollThumbnailToCurrent() {
+    final controller = state.thumbnailScrollController;
+    if (!controller.hasClients) return;
+    final itemWidth = UiConfig.thumbnailStripWidth + 6; // 3px margin on each side
+    final targetCenter = state.currentIndex * itemWidth + itemWidth / 2;
+    final offset = targetCenter - Get.width / 2 + 8; // 8px ListView left padding
+    if (offset > 0) {
+      controller.animateTo(
+        offset.clamp(0.0, controller.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
     }
   }
 
@@ -94,6 +111,7 @@ class ReaderPageController extends GetxController {
 
   void handleSlideEnd(double value) {
     state.itemScrollController.jumpTo(index: value.toInt() - 1);
+    _scrollThumbnailToCurrent();
     update([bottomRightInfoId]);
   }
 

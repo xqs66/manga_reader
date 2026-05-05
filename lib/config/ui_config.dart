@@ -13,7 +13,9 @@ class UiConfig {
 
   ///read page
   static const double topAreaMenuHeight = 60;
-  static const double bottomAreaMenuHeight = 80;
+  static const double bottomAreaMenuHeight = 56;
+  static const double thumbnailStripHeight = 120;
+  static const double thumbnailStripWidth = 80;
   static const double defaultImageContainerRadio = 1.78;
   static final Color readMenuColor = const Color(0xDB000000);
   static const Color readPageForegroundColor = Color(0xFFE0E0E0);

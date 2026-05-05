@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -12,6 +12,8 @@ class ReaderPageState {
 
   final ItemPositionsListener itemPositionsListener =
       ItemPositionsListener.create();
+
+  final thumbnailScrollController = ScrollController();
 
   final List<File> images = [];
 
