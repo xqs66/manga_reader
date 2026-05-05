@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
 import 'package:manga_reader/shared/constants/constants.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
@@ -10,7 +11,7 @@ import 'package:manga_reader/shared/utils/log_util.dart';
 import 'package:manga_reader/wigets/group_header.dart';
 import 'package:manga_reader/wigets/manga_list_tile_card.dart';
 import 'package:get/get.dart';
-import 'package:manga_reader/pages/books/books_page_controller.dart';
+import 'package:manga_reader/pages/books/manags_page_controller.dart';
 import 'package:manga_reader/wigets/select_dialog.dart';
 
 import '../../config/ui_config.dart';
@@ -18,14 +19,14 @@ import '../../models/manga.dart';
 import '../../settings/path_setting.dart';
 import '../../wigets/common_dialog.dart';
 
-class BooksPage extends StatefulWidget {
-  const BooksPage({super.key});
+class MangasPage extends StatefulWidget {
+  const MangasPage({super.key});
 
   @override
-  State<BooksPage> createState() => _BooksPageState();
+  State<MangasPage> createState() => _MangasPageState();
 }
 
-class _BooksPageState extends State<BooksPage> with RouteAware {
+class _MangasPageState extends State<MangasPage> with RouteAware {
   final _controller = Get.put(BooksPageController(), permanent: true);
   final _state = Get.find<BooksPageController>().state;
 
@@ -65,7 +66,7 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
 
   AppBar _buildNormalAppbar() {
     return AppBar(
-      title: Text('Books'),
+      title: Text('书架'),
       centerTitle: true,
       actions: [
         GetBuilder<BooksPageController>(
@@ -90,7 +91,7 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
       actions: [
         IconButton(
           onPressed: _controller.handleSelectAll,
-          icon: Icon(Icons.select_all),
+          icon: Icon(_state.isSelectedAll ? Icons.deselect : Icons.select_all),
         ),
       ],
     );
@@ -244,7 +245,7 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
       slivers.add(
         _buildElementSliver(
           i,
-          _state.books
+          _state.mangas
               .where((manga) => manga.groupName == _state.groups[i])
               .toList(),
         ),
@@ -386,11 +387,23 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
             crossAxisAlignment: .center,
             children: [
               IconButton(
-                onPressed: () => Get.dialog(_buildMoveGroupDialog()),
+                onPressed: () {
+                  if (_state.selectedMangaIds.isEmpty) {
+                    Fluttertoast.showToast(msg: '请先选择要移动的漫画');
+                    return;
+                  }
+                  Get.dialog(_buildMoveGroupDialog());
+                },
                 icon: Icon(Icons.drive_file_move),
               ),
               IconButton(
-                onPressed: () => Get.dialog(_buildDeleteMangasDialog()),
+                onPressed: () {
+                  if (_state.selectedMangaIds.isEmpty) {
+                    Fluttertoast.showToast(msg: '请先选择要删除的漫画');
+                    return;
+                  }
+                  Get.dialog(_buildDeleteMangasDialog());
+                },
                 icon: Icon(Icons.delete, color: Colors.red),
               ),
             ],
@@ -460,8 +473,9 @@ class _BooksPageState extends State<BooksPage> with RouteAware {
               ),
               CheckboxListTile(
                 value: _state.deleteOnceGroupDeleted,
-                onChanged: (value) =>
-                    _controller.handleChangeDeleteGroupOption(!(value ?? false)),
+                onChanged: (value) => _controller.handleChangeDeleteGroupOption(
+                  !(value ?? false),
+                ),
                 title: Text('同时删除分组下漫画'),
                 subtitle: Text('此操作不可恢复'),
                 contentPadding: .zero,

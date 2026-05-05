@@ -11,7 +11,7 @@ import 'package:manga_reader/database/table/group.dart';
 import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/read_info.dart';
-import 'package:manga_reader/pages/books/books_page_state.dart';
+import 'package:manga_reader/pages/books/manags_page_state.dart';
 import 'package:manga_reader/pages/home_page_controller.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
@@ -51,14 +51,15 @@ class BooksPageController extends GetxController with ScrollHandler {
     // state.books.assignAll(
     //   localMangaService.mangasInLocalSettingPaths[state.currentPath] ?? [],
     // );
-    state.books = localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+    state.mangas =
+        localMangaService.settingPath2Mangas[state.currentPath] ?? [];
     update([bodyId]);
   }
 
   void enterMangaDir(String path) {
     state.isAtRoot = false;
     state.currentPath = path;
-    state.books = localMangaService.settingPath2Mangas[path] ?? [];
+    state.mangas = localMangaService.settingPath2Mangas[path] ?? [];
     update([bodyId, popUpMenuId]);
   }
 
@@ -97,9 +98,9 @@ class BooksPageController extends GetxController with ScrollHandler {
       state.searchTextController.clear();
       state.searchedMangas.clear();
     } else {
-      state.searchedMangas.assignAll(state.books);
+      state.searchedMangas.assignAll(state.mangas);
     }
-    LogUtil.d(state.books.toString());
+    LogUtil.d(state.mangas.toString());
     update([appBarId, bodyId]);
   }
 
@@ -108,8 +109,8 @@ class BooksPageController extends GetxController with ScrollHandler {
     searshingDebounceTimer = Timer(const Duration(milliseconds: 300), () {
       state.searchedMangas.assignAll(
         keyword.isEmpty
-            ? state.books
-            : state.books
+            ? state.mangas
+            : state.mangas
                   .where((manga) => manga.title.contains(keyword))
                   .toList(),
       );
@@ -136,9 +137,15 @@ class BooksPageController extends GetxController with ScrollHandler {
   }
 
   void handleSelectAll() {
-    state.selectedMangaIds.assignAll(
-      (state.isSerchMode ? state.searchedMangas : state.books).map((e) => e.id),
-    );
+    if (state.isSelectedAll) {
+      state.selectedMangaIds.clear();
+    } else {
+      state.selectedMangaIds.assignAll(
+        (state.isSerchMode ? state.searchedMangas : state.mangas).map(
+          (e) => e.id,
+        ),
+      );
+    }
     update([appBarId, bodyId]);
   }
 
@@ -178,7 +185,7 @@ class BooksPageController extends GetxController with ScrollHandler {
           LogUtil.e('改变分组失败', error: e);
           Fluttertoast.showToast(msg: '改变分组失败');
         });
-    for (var manga in state.books) {
+    for (var manga in state.mangas) {
       if (state.selectedMangaIds.contains(manga.id)) {
         manga.groupName = groupName;
       }
@@ -221,7 +228,7 @@ class BooksPageController extends GetxController with ScrollHandler {
   void handleDeleteGroup(String groupName) async {
     if (state.toDefaultGroupOnceDelete) {
       await MangaDao.updateMangas(
-        state.books
+        state.mangas
             .where((manga) => manga.groupName == groupName)
             .map(
               (manga) => MangaCompanion(
@@ -262,14 +269,15 @@ class BooksPageController extends GetxController with ScrollHandler {
       barrierDismissible: false,
     );
     await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
-    state.books = localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+    state.mangas =
+        localMangaService.settingPath2Mangas[state.currentPath] ?? [];
     update([bodyId]);
     Get.back();
   }
 
   Future<void> handleDeleteManga(Manga manga) async {
     localMangaService.deleteManga(manga);
-    state.books.remove(manga);
+    state.mangas.remove(manga);
     update([bodyId]);
     Get.back();
   }
@@ -277,7 +285,7 @@ class BooksPageController extends GetxController with ScrollHandler {
   Future<void> handleDeleteMangas() async {
     localMangaService.deleteMangas(state.selectedMangas);
     state.selectedMangaIds.forEach((id) {
-      state.books.removeWhere((manga) => manga.id == id);
+      state.mangas.removeWhere((manga) => manga.id == id);
     });
     update([bodyId]);
     Get.back();

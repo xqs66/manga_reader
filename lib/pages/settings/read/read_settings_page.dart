@@ -55,7 +55,7 @@ class ReadSettingsPage extends StatelessWidget {
             Expanded(
               child: Slider(
                 min: 0,
-                max: 30,
+                max: 50,
                 showValueIndicator: .alwaysVisible,
                 value: readSetting.imageSpacing.value.toDouble(),
                 onChanged: (value) =>

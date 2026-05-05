@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:manga_reader/pages/edit/edit_page.dart';
 import 'package:manga_reader/pages/settings/settings_page.dart';
 
-import 'books/books_page.dart';
+import 'books/mangas_page.dart';
 import 'home_page_controller.dart';
 
 class HomePage extends StatefulWidget {
@@ -32,7 +32,7 @@ class _HomePageState extends State<HomePage> {
         return Stack(
           children: [
             Offstage(offstage: _state.pageIndex != 0, child: EditPage()),
-            Offstage(offstage: _state.pageIndex != 1, child: BooksPage()),
+            Offstage(offstage: _state.pageIndex != 1, child: MangasPage()),
             Offstage(offstage: _state.pageIndex != 2, child: SettingsPage()),
           ],
         );

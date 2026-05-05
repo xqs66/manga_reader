@@ -6,7 +6,7 @@ import '../../models/manga.dart';
 class BooksPageState with ScrollState {
   Set<String> displayGroups = {};
 
-  List<Manga> books = [];
+  List<Manga> mangas = [];
 
   List<String> groups = [];
 
@@ -24,9 +24,11 @@ class BooksPageState with ScrollState {
 
   Set<String> selectedMangaIds = {};
 
+  bool get isSelectedAll => selectedMangaIds.length == mangas.length;
+
   List<Manga> get selectedMangas =>
-      books.where((manga) => selectedMangaIds.contains(manga.id)).toList();
-  
+      mangas.where((manga) => selectedMangaIds.contains(manga.id)).toList();
+
   bool toDefaultGroupOnceDelete = true;
 
   bool get deleteOnceGroupDeleted => !toDefaultGroupOnceDelete;

@@ -5,7 +5,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:manga_reader/pages/books/books_page_controller.dart';
+import 'package:manga_reader/pages/books/manags_page_controller.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
@@ -27,7 +27,9 @@ class ReaderPageController extends GetxController {
 
     applyEnableImmersive();
 
-    toggleImmersiveModeListener = ever(readSetting.enableImmersiveMode, (value) {
+    toggleImmersiveModeListener = ever(readSetting.enableImmersiveMode, (
+      value,
+    ) {
       applyEnableImmersive();
     });
 
@@ -138,7 +140,7 @@ class ReaderPageController extends GetxController {
     final image = state.readInfo.images[index];
     final readingManga = state.readInfo.mangaInfo;
     final controller = Get.find<BooksPageController>();
-    final mangaList = controller.state.books;
+    final mangaList = controller.state.mangas;
     final indexOfReadingManga = mangaList.indexOf(readingManga);
 
     LogUtil.d(mangaList[indexOfReadingManga].title);

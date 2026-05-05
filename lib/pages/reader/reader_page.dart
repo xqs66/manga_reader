@@ -37,21 +37,15 @@ class _ReaderPageState extends State<ReaderPage> {
             statusBarIconBrightness: Brightness.light,
             statusBarBrightness: Brightness.light,
           ),
-          child: SafeArea(
-            child: Container(
-              color: Colors.white,
-              child: SizedBox(
-                height: 50,
-                width: 100,
-                child: Stack(
-                  children: [
-                    _buildReadMangaImages(),
-                    _buildBottomRightInfo(),
-                    _buildTopMenu(),
-                    _buildBottomMenu(),
-                  ],
-                ),
-              ),
+          child: Container(
+            color: Colors.black,
+            child: Stack(
+              children: [
+                _buildReadMangaImages(),
+                _buildBottomRightInfo(),
+                _buildTopMenu(),
+                _buildBottomMenu(),
+              ],
             ),
           ),
         );
@@ -85,7 +79,7 @@ class _ReaderPageState extends State<ReaderPage> {
                   () => SizedBox(
                     height: readSetting.imageSpacing.value.toDouble(),
                   ),
-                )
+                ),
               ),
             );
           },
@@ -147,8 +141,12 @@ class _ReaderPageState extends State<ReaderPage> {
       id: _controller.topMenuId,
       builder: (_) {
         return AnimatedPositioned(
-          top: 0,
-          height: _state.isMenuOpen ? UiConfig.topAreaMenuHeight : 0,
+          height: _state.isMenuOpen
+              ? UiConfig.topAreaMenuHeight +
+                    (readSetting.enableImmersiveMode.value
+                        ? 0
+                        : context.mediaQuery.padding.top)
+              : 0,
           width: Get.width,
           curve: Curves.ease,
           duration: Duration(milliseconds: 200),
@@ -187,9 +185,14 @@ class _ReaderPageState extends State<ReaderPage> {
     return GetBuilder<ReaderPageController>(
       id: _controller.bottomMenuId,
       builder: (_) {
+        final double compansation = readSetting.enableImmersiveMode.value
+            ? 0
+            : context.mediaQuery.padding.bottom;
         return AnimatedPositioned(
           bottom: _state.isMenuOpen ? 0 : -UiConfig.bottomAreaMenuHeight,
-          height: _state.isMenuOpen ? UiConfig.bottomAreaMenuHeight : 0,
+          height: _state.isMenuOpen
+              ? UiConfig.topAreaMenuHeight + compansation
+              : 0,
           width: Get.width,
           curve: Curves.ease,
           duration: Duration(milliseconds: 200),
@@ -197,6 +200,7 @@ class _ReaderPageState extends State<ReaderPage> {
             color: Colors.transparent,
             child: Container(
               color: UiConfig.readMenuColor,
+              padding: .only(bottom: compansation),
               child: Row(
                 children: [
                   Text(
@@ -233,8 +237,12 @@ class _ReaderPageState extends State<ReaderPage> {
         id: _controller.bottomRightInfoId,
         builder: (context) {
           return Material(
+            color: Colors.transparent,
             child: Container(
-              color: const Color(0x8C000000),
+              decoration: BoxDecoration(
+                color: const Color(0x9B000000),
+                borderRadius: .only(topLeft: .circular(5)),
+              ),
               height: 15,
               child: Row(
                 mainAxisSize: .min,
