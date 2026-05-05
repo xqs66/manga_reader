@@ -1,16 +1,17 @@
 import 'local_image.dart';
+import 'manga_id.dart';
 
 class Manga {
-  final String id;
+  final MangaId id;
   final String path;
   final String title;
   final int pageCount;
-  int lastReadPage;
-  int size;
-  String groupName;
+  final int lastReadPage;
+  final int size;
+  final String groupName;
   final LocalImage cover;
 
-  Manga({
+  const Manga({
     required this.id,
     required this.path,
     required this.title,
@@ -22,7 +23,7 @@ class Manga {
   });
 
   Manga copyWith({
-    String? id,
+    MangaId? id,
     String? path,
     String? title,
     int? pageCount,
@@ -44,13 +45,8 @@ class Manga {
   }
 
   @override
-  bool operator ==(Object other) {
-    return other is Manga &&
-        other.id == id &&
-        other.pageCount == pageCount &&
-        other.size == size;
-  }
+  bool operator ==(Object other) => other is Manga && other.id == id;
 
   @override
-  int get hashCode => path.hashCode;
+  int get hashCode => id.hashCode;
 }

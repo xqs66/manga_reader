@@ -20,13 +20,20 @@ class CommonDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(title),
+      shape: RoundedRectangleBorder(borderRadius: .circular(16)),
+      title: Text(title, style: const TextStyle(fontSize: 17)),
       content: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: 200),
+        constraints: const BoxConstraints(maxHeight: 250),
         child: content,
       ),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      actionsPadding: const EdgeInsets.only(bottom: 4, right: 8),
       actions: [
-        TextButton(onPressed: () => Get.back(), child: Text('取消')),
+        TextButton(
+          onPressed: () => Get.back(),
+          child: const Text('取消'),
+        ),
         TextButton(
           onPressed: isConfirmable ? onConfirm : null,
           child: Text(

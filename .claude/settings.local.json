@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dart analyze *)",
+      "Bash(git mv *)",
+      "Bash(git rm *)"
+    ]
+  }
+}

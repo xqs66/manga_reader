@@ -1,17 +1,15 @@
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
-import 'package:manga_reader/pages/books/manags_page_controller.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
-import 'package:manga_reader/wigets/manga_list_tile_card.dart';
+import 'package:manga_reader/widgets/manga_list_tile_card.dart';
 import 'package:path/path.dart' as p;
 
 import 'merge_mangas_page_state.dart';
@@ -30,6 +28,7 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
   final String titleId = 'titleId';
   final String cancelButtonId = 'cancelButtonId';
   final String mergeStartDialogId = 'mergeStartDialogId';
+  final String mergeProgressId = 'mergeProgressId';
 
   void selectDir() async {
     final dir = await FileUtil.selectDir();
@@ -74,13 +73,11 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
 
   List<String> _getSelectedMangaItemIds() {
     return state.selectedMangaIndexes
-        .map((index) => '$mangaListTileIdPrefix::$index')
+        .map((i) => '$mangaListTileIdPrefix::$i')
         .toList();
   }
 
-  void handleTapStartMerge() async {
-    late final Manga? outputManga;
-
+  Future<void> handleTapStartMerge() async {
     if (state.selectedDir == null || state.outputDir == null) {
       Fluttertoast.showToast(msg: '请选择目录');
       return;
@@ -89,9 +86,11 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
       Fluttertoast.showToast(msg: '请输入合集名');
       return;
     }
-    if (Directory(
-      p.join(state.outputDir!.path, state.targetDirNameController.text.trim()),
-    ).existsSync()) {
+    final outputPath = p.join(
+      state.outputDir!.path,
+      state.targetDirNameController.text.trim(),
+    );
+    if (Directory(outputPath).existsSync()) {
       Fluttertoast.showToast(msg: '目标目录下存在同名目录，请重新输入合集名');
       return;
     }
@@ -102,54 +101,48 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
     }
 
     state.isMerging = true;
+    state.mergeProgress = 0;
+    state.mergeTotal = 0;
     Get.back();
-    Get.dialog(
-      const Center(child: CircularProgressIndicator()),
-      barrierDismissible: false,
-    );
+    Get.dialog(_buildMergeProgressDialog(), barrierDismissible: false);
 
     final mangas = state.selectedMangas;
-    final outputDir = p.join(
-      state.outputDir!.path,
-      state.targetDirNameController.text.trim(),
-    );
-
-    localMangaService
-        .mergeMangas(mangas, Directory(outputDir))
-        .then((result) {
-          outputManga = result;
-          Fluttertoast.showToast(msg: '合并成功');
-        })
-        .catchError((e) {
-          LogUtil.e('合并失败', error: e);
-          Fluttertoast.showToast(msg: '合并失败');
-        })
-        .whenComplete(() {
-          handleMergeCompeleted(mangas, outputManga);
-        });
+    try {
+      final outputManga = await localMangaService.mergeMangas(
+        mangas,
+        Directory(outputPath),
+        onProgress: (current, total) {
+          state.mergeProgress = current;
+          state.mergeTotal = total;
+          update([mergeProgressId]);
+        },
+      );
+      Fluttertoast.showToast(msg: '合并成功');
+      _onMergeCompleted(mangas, outputManga);
+    } catch (e) {
+      LogUtil.e('合并失败', error: e);
+      Fluttertoast.showToast(msg: '合并失败');
+      _onMergeCompleted(mangas, null);
+    }
   }
 
-  void handleMergeCompeleted(List<Manga> selectedMangas, Manga? outputManga) {
-    if (outputManga == null) {
-      return;
-    }
-    if (state.deleteSourceMangas) {
-      localMangaService.deleteMangas(selectedMangas, showToast: false);
-      if (pathSetting.paths.contains(state.selectedDir?.path)) {
-        localMangaService.settingPath2Mangas[state.selectedDir?.path]
-            ?.removeWhere((manga) => selectedMangas.contains(manga));
+  void _onMergeCompleted(List<Manga> selectedMangas, Manga? outputManga) {
+    if (outputManga != null) {
+      if (state.deleteSourceMangas) {
+        localMangaService.deleteMangas(selectedMangas, showToast: false);
+        if (pathSetting.paths.contains(state.selectedDir?.path)) {
+          localMangaService.settingPath2Mangas[state.selectedDir?.path]
+              ?.removeWhere((m) => selectedMangas.contains(m));
+        }
+        state.mangas.removeWhere((m) => selectedMangas.contains(m));
       }
-      state.mangas.removeWhere((manga) => selectedMangas.contains(manga));
+      if (pathSetting.paths.contains(state.outputDir?.path)) {
+        localMangaService.settingPath2Mangas[state.outputDir?.path]
+          ?..add(outputManga)
+          ..sort((a, b) => FileUtil.naturalCompare(a.title, b.title));
+      }
+      state.hasMerged = true;
     }
-    if (pathSetting.paths.contains(state.outputDir?.path)) {
-      localMangaService.settingPath2Mangas[state.outputDir?.path]
-        ?..add(outputManga)
-        ..sort(
-          (mangaA, mangaB) =>
-              FileUtil.naturalCompare(mangaA.title, mangaB.title),
-        );
-    }
-    state.hasMerged = true;
     state.isMerging = false;
     state.targetDirNameController.clear();
     state.selectedMangaIndexes.clear();
@@ -161,6 +154,38 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
   void handleToggleDeleteSource(bool? value) {
     state.deleteSourceMangas = value ?? false;
     update([mergeStartDialogId]);
+  }
+
+  Widget _buildMergeProgressDialog() {
+    return GetBuilder<MergeMangasPageController>(
+      id: mergeProgressId,
+      builder: (_) {
+        final progress = state.mergeTotal > 0
+            ? state.mergeProgress / state.mergeTotal
+            : 0.0;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: .circular(16)),
+          title: const Text('正在合并...'),
+          content: Column(
+            mainAxisSize: .min,
+            children: [
+              ClipRRect(
+                borderRadius: .circular(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '${state.mergeProgress} / ${state.mergeTotal}',
+                style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override

@@ -5,11 +5,11 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:manga_reader/pages/books/manags_page_controller.dart';
+import 'package:manga_reader/core/repository/manga_repository.dart';
+import 'package:manga_reader/core/result.dart';
+import 'package:manga_reader/pages/books/mangas_page_controller.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
-import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
 
 class ReaderPageController extends GetxController {
   final state = ReaderPageState();
@@ -61,7 +61,7 @@ class ReaderPageController extends GetxController {
 
   void toggleMenuOpen() {
     state.isMenuOpen = !state.isMenuOpen;
-    update([topMenuId, bottomMenuId]);
+    update([topMenuId, bottomMenuId, bottomRightInfoId]);
   }
 
   void onLoadCompleteCallBack(
@@ -126,7 +126,7 @@ class ReaderPageController extends GetxController {
           TextButton(onPressed: () => Get.back(), child: Text('取消')),
           TextButton(
             onPressed: () async {
-              deleteImage(index);
+              await deleteImage(index);
               Get.back();
             },
             child: Text('确定'),
@@ -139,23 +139,28 @@ class ReaderPageController extends GetxController {
   Future<void> deleteImage(int index) async {
     final image = state.readInfo.images[index];
     final readingManga = state.readInfo.mangaInfo;
-    final controller = Get.find<BooksPageController>();
-    final mangaList = controller.state.mangas;
-    final indexOfReadingManga = mangaList.indexOf(readingManga);
+    final booksController = Get.find<BooksPageController>();
+    final mangaList = booksController.state.mangas;
+    final indexOfReadingManga =
+        mangaList.indexWhere((m) => m.id == readingManga.id);
+    if (indexOfReadingManga == -1) return;
 
-    LogUtil.d(mangaList[indexOfReadingManga].title);
+    final repo = Get.find<MangaRepository>();
+    final result = await repo.deleteImage(image);
+    if (result is Err) return;
 
-    await localMangaService.deleteImage(image);
     state.readInfo.images.removeAt(index);
     state.readInfo.pageCount--;
+    state.imageContainerSizes.removeAt(index);
     update([imageListId]);
 
-    final afterManga = await localMangaService.loadManga(
-      Directory(readingManga.path),
-    );
+    final loadResult = await repo.tryLoadManga(Directory(readingManga.path));
+    final afterManga = loadResult.okValue;
     if (afterManga != null) {
       mangaList[indexOfReadingManga] = afterManga;
+      state.readInfo.mangaInfo = afterManga;
+      booksController.update(
+          ['${booksController.mangaIdPrefix}::$indexOfReadingManga']);
     }
-    controller.update(['${controller.mangaIdPrefix}::$indexOfReadingManga']);
   }
 }

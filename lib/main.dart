@@ -11,16 +11,20 @@ import 'package:manga_reader/service/path_service.dart';
 import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/shared/utils/log_util.dart';
+import 'package:manga_reader/core/repository/manga_repository_impl.dart';
 import 'package:manga_reader/pages/home_page.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/settings/path_setting.dart';
+
+final mangaRepo = MangaRepositoryImpl(localMangaService);
 
 List<ServiceLifeCircleBean> serviceBeans = [
   pathSetting,
   pathService,
   storageService,
   localMangaService,
-  readSetting
+  readSetting,
+  mangaRepo,
 ];
 
 void main() async {
@@ -97,10 +101,52 @@ class MyApp extends StatelessWidget {
       title: 'Manga Reader',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF5C6BC0)),
-        appBarTheme: AppBarTheme(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF5C6BC0),
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        appBarTheme: const AppBarTheme(
           surfaceTintColor: Colors.transparent,
-          scrolledUnderElevation: 0,
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF1A1A1A),
+          scrolledUnderElevation: 2,
+          shadowColor: Colors.black12,
+          elevation: 1,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+        bottomAppBarTheme: const BottomAppBarThemeData(
+          elevation: 4,
+          shadowColor: Colors.black26,
+          surfaceTintColor: Colors.transparent,
+          color: Colors.white,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          elevation: 4,
+          shadowColor: Colors.black26,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFF5C6BC0).withValues(alpha: 0.12),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              );
+            }
+            return const TextStyle(fontSize: 12);
+          }),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shadowColor: Colors.black26,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: .circular(12)),
         ),
       ),
       getPages: Routes.pages,

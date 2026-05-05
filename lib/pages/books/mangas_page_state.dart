@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:manga_reader/mixin/scroll_handler.dart';
+import 'package:manga_reader/models/manga_id.dart';
 
 import '../../models/manga.dart';
 
@@ -10,24 +11,24 @@ class BooksPageState with ScrollState {
 
   List<String> groups = [];
 
+  Set<MangaId> selectedMangaIds = {};
+
   bool isAtRoot = true;
 
   String? currentPath;
 
   bool isSelectMode = false;
 
-  bool isSerchMode = false;
+  bool isSearchMode = false;
 
   TextEditingController searchTextController = TextEditingController();
 
   List<Manga> searchedMangas = [];
 
-  Set<String> selectedMangaIds = {};
-
   bool get isSelectedAll => selectedMangaIds.length == mangas.length;
 
   List<Manga> get selectedMangas =>
-      mangas.where((manga) => selectedMangaIds.contains(manga.id)).toList();
+      mangas.where((m) => selectedMangaIds.contains(m.id)).toList();
 
   bool toDefaultGroupOnceDelete = true;
 

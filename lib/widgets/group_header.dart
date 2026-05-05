@@ -18,19 +18,26 @@ class GroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Card(
-        color: UiConfig.groupHeaderColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(UiConfig.groupHeaderRadius),
-        ),
-        child: SizedBox(
-          height: UiConfig.groupHeaderHeight,
-          width: Get.width * 0.5,
-          child: child.center().paddingSymmetric(
-            horizontal: UiConfig.groupHeaderPadding,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Card(
+          elevation: 0,
+          color: UiConfig.groupHeaderColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: .circular(UiConfig.groupHeaderRadius),
+            side: BorderSide(
+              color: UiConfig.groupHeaderColor.withValues(alpha: 0.8),
+            ),
+          ),
+          child: SizedBox(
+            height: UiConfig.groupHeaderHeight,
+            width: Get.width * 0.5,
+            child: child.center().paddingSymmetric(
+              horizontal: UiConfig.groupHeaderPadding,
+            ),
           ),
         ),
       ),

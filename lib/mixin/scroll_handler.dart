@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
 
 mixin ScrollState {
   final scrollController = ScrollController();

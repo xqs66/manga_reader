@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/routes/routes.dart';
-import 'package:manga_reader/service/local_manga_service.dart';
-import 'package:manga_reader/shared/extensions/widget_ext.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
 
 class EditPage extends StatefulWidget {
   const EditPage({super.key});
@@ -17,52 +14,71 @@ class _EditPageState extends State<EditPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Edit'), centerTitle: true),
-      body: Center(
-        child: Wrap(
-          children: [
-            buildButton(
-              label: '显示状态栏',
-              onPressed: () => SystemChrome.setEnabledSystemUIMode(.edgeToEdge),
-            ),
-            buildButton(
-              label: '沉浸式',
-              onPressed: () =>
-                  SystemChrome.setEnabledSystemUIMode(.immersiveSticky),
-            ),
-            buildButton(
-              label: '将漫画合并为合集',
-              onPressed: () => Get.toNamed(Routes.mergeMangas),
-            ),
-            buildButton(
-              label: '测试',
-              onPressed: () => Get.dialog(
-                const Center(child: CircularProgressIndicator()),
-                barrierDismissible: false,
-              ),
-            ),
-          ],
+      appBar: AppBar(
+        title: const Text('工具'),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildSectionHeader('漫画操作'),
+          const SizedBox(height: 8),
+          _buildToolCard(
+            icon: Icons.merge_rounded,
+            title: '合并漫画为合集',
+            subtitle: '将多部漫画按顺序合并为一个合集',
+            color: UiConfig.primaryColor,
+            onTap: () => Get.toNamed(Routes.mergeMangas),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF757575),
+          letterSpacing: 0.5,
         ),
       ),
     );
   }
 
-  Widget buildButton({required String label, VoidCallback? onPressed}) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: SizedBox(
-        height: 100,
-        width: 150,
-        child: Card(
-          shape: RoundedRectangleBorder(),
-          child: Text(label).center(),
+  Widget _buildToolCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: .circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: .circular(10),
+          ),
+          child: Icon(icon, color: color, size: 22),
         ),
+        title: Text(title, style: const TextStyle(fontSize: 15)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 13)),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+        onTap: onTap,
       ),
     );
-  }
-
-  void _test() async {
-    final paths = localMangaService.settingPath2Mangas.keys;
-    LogUtil.d(paths.toString(), tag: 'Mangas');
   }
 }

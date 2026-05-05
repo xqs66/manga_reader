@@ -8,7 +8,7 @@ import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/shared/extensions/text_ext.dart';
 import 'package:manga_reader/shared/extensions/widget_ext.dart';
-import 'package:manga_reader/wigets/loading_widget.dart';
+import 'package:manga_reader/widgets/loading_widget.dart';
 
 import '../models/local_image.dart';
 import '../models/manga.dart';
@@ -30,21 +30,6 @@ class MangaListTileCard extends StatelessWidget {
     this.onLongPressed,
   });
 
-  // @override
-  // Widget build(BuildContext context) {
-  //   return Card(
-  //     child: ListTile(
-  //       leading: _buildCoverImage(manga.cover),
-  //       minTileHeight: 100,
-  //       title: Text(manga.title, maxLines: 2, overflow: .ellipsis),
-  //       subtitle: Align(
-  //         alignment: .centerRight,
-  //         child: Text('${FileUtil.formatFileSize(manga.size)}'),
-  //       ),
-  //     ),
-  //   );
-  // }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -53,12 +38,17 @@ class MangaListTileCard extends StatelessWidget {
       child: Slidable(
         endActionPane: endActionPane,
         child: Card(
+          elevation: 2,
+          shadowColor: Colors.black26,
+          shape: RoundedRectangleBorder(
+            borderRadius: .circular(12),
+          ),
           child: SizedBox(
             height: UiConfig.mangaListCardHeight,
             child: Row(
               children: [
-                _buildCoverImage(manga.cover).paddingAll(5.0),
-                Expanded(child: _buildMangaInfo().paddingAll(10.0)),
+                _buildCoverImage(manga.cover).paddingAll(5),
+                Expanded(child: _buildMangaInfo().paddingAll(10)),
               ],
             ),
           ),
@@ -71,19 +61,19 @@ class MangaListTileCard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return ClipRRect(
-          borderRadius: .all(.circular(5.0)),
+          borderRadius: .circular(8),
           child: buildCover
               ? ExtendedImage.file(
                   File(cover.path),
                   fit: .cover,
-                  width: constraints.maxHeight * 0.75,
+                  width: constraints.maxHeight * 0.72,
                   height: constraints.maxHeight,
                   clearMemoryCacheIfFailed: true,
                   loadStateChanged: (state) {
                     switch (state.extendedImageLoadState) {
                       case .loading:
                         return LoadingWidget(
-                          width: constraints.maxHeight * 0.75,
+                          width: constraints.maxHeight * 0.72,
                           height: constraints.maxHeight,
                         );
                       case .completed:
@@ -92,7 +82,7 @@ class MangaListTileCard extends StatelessWidget {
                           fit: .cover,
                         ).fadeIn();
                       case .failed:
-                        return Icon(Icons.broken_image);
+                        return const Icon(Icons.broken_image_rounded);
                     }
                   },
                 )
@@ -100,7 +90,7 @@ class MangaListTileCard extends StatelessWidget {
                   width:
                       (UiConfig.mangaListCardHeight -
                           2 * UiConfig.mangaListCardPadding) *
-                      0.75,
+                      0.72,
                 ),
         );
       },
@@ -109,8 +99,12 @@ class MangaListTileCard extends StatelessWidget {
 
   Widget _buildMangaInfo() {
     return Column(
+      crossAxisAlignment: .start,
       mainAxisAlignment: .spaceBetween,
-      children: [_buildTitle(), _buildInfoFooter()],
+      children: [
+        _buildTitle(),
+        _buildInfoFooter(),
+      ],
     );
   }
 
@@ -121,18 +115,24 @@ class MangaListTileCard extends StatelessWidget {
       overflow: .ellipsis,
       textAlign: .start,
       style: UiConfig.mangaCardTitleStyle,
-    ).alignLeft();
+    );
   }
 
   Widget _buildInfoFooter() {
     return Row(
       mainAxisAlignment: .spaceBetween,
       children: [
+        Row(
+          children: [
+            Icon(Icons.image_rounded, size: 13, color: Colors.grey.shade500),
+            const SizedBox(width: 3),
+            Text('${manga.pageCount}P', style: UiConfig.listTileSubtitleStyle),
+          ],
+        ),
         Text(
           FileUtil.formatFileSize(manga.size),
           style: UiConfig.listTileSubtitleStyle,
         ),
-        Text('${manga.pageCount}P', style: UiConfig.listTileSubtitleStyle),
       ],
     );
   }
@@ -152,12 +152,15 @@ class LongPressActionSheet {
               (action) => CupertinoActionSheetAction(
                 onPressed: () async {
                   await action.onPressed();
-                  Get.back();
+                  if (Get.isBottomSheetOpen ?? false) Get.back();
                 },
                 child: Text(action.label).color(action.labelColor),
               ),
             ),
-            CupertinoActionSheetAction(onPressed: Get.back, child: Text('取消')),
+            CupertinoActionSheetAction(
+              onPressed: () => Get.back(),
+              child: const Text('取消'),
+            ),
           ],
         );
       },

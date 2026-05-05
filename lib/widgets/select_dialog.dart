@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:manga_reader/wigets/common_dialog.dart';
+import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/widgets/common_dialog.dart';
 
 class SelectDialog extends StatefulWidget {
   final List<String> items;
@@ -30,30 +31,39 @@ class _SelectDialogState extends State<SelectDialog> {
       title: widget.title,
       isConfirmable: selectedIndex != null,
       content: ListView.builder(
-        physics: const BouncingScrollPhysics(),
+        shrinkWrap: true,
         itemCount: widget.items.length,
-        itemBuilder: (context, index) => Container(
-          decoration: selectedIndex == index
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(12.0),
-                  color: Color(0x3B000000),
-                )
-              : null,
-          child: ListTile(
-            title: Text(widget.items[index]),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12.0),
+        itemBuilder: (context, index) {
+          final isSelected = selectedIndex == index;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 4),
+            decoration: isSelected
+                ? BoxDecoration(
+                    borderRadius: .circular(12),
+                    color: UiConfig.primaryColor.withValues(alpha: 0.1),
+                  )
+                : null,
+            child: ListTile(
+              leading: isSelected
+                  ? const Icon(Icons.check_rounded, color: UiConfig.primaryColor)
+                  : null,
+              title: Text(
+                widget.items[index],
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+              shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+              selected: isSelected,
+              selectedTileColor: UiConfig.primaryColor.withValues(alpha: 0.05),
+              onTap: () {
+                setState(() {
+                  selectedIndex = index;
+                });
+              },
             ),
-            textColor: const Color(0xFF323232),
-            selected: selectedIndex == index,
-            selectedColor: Colors.black,
-            onTap: () {
-              setState(() {
-                selectedIndex = index;
-              });
-            },
-          ),
-        ),
+          );
+        },
       ),
     );
   }

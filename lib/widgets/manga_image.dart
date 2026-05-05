@@ -4,8 +4,8 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/shared/extensions/widget_ext.dart';
-import 'package:manga_reader/wigets/loading_widget.dart';
-import 'package:manga_reader/wigets/manga_list_tile_card.dart';
+import 'package:manga_reader/widgets/loading_widget.dart';
+import 'package:manga_reader/widgets/manga_list_tile_card.dart';
 
 import '../models/local_image.dart';
 

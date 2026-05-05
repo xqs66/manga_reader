@@ -20,85 +20,69 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _buildBody(context),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
+      body: _buildBody(),
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildBody() {
     return GetBuilder<HomePageController>(
-      id: 'home_page',
+      id: _controller.homePageId,
       builder: (_) {
-        return Stack(
-          children: [
-            Offstage(offstage: _state.pageIndex != 0, child: EditPage()),
-            Offstage(offstage: _state.pageIndex != 1, child: MangasPage()),
-            Offstage(offstage: _state.pageIndex != 2, child: SettingsPage()),
-          ],
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          child: _buildCurrentPage(),
         );
       },
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context) {
+  Widget _buildCurrentPage() {
+    switch (_state.pageIndex) {
+      case 0:
+        return const EditPage(key: ValueKey('edit'));
+      case 1:
+        return const MangasPage(key: ValueKey('mangas'));
+      case 2:
+        return const SettingsPage(key: ValueKey('settings'));
+      default:
+        return const MangasPage(key: ValueKey('mangas'));
+    }
+  }
+
+  Widget _buildBottomNavigationBar() {
     return GetBuilder<HomePageController>(
       id: _controller.bottomBarId,
       builder: (_) {
         return _state.showBottomBar
             ? NavigationBar(
-                labelBehavior: .alwaysHide,
-                destinations: [
-                  NavigationDestination(
-                    icon: const Icon(Icons.work),
-                    label: 'kit',
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.book),
-                    label: 'books',
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.settings),
-                    label: 'settings',
-                  ),
-                ],
+                animationDuration: const Duration(milliseconds: 400),
+                selectedIndex: _state.pageIndex,
                 onDestinationSelected:
                     _controller.handleBottomBarTabIndexChanged,
-                selectedIndex: _state.pageIndex,
+                labelBehavior: .alwaysHide,
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.build_rounded),
+                    selectedIcon: Icon(Icons.build_rounded, size: 28),
+                    label: '工具',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.library_books_rounded),
+                    selectedIcon: Icon(Icons.library_books_rounded, size: 28),
+                    label: '书架',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.settings_rounded),
+                    selectedIcon: Icon(Icons.settings_rounded, size: 28),
+                    label: '设置',
+                  ),
+                ],
               )
-            : const SizedBox();
+            : const SizedBox.shrink();
       },
     );
   }
-
-  // Widget _buildBottomNavigationBar(BuildContext context) {
-  //   return GetBuilder<HomePageController>(
-  //     id: _controller.bottomBarId,
-  //     builder: (_) {
-  //       return _state.showBottomBar
-  //           ? BottomNavigationBar(
-  //               currentIndex: _state.pageIndex,
-  //               onTap: _controller.handleBottomBarTabIndexChanged,
-  //               showSelectedLabels: true,
-  //               showUnselectedLabels: false,
-  //               // selectedItemColor: UiConfig.primaryColor,
-  //               type: .fixed,
-  //               items: [
-  //                 BottomNavigationBarItem(
-  //                   label: 'edit',
-  //                   icon: Icon(Icons.edit),
-  //                 ),
-  //                 BottomNavigationBarItem(
-  //                   label: 'books',
-  //                   icon: Icon(Icons.book_sharp),
-  //                 ),
-  //                 BottomNavigationBarItem(
-  //                   label: 'settings',
-  //                   icon: Icon(Icons.settings),
-  //                 ),
-  //               ],
-  //             )
-  //           : const SizedBox();
-  //     },
-  //   );
-  // }
 }
