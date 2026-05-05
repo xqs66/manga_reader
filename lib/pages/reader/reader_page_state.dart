@@ -15,6 +15,8 @@ class ReaderPageState {
 
   final thumbnailScrollController = ScrollController();
 
+  final PageController pageController = PageController();
+
   final List<File> images = [];
 
   final photoViewController = PhotoViewController();

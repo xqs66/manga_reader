@@ -30,6 +30,14 @@ class _EditPageState extends State<EditPage> {
             color: UiConfig.primaryColor,
             onTap: () => Get.toNamed(Routes.mergeMangas),
           ),
+          const SizedBox(height: 8),
+          _buildToolCard(
+            icon: Icons.archive_rounded,
+            title: '归档漫画',
+            subtitle: '将漫画打包为 ZIP 压缩包，可删除原文件',
+            color: Colors.teal,
+            onTap: () => Get.toNamed(Routes.archiveMangas),
+          ),
         ],
       ),
     );

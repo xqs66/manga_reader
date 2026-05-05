@@ -7,6 +7,13 @@ class ReadSettingsPage extends StatelessWidget {
 
   const ReadSettingsPage({super.key, this.isBottomSheet = false});
 
+  static const _modeLabels = {
+    ReadingMode.strip: '条漫模式',
+    ReadingMode.singleVertical: '从上到下',
+    ReadingMode.singleLTR: '从左到右',
+    ReadingMode.singleRTL: '从右到左',
+  };
+
   @override
   Widget build(BuildContext context) {
     return Obx(
@@ -25,11 +32,14 @@ class ReadSettingsPage extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           children: [
+            _buildSectionHeader('阅读模式'),
+            _buildReadingModeCard(),
+            const SizedBox(height: 24),
             _buildSectionHeader('显示'),
-            _buildDisplaySettings(),
+            _buildDisplayCard(),
             const SizedBox(height: 24),
             _buildSectionHeader('阅读'),
-            _buildReadingSettings(),
+            _buildReadingCard(),
           ],
         ),
       ),
@@ -51,11 +61,50 @@ class ReadSettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDisplaySettings() {
+  Widget _buildReadingModeCard() {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: .circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.view_carousel_rounded),
+        title: const Text('阅读模式'),
+        trailing: PopupMenuButton<ReadingMode>(
+          onSelected: (mode) => readSetting.saveReadingMode(mode),
+          itemBuilder: (_) => ReadingMode.values.map((mode) {
+            final isCurrent = readSetting.readingMode.value == mode;
+            return PopupMenuItem(
+              value: mode,
+              child: Text(
+                _modeLabels[mode]!,
+                style: TextStyle(fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400),
+              ),
+            );
+          }).toList(),
+          child: Row(
+            mainAxisSize: .min,
+            children: [
+              Text(
+                _modeLabels[readSetting.readingMode.value]!,
+                style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
+            ],
+          ),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildDisplayCard() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: .circular(12),
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: Column(
@@ -68,11 +117,11 @@ class ReadSettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildReadingSettings() {
+  Widget _buildReadingCard() {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: .circular(12),
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: _buildImmersiveModeSetting(),
@@ -84,47 +133,49 @@ class ReadSettingsPage extends StatelessWidget {
       secondary: const Icon(Icons.fullscreen_rounded),
       title: const Text('沉浸模式'),
       subtitle: const Text(
-        '隐藏系统状态栏和导航栏，提供全屏阅读体验',
+        '隐藏系统状态栏和导航栏',
         style: TextStyle(fontSize: 13),
       ),
       value: readSetting.enableImmersiveMode.value,
       onChanged: (value) => readSetting.saveEnableImmersiveMode(value),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: .circular(12)),
     );
   }
 
   Widget _buildImageSpacingSetting() {
-    return ListTile(
-      leading: const Icon(Icons.space_bar_rounded),
-      title: const Text('图片间距'),
-      subtitle: SliderTheme(
-        data: SliderThemeData(
-          trackHeight: 3,
-          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-          overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-        ),
-        child: Slider(
-          min: 0,
-          max: 50,
-          divisions: 50,
-          value: readSetting.imageSpacing.value.toDouble(),
-          onChanged: (value) =>
-              readSetting.imageSpacing.value = value.toInt(),
-          onChangeEnd: (value) =>
-              readSetting.saveImageSpacing(value.toInt()),
-        ),
-      ),
-      trailing: SizedBox(
-        width: 36,
-        child: Text(
-          '${readSetting.imageSpacing.value}',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF616161),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          const Icon(Icons.space_bar_rounded, size: 22),
+          const SizedBox(width: 16),
+          const Text('图片间距', style: TextStyle(fontSize: 15)),
+          Expanded(
+            child: SliderTheme(
+              data: SliderThemeData(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+              ),
+              child: Slider(
+                min: 0,
+                max: 50,
+                divisions: 50,
+                value: readSetting.imageSpacing.value.toDouble(),
+                onChanged: (value) => readSetting.imageSpacing.value = value.toInt(),
+                onChangeEnd: (value) => readSetting.saveImageSpacing(value.toInt()),
+              ),
+            ),
           ),
-        ),
+          SizedBox(
+            width: 36,
+            child: Text(
+              '${readSetting.imageSpacing.value}',
+              textAlign: .center,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF616161)),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -134,7 +185,7 @@ class ReadSettingsPage extends StatelessWidget {
       secondary: const Icon(Icons.palette_rounded),
       title: const Text('黑白模式'),
       subtitle: const Text(
-        '将彩色图片转换为黑白显示，模拟纸质漫画效果',
+        '将彩色图片转换为黑白显示',
         style: TextStyle(fontSize: 13),
       ),
       value: readSetting.enableGrayscaleMode.value,

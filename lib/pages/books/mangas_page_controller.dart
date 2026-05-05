@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
+import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/core/result.dart';
 import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
@@ -37,6 +38,23 @@ class BooksPageController extends GetxController with ScrollHandler {
 
   Timer? searchDebounceTimer;
 
+  static const _lastPathKey = 'last_source_path';
+  bool _autoRestoreAttempted = false;
+
+  void tryAutoRestore() {
+    if (_autoRestoreAttempted || !state.isAtRoot) return;
+    _autoRestoreAttempted = true;
+    final path = storageService.read<String>(_lastPathKey);
+    if (path == null) return;
+    if (!localMangaService.settingPath2Mangas.containsKey(path)) {
+      // Data may not be loaded yet; retry once
+      _autoRestoreAttempted = false;
+      Future.delayed(const Duration(seconds: 1), () => tryAutoRestore());
+      return;
+    }
+    enterMangaDir(path);
+  }
+
   void handlePopNext() {
     state.mangas =
         localMangaService.settingPath2Mangas[state.currentPath] ?? [];
@@ -49,7 +67,14 @@ class BooksPageController extends GetxController with ScrollHandler {
     state.currentPath = path;
     state.mangas = localMangaService.settingPath2Mangas[path] ?? [];
     await _syncGroupsFromPath();
-    update([bodyId, normalAppBarActionsId]);
+    storageService.write(_lastPathKey, path);
+    update([bodyId, normalAppBarActionsId, appBarId]);
+  }
+
+  void backToRoot() {
+    state.isAtRoot = true;
+    storageService.remove(_lastPathKey);
+    update([bodyId, normalAppBarActionsId, appBarId]);
   }
 
   Future<void> _syncGroupsFromPath() async {
@@ -68,11 +93,6 @@ class BooksPageController extends GetxController with ScrollHandler {
         }
       }
     }
-  }
-
-  void backToRoot() {
-    state.isAtRoot = true;
-    update([bodyId, normalAppBarActionsId]);
   }
 
   void toggleGroupExpand(int index) {

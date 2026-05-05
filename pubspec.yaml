@@ -26,6 +26,7 @@ dependencies:
   simple_animations: ^5.2.0
   crypto: ^3.0.7
   flutter_slidable: ^4.0.3
+  archive: ^4.0.9
 
 dev_dependencies:
   flutter_test:

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(dart analyze *)",
       "Bash(git mv *)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(dart pub *)"
     ]
   }
 }

@@ -10,6 +10,7 @@ import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/shared/constants/constants.dart';
 import 'package:manga_reader/widgets/manga_image.dart';
 import 'package:manga_reader/widgets/manga_list_tile_card.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -32,6 +33,7 @@ class _ReaderPageState extends State<ReaderPage> {
         return LayoutBuilder(
           builder: (_, constraints) {
             _state.onLayoutWidthChanged(constraints.maxWidth);
+            final isStrip = readSetting.readingMode.value == ReadingMode.strip;
             return AnnotatedRegion<SystemUiOverlayStyle>(
               value: const SystemUiOverlayStyle(
                 systemNavigationBarColor: Colors.transparent,
@@ -45,7 +47,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 color: Colors.black,
                 child: Stack(
                   children: [
-                    _buildReadMangaImages(),
+                    isStrip ? _buildStripMode() : _buildPageMode(),
                     _buildPageInfoOverlay(),
                     _buildTopMenu(),
                     _buildBottomMenu(),
@@ -59,7 +61,9 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Widget _buildReadMangaImages() {
+  // ── Strip mode ──
+
+  Widget _buildStripMode() {
     return GetBuilder<ReaderPageController>(
       id: _controller.imageListId,
       builder: (context) {
@@ -81,9 +85,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 minCacheExtent: Get.height * 5,
                 itemBuilder: (context, index) => _buildImageItem(index),
                 separatorBuilder: (_, _) => Obx(
-                  () => SizedBox(
-                    height: readSetting.imageSpacing.value.toDouble(),
-                  ),
+                  () => SizedBox(height: readSetting.imageSpacing.value.toDouble()),
                 ),
               ),
             );
@@ -105,12 +107,10 @@ class _ReaderPageState extends State<ReaderPage> {
               child: Obx(
                 () => readSetting.enableGrayscaleMode.value
                     ? ColorFiltered(
-                        colorFilter: ColorFilter.matrix(
-                          Constants.grayscaleMatrix,
-                        ),
-                        child: _buildImage(constraints, index),
+                        colorFilter: ColorFilter.matrix(Constants.grayscaleMatrix),
+                        child: _buildStripImage(constraints, index),
                       )
-                    : _buildImage(constraints, index),
+                    : _buildStripImage(constraints, index),
               ),
             );
           },
@@ -119,7 +119,7 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Widget _buildImage(BoxConstraints constraints, index) {
+  Widget _buildStripImage(BoxConstraints constraints, int index) {
     return MangaImage(
       image: _state.readInfo.images[index],
       longPressActions: [
@@ -129,18 +129,71 @@ class _ReaderPageState extends State<ReaderPage> {
           onPressed: () => _controller.handleDeleteImage(index),
         ),
       ],
-      height:
-          _state.imageContainerSizes[index]?.height ??
+      height: _state.imageContainerSizes[index]?.height ??
           constraints.maxWidth * UiConfig.defaultImageContainerRadio,
       width: _state.imageContainerSizes[index]?.width ?? constraints.maxWidth,
       fit: .fitWidth,
       loadCompleteCallBack: (state) => _controller.onLoadCompleteCallBack(
-        index,
-        state,
-        Size(constraints.maxWidth, double.infinity),
-      ),
+          index, state, Size(constraints.maxWidth, double.infinity)),
     );
   }
+
+  // ── Single page mode ──
+
+  Widget _buildPageMode() {
+    final mode = readSetting.readingMode.value;
+    final isHorizontal = mode == ReadingMode.singleLTR || mode == ReadingMode.singleRTL;
+    final isRTL = mode == ReadingMode.singleRTL;
+
+    return GetBuilder<ReaderPageController>(
+      id: _controller.imageListId,
+      builder: (_) {
+        return PhotoViewGallery.builder(
+          scrollDirection: isHorizontal ? .horizontal : .vertical,
+          reverse: isRTL,
+          itemCount: _state.readInfo.pageCount,
+          pageController: _state.pageController,
+          onPageChanged: (index) {
+            _state.currentIndex = index;
+            _controller.scrollThumbnailToCurrent();
+            _controller.update([_controller.bottomMenuId, _controller.bottomRightInfoId]);
+          },
+          builder: (context, index) {
+            return PhotoViewGalleryPageOptions.customChild(
+              controller: _state.photoViewController,
+              initialScale: PhotoViewComputedScale.contained,
+              minScale: PhotoViewComputedScale.contained,
+              maxScale: 3.0,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  MangaImage(
+                    image: _state.readInfo.images[index],
+                    fit: .contain,
+                    backgroundColor: Colors.black,
+                    longPressActions: [
+                      SheetAction(
+                        label: '删除图片',
+                        labelColor: Colors.red,
+                        onPressed: () => _controller.handleDeleteImage(index),
+                      ),
+                    ],
+                    loadCompleteCallBack: (_) {},
+                  ),
+                  GestureDetector(
+                    onTap: _controller.toggleMenuOpen,
+                    behavior: .translucent,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── Top menu ──
 
   Widget _buildTopMenu() {
     final topPadding = readSetting.enableImmersiveMode.value
@@ -151,9 +204,7 @@ class _ReaderPageState extends State<ReaderPage> {
       id: _controller.topMenuId,
       builder: (_) {
         return AnimatedPositioned(
-          top: _state.isMenuOpen
-              ? 0
-              : -(UiConfig.topAreaMenuHeight + topPadding),
+          top: _state.isMenuOpen ? 0 : -(UiConfig.topAreaMenuHeight + topPadding),
           height: UiConfig.topAreaMenuHeight + topPadding,
           width: Get.width,
           curve: Curves.easeOutCubic,
@@ -167,11 +218,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xE6000000),
-                    Color(0x66000000),
-                    Colors.transparent,
-                  ],
+                  colors: [Color(0xE6000000), Color(0x66000000), Colors.transparent],
                 ),
               ),
               child: AppBar(
@@ -210,6 +257,8 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
+  // ── Bottom menu ──
+
   Widget _buildBottomMenu() {
     final bottomPadding = readSetting.enableImmersiveMode.value
         ? 0.0
@@ -220,6 +269,7 @@ class _ReaderPageState extends State<ReaderPage> {
       builder: (_) {
         final pageCount = _state.readInfo.pageCount;
         final currentPage = _state.currentIndex;
+        final isRTL = readSetting.readingMode.value == ReadingMode.singleRTL;
         const double sliderThumbnailSpacing = 8;
         const double topShadowHeight = 16;
 
@@ -258,9 +308,9 @@ class _ReaderPageState extends State<ReaderPage> {
                 mainAxisSize: .min,
                 children: [
                   const SizedBox(height: topShadowHeight),
-                  _buildThumbnailStrip(currentPage, pageCount),
+                  _buildThumbnailStrip(currentPage, pageCount, isRTL),
                   const SizedBox(height: sliderThumbnailSpacing),
-                  _buildSliderRow(currentPage, pageCount),
+                  _buildSliderRow(currentPage, pageCount, isRTL),
                 ],
               ),
             ),
@@ -270,20 +320,21 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Widget _buildThumbnailStrip(int currentPage, int pageCount) {
+  Widget _buildThumbnailStrip(int currentPage, int pageCount, bool isRTL) {
+    const selectedColor = Color(0xFF90CAF9);
+
     return SizedBox(
       height: UiConfig.thumbnailStripHeight,
       child: ListView.builder(
         controller: _state.thumbnailScrollController,
+        reverse: isRTL,
         scrollDirection: .horizontal,
-        padding: const .symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         itemCount: pageCount,
         itemBuilder: (context, index) {
           final isCurrent = index == currentPage;
           return GestureDetector(
-            onTap: () {
-              _controller.handleSlideEnd((index + 1).toDouble());
-            },
+            onTap: () => _jumpToPage(index),
             child: Container(
               width: UiConfig.thumbnailStripWidth,
               margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -295,18 +346,14 @@ class _ReaderPageState extends State<ReaderPage> {
                       decoration: BoxDecoration(
                         borderRadius: .circular(6),
                         border: .all(
-                          color: isCurrent
-                              ? UiConfig.groupHeaderColor
-                              : Colors.white24,
+                          color: isCurrent ? selectedColor : Colors.white24,
                           width: isCurrent ? 2.5 : 1,
                         ),
                       ),
                       child: ClipRRect(
                         borderRadius: .circular(6),
                         child: MangaImage(
-                          image: LocalImage(
-                            path: _state.readInfo.images[index].path,
-                          ),
+                          image: LocalImage(path: _state.readInfo.images[index].path),
                           fit: .fitWidth,
                           maxBytes: 1024 * 50,
                           width: UiConfig.thumbnailStripWidth,
@@ -323,7 +370,7 @@ class _ReaderPageState extends State<ReaderPage> {
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.white,
-                        fontWeight: .w600,
+                        fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
                       ),
                       textAlign: .center,
                     ),
@@ -337,7 +384,7 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Widget _buildSliderRow(int currentPage, int pageCount) {
+  Widget _buildSliderRow(int currentPage, int pageCount, bool isRTL) {
     final displayPage = currentPage + 1;
 
     return Material(
@@ -348,54 +395,55 @@ class _ReaderPageState extends State<ReaderPage> {
           children: [
             _buildNavButton(
               icon: Icons.skip_previous_rounded,
-              onTap: currentPage > 0
-                  ? () => _controller.handleSlideEnd(1)
-                  : null,
+              onTap: isRTL
+                  ? (currentPage < pageCount - 1 ? () => _jumpToPage(pageCount - 1) : null)
+                  : (currentPage > 0 ? () => _jumpToPage(0) : null),
             ),
             const SizedBox(width: 4),
             _buildNavButton(
               icon: Icons.navigate_before_rounded,
-              onTap: currentPage > 0
-                  ? () => _controller.handleSlideEnd(currentPage.toDouble())
-                  : null,
+              onTap: isRTL
+                  ? (currentPage < pageCount - 1 ? () => _jumpToPage(currentPage + 1) : null)
+                  : (currentPage > 0 ? () => _jumpToPage(currentPage - 1) : null),
             ),
             Expanded(
               child: SliderTheme(
                 data: SliderThemeData(
                   trackHeight: 3,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 7,
-                  ),
-                  overlayShape: const RoundSliderOverlayShape(
-                    overlayRadius: 16,
-                  ),
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
                   activeTrackColor: Colors.white,
                   inactiveTrackColor: Colors.white24,
                   thumbColor: Colors.white,
                   overlayColor: Colors.white.withValues(alpha: 0.15),
                 ),
-                child: Slider(
-                  min: 1,
-                  max: pageCount.toDouble(),
-                  value: displayPage.toDouble(),
-                  onChanged: _controller.handleSlide,
-                  onChangeEnd: _controller.handleSlideEnd,
+                child: Directionality(
+                  textDirection: isRTL ? .rtl : .ltr,
+                  child: Slider(
+                    min: 1,
+                    max: pageCount.toDouble(),
+                    value: displayPage.toDouble(),
+                    onChanged: (v) {
+                      _state.currentIndex = v.toInt() - 1;
+                      _controller.update([_controller.bottomMenuId]);
+                    },
+                    onChangeEnd: (v) => _jumpToPage(v.toInt() - 1),
+                  ),
                 ),
               ),
             ),
             _buildNavButton(
               icon: Icons.navigate_next_rounded,
-              onTap: currentPage < pageCount - 1
-                  ? () =>
-                        _controller.handleSlideEnd((displayPage + 1).toDouble())
-                  : null,
+              onTap: isRTL
+                  ? (currentPage > 0 ? () => _jumpToPage(currentPage - 1) : null)
+                  : (currentPage < pageCount - 1 ? () => _jumpToPage(currentPage + 1) : null),
             ),
             const SizedBox(width: 4),
             _buildNavButton(
               icon: Icons.skip_next_rounded,
-              onTap: currentPage < pageCount - 1
-                  ? () => _controller.handleSlideEnd(pageCount.toDouble())
-                  : null,
+              onTap: isRTL
+                  ? (currentPage > 0 ? () => _jumpToPage(0) : null)
+                  : (currentPage < pageCount - 1 ? () => _jumpToPage(pageCount - 1) : null),
             ),
           ],
         ),
@@ -403,19 +451,25 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
+  void _jumpToPage(int index) {
+    if (readSetting.readingMode.value == ReadingMode.strip) {
+      _controller.handleSlideEnd((index + 1).toDouble());
+    } else {
+      _state.pageController.jumpToPage(index);
+    }
+    _state.currentIndex = index;
+    _controller.update([_controller.bottomMenuId, _controller.bottomRightInfoId]);
+  }
+
   Widget _buildNavButton({required IconData icon, VoidCallback? onTap}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: .circular(20),
         child: Padding(
           padding: const EdgeInsets.all(6),
-          child: Icon(
-            icon,
-            color: onTap != null ? Colors.white : Colors.white24,
-            size: 22,
-          ),
+          child: Icon(icon, color: onTap != null ? Colors.white : Colors.white24, size: 22),
         ),
       ),
     );
@@ -429,22 +483,18 @@ class _ReaderPageState extends State<ReaderPage> {
         id: _controller.bottomRightInfoId,
         builder: (context) {
           return IgnorePointer(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                margin: const .only(right: 12),
-                padding: const .symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0x99000000),
-                  borderRadius: .circular(10),
-                ),
+            child: Container(
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0x99000000),
+                borderRadius: .circular(12),
+              ),
+              child: Material(
+                color: Colors.transparent,
                 child: Text(
                   '${_state.currentIndex + 1} / ${_state.readInfo.pageCount}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFFE0E0E0),
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Color(0xFFE0E0E0), fontWeight: FontWeight.w500),
                 ),
               ),
             ),

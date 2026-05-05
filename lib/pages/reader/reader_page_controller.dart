@@ -8,8 +8,10 @@ import 'package:get/get.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
 import 'package:manga_reader/core/result.dart';
 import 'package:manga_reader/pages/books/mangas_page_controller.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
+import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 
 class ReaderPageController extends GetxController {
@@ -20,7 +22,8 @@ class ReaderPageController extends GetxController {
   final String bottomRightInfoId = 'bottomRightInfoId';
   final String bottomMenuId = 'bottomMenuId';
 
-  late Worker toggleImmersiveModeListener;
+  late Worker _immersiveModeListener;
+  late Worker _readingModeListener;
 
   @override
   void onReady() {
@@ -28,10 +31,12 @@ class ReaderPageController extends GetxController {
 
     applyEnableImmersive();
 
-    toggleImmersiveModeListener = ever(readSetting.enableImmersiveMode, (
-      value,
-    ) {
+    _immersiveModeListener = ever(readSetting.enableImmersiveMode, (value) {
       applyEnableImmersive();
+    });
+
+    _readingModeListener = ever(readSetting.readingMode, (_) {
+      update([pageId]);
     });
 
     state.itemPositionsListener.itemPositions.addListener(_positionListener);
@@ -39,6 +44,8 @@ class ReaderPageController extends GetxController {
 
   @override
   void onClose() {
+    _immersiveModeListener.dispose();
+    _readingModeListener.dispose();
     super.onClose();
     SystemChrome.setEnabledSystemUIMode(.edgeToEdge);
   }
@@ -56,12 +63,12 @@ class ReaderPageController extends GetxController {
 
     if (index != state.currentIndex) {
       state.currentIndex = index;
-      _scrollThumbnailToCurrent();
+      scrollThumbnailToCurrent();
       update([bottomMenuId, bottomRightInfoId]);
     }
   }
 
-  void _scrollThumbnailToCurrent() {
+  void scrollThumbnailToCurrent() {
     final controller = state.thumbnailScrollController;
     if (!controller.hasClients) return;
     final itemWidth = UiConfig.thumbnailStripWidth + 6; // 3px margin on each side
@@ -111,7 +118,7 @@ class ReaderPageController extends GetxController {
 
   void handleSlideEnd(double value) {
     state.itemScrollController.jumpTo(index: value.toInt() - 1);
-    _scrollThumbnailToCurrent();
+    scrollThumbnailToCurrent();
     update([bottomRightInfoId]);
   }
 
@@ -134,7 +141,12 @@ class ReaderPageController extends GetxController {
         : sortedPositions.firstOrNull!.index;
   }
 
-  Future<void> handleDeleteImage(int index) {
+  Future<void> handleDeleteImage(int index) async {
+    Get.back();
+    if (localMangaService.isZipFile(state.readInfo.mangaInfo.path)) {
+      Fluttertoast.showToast(msg: '压缩包内的图片无法单独删除');
+      return;
+    }
     return Get.dialog(
       barrierDismissible: true,
       AlertDialog(

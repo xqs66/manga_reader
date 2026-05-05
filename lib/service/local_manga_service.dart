@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:archive/archive.dart' as a;
 import 'package:drift/drift.dart' show Value;
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get_rx/get_rx.dart';
@@ -52,9 +53,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
     dir.list().listen(
       (entity) {
-        if (entity is Directory) {
+        if (entity is Directory || (entity is File && isZipFile(entity.path))) {
           futures.add(
-            loadManga(entity).then((manga) {
+            loadManga(Directory(entity.path)).then((manga) {
               if (manga != null) mangas.add(manga);
             }),
           );
@@ -86,6 +87,16 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   Future<Manga?> loadManga(Directory dirOfManga) async {
+    if (isZipFile(dirOfManga.path)) {
+      return _loadZipManga(File(dirOfManga.path));
+    }
+    return _loadFolderManga(dirOfManga);
+  }
+
+  bool isZipFile(String path) =>
+      path.endsWith('.zip') || path.endsWith('.cbz');
+
+  Future<Manga?> _loadFolderManga(Directory dirOfManga) async {
     try {
       final mangaId = MangaId.fromPath(dirOfManga.path);
       final mangaRecord = await MangaDao.getManga(mangaId.value);
@@ -101,8 +112,6 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
       imageFiles.sort(FileUtil.naturalCompareFileOrDir);
 
-      // Use stored size IFF image count hasn't changed since last scan.
-      // When images are added/deleted (in-app or externally), recalculate.
       final countChanged =
           mangaRecord != null && mangaRecord.pageCount != imageFiles.length;
       final totalSize = mangaRecord != null && !countChanged
@@ -121,32 +130,101 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       );
 
       if (mangaRecord == null) {
-        MangaDao.insertManga(
-          MangaCompanion.insert(
-            id: result.id.value,
-            title: result.title,
-            coverPath: result.cover.path,
-            parentPath: dirOfManga.parent.path,
-            pageCount: result.pageCount,
-            size: result.size,
-            sortOrder: 0,
-            type: 1,
-          ),
-        );
+        MangaDao.insertManga(MangaCompanion.insert(
+          id: result.id.value,
+          title: result.title,
+          coverPath: result.cover.path,
+          parentPath: dirOfManga.parent.path,
+          pageCount: result.pageCount,
+          size: result.size,
+          sortOrder: 0,
+          type: 1,
+        ));
       } else if (countChanged) {
-        MangaDao.updateManga(
-          MangaCompanion(
-            id: Value(result.id.value),
-            size: Value(result.size),
-            pageCount: Value(result.pageCount),
-          ),
-        );
+        MangaDao.updateManga(MangaCompanion(
+          id: Value(result.id.value),
+          size: Value(result.size),
+          pageCount: Value(result.pageCount),
+        ));
       }
       return result;
     } catch (e) {
       LogUtil.e('Failed to load manga from ${dirOfManga.path}');
       return null;
     }
+  }
+
+  Future<Manga?> _loadZipManga(File zipFile) async {
+    try {
+      final mangaId = MangaId.fromPath(zipFile.path);
+      final mangaRecord = await MangaDao.getManga(mangaId.value);
+
+      final bytes = await zipFile.readAsBytes();
+      final archive = a.ZipDecoder().decodeBytes(bytes);
+      final imageEntries = archive.files
+          .where((f) => !f.isFile == false && _isImageName(f.name))
+          .toList()
+        ..sort((a, b) => FileUtil.naturalCompare(a.name, b.name));
+
+      if (imageEntries.isEmpty) return null;
+
+      // Extract to cache dir
+      final cacheDir = Directory(
+        join(Directory.systemTemp.path, 'manga_reader', mangaId.value),
+      );
+      if (!cacheDir.existsSync()) {
+        cacheDir.createSync(recursive: true);
+      }
+      for (final entry in imageEntries) {
+        final outFile = File(join(cacheDir.path, entry.name));
+        if (!outFile.existsSync()) {
+          outFile.writeAsBytesSync(entry.content as List<int>);
+        }
+      }
+
+      final images = imageEntries
+          .map((e) => LocalImage(path: join(cacheDir.path, e.name)))
+          .toList();
+
+      final totalSize = zipFile.lengthSync();
+      final result = Manga(
+        id: mangaId,
+        path: zipFile.path,
+        cover: images.first,
+        title: basenameWithoutExtension(zipFile.path),
+        lastReadPage: mangaRecord?.lastReadPage ?? 0,
+        groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
+        pageCount: images.length,
+        size: totalSize,
+      );
+
+      if (mangaRecord == null) {
+        MangaDao.insertManga(MangaCompanion.insert(
+          id: result.id.value,
+          title: result.title,
+          coverPath: result.cover.path,
+          parentPath: dirname(zipFile.path),
+          pageCount: result.pageCount,
+          size: result.size,
+          sortOrder: 0,
+          type: 2,
+        ));
+      }
+      return result;
+    } catch (e) {
+      LogUtil.e('Failed to load ZIP manga from ${zipFile.path}', error: e);
+      return null;
+    }
+  }
+
+  bool _isImageName(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.bmp') ||
+        lower.endsWith('.gif');
   }
 
   Future<int> _calculateTotalSize(List<File> images) async {
@@ -158,7 +236,49 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     return sizes.fold<int>(0, (sum, s) => sum + s);
   }
 
+  /// Archive mangas to ZIP files. Returns number of successfully archived.
+  Future<int> archiveMangas(
+    List<Manga> mangas,
+    Directory outputDir, {
+    bool deleteSource = false,
+    void Function(int current, int total)? onProgress,
+  }) async {
+    var successCount = 0;
+    for (var i = 0; i < mangas.length; i++) {
+      final manga = mangas[i];
+      try {
+        final archive = a.Archive();
+        final images = getMangaImages(manga);
+        for (final image in images) {
+          final file = File(image.path);
+          final bytes = await file.readAsBytes();
+          archive.addFile(a.ArchiveFile(basename(image.path), bytes.length, bytes));
+        }
+        final zipData = a.ZipEncoder().encode(archive);
+        final outPath = join(outputDir.path, '${manga.title}.zip');
+        await File(outPath).writeAsBytes(zipData);
+
+        if (deleteSource) {
+          // Verify ZIP wrote correctly before deleting
+          final zipFile = File(outPath);
+          if (await zipFile.exists() && await zipFile.length() > 0) {
+            await FileUtil.deleteDir(Directory(manga.path));
+            await MangaDao.deleteManga(manga.id.value);
+          }
+        }
+        successCount++;
+        onProgress?.call(i + 1, mangas.length);
+      } catch (e) {
+        LogUtil.e('归档失败: ${manga.title}', error: e);
+      }
+    }
+    return successCount;
+  }
+
   List<LocalImage> getMangaImages(Manga manga) {
+    if (isZipFile(manga.path)) {
+      return _getZipMangaImagesSync(File(manga.path));
+    }
     final imageFiles = Directory(manga.path)
         .listSync()
         .whereType<File>()
@@ -168,7 +288,29 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     return imageFiles.map((f) => LocalImage(path: f.path)).toList();
   }
 
+  List<LocalImage> _getZipMangaImagesSync(File zipFile) {
+    final bytes = zipFile.readAsBytesSync();
+    final archive = a.ZipDecoder().decodeBytes(bytes);
+    final entries = archive.files
+        .where((f) => _isImageName(f.name))
+        .toList()
+      ..sort((a, b) => FileUtil.naturalCompare(a.name, b.name));
+
+    final cacheDir = Directory(
+      join(Directory.systemTemp.path, 'manga_reader', MangaId.fromPath(zipFile.path).value),
+    );
+    if (!cacheDir.existsSync()) cacheDir.createSync(recursive: true);
+    return entries.map((e) {
+      final outFile = File(join(cacheDir.path, e.name));
+      if (!outFile.existsSync()) outFile.writeAsBytesSync(e.content as List<int>);
+      return LocalImage(path: outFile.path);
+    }).toList();
+  }
+
   Future<List<LocalImage>> getMangaImagesAsync(Manga manga) async {
+    if (isZipFile(manga.path)) {
+      return _getZipMangaImagesAsync(File(manga.path));
+    }
     final imageFiles = <File>[];
     await for (final entity in Directory(manga.path).list()) {
       if (entity is File && entity.isImageExtension) {
@@ -177,6 +319,25 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     }
     imageFiles.sort(FileUtil.naturalCompareFileOrDir);
     return imageFiles.map((f) => LocalImage(path: f.path)).toList();
+  }
+
+  Future<List<LocalImage>> _getZipMangaImagesAsync(File zipFile) async {
+    final bytes = await zipFile.readAsBytes();
+    final archive = a.ZipDecoder().decodeBytes(bytes);
+    final entries = archive.files
+        .where((f) => _isImageName(f.name))
+        .toList()
+      ..sort((a, b) => FileUtil.naturalCompare(a.name, b.name));
+
+    final cacheDir = Directory(
+      join(Directory.systemTemp.path, 'manga_reader', MangaId.fromPath(zipFile.path).value),
+    );
+    if (!cacheDir.existsSync()) cacheDir.createSync(recursive: true);
+    return entries.map((e) {
+      final outFile = File(join(cacheDir.path, e.name));
+      if (!outFile.existsSync()) outFile.writeAsBytesSync(e.content as List<int>);
+      return LocalImage(path: outFile.path);
+    }).toList();
   }
 
   Future<Manga?> mergeMangas(

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -60,18 +62,25 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
 
   AppBar _buildNormalAppbar() {
     return AppBar(
-      title: const Text('书架'),
+      leading: _state.isAtRoot
+          ? null
+          : IconButton(
+              onPressed: _controller.backToRoot,
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+      title: Text(_state.isAtRoot ? '书架' : _state.currentPath?.split('/').last ?? '书架'),
       centerTitle: true,
       actions: [
-        GetBuilder<BooksPageController>(
-          id: _controller.normalAppBarActionsId,
-          builder: (context) {
-            return IconButton(
-              onPressed: _controller.toggleSearchMode,
-              icon: const Icon(Icons.search_rounded),
-            );
-          },
-        ),
+        if (!_state.isAtRoot)
+          GetBuilder<BooksPageController>(
+            id: _controller.normalAppBarActionsId,
+            builder: (context) {
+              return IconButton(
+                onPressed: _controller.toggleSearchMode,
+                icon: const Icon(Icons.search_rounded),
+              );
+            },
+          ),
         GetBuilder<BooksPageController>(
           id: _controller.normalAppBarActionsId,
           builder: (_) {
@@ -157,17 +166,6 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
             ],
           ),
         ),
-        PopupMenuItem(
-          onTap: _controller.backToRoot,
-          height: UiConfig.popUpMenuHeight,
-          child: const Row(
-            children: [
-              Icon(Icons.arrow_back_rounded),
-              SizedBox(width: 12),
-              Text('返回根目录'),
-            ],
-          ),
-        ),
       ],
       PopupMenuItem(
         onTap: _controller.refreshMangas,
@@ -187,6 +185,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
     return GetBuilder<BooksPageController>(
       id: _controller.bodyId,
       builder: (_) {
+        _controller.tryAutoRestore();
         return Column(
           children: [
             _buildRefreshIndicator(),
@@ -488,39 +487,40 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
       id: _controller.bottomBarId,
       builder: (_) {
         if (!_state.isSelectMode) return const SizedBox.shrink();
-        return SafeArea(
-          top: false,
-          left: false,
-          right: false,
-          child: BottomAppBar(
-            child: Row(
-              mainAxisAlignment: .spaceEvenly,
-              children: [
-                _buildBottomAction(
-                  icon: Icons.drive_file_move_rounded,
-                  label: '移动',
-                  onPressed: () {
-                    if (_state.selectedMangaIds.isEmpty) {
-                      Fluttertoast.showToast(msg: '请先选择漫画');
-                      return;
-                    }
-                    Get.dialog(_buildMoveGroupDialog());
-                  },
-                ),
-                _buildBottomAction(
-                  icon: Icons.delete_rounded,
-                  label: '删除',
-                  color: Colors.red,
-                  onPressed: () {
-                    if (_state.selectedMangaIds.isEmpty) {
-                      Fluttertoast.showToast(msg: '请先选择漫画');
-                      return;
-                    }
-                    Get.dialog(_buildDeleteMangasDialog());
-                  },
-                ),
-              ],
-            ),
+
+        final view = PlatformDispatcher.instance.views.first;
+        final bottomInset = view.padding.bottom / view.devicePixelRatio;
+
+        return BottomAppBar(
+          height: UiConfig.bottomBarHeight + bottomInset,
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: Row(
+            mainAxisAlignment: .spaceEvenly,
+            children: [
+              _buildBottomAction(
+                icon: Icons.drive_file_move_rounded,
+                label: '移动',
+                onPressed: () {
+                  if (_state.selectedMangaIds.isEmpty) {
+                    Fluttertoast.showToast(msg: '请先选择漫画');
+                    return;
+                  }
+                  Get.dialog(_buildMoveGroupDialog());
+                },
+              ),
+              _buildBottomAction(
+                icon: Icons.delete_rounded,
+                label: '删除',
+                color: Colors.red,
+                onPressed: () {
+                  if (_state.selectedMangaIds.isEmpty) {
+                    Fluttertoast.showToast(msg: '请先选择漫画');
+                    return;
+                  }
+                  Get.dialog(_buildDeleteMangasDialog());
+                },
+              ),
+            ],
           ),
         );
       },
