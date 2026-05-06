@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/settings/read_setting.dart';
+import 'package:manga_reader/widgets/styled_menu.dart';
 
 class ReadSettingsPage extends StatelessWidget {
   final bool isBottomSheet;
@@ -71,16 +72,14 @@ class ReadSettingsPage extends StatelessWidget {
       child: ListTile(
         leading: const Icon(Icons.view_carousel_rounded),
         title: const Text('阅读模式'),
-        trailing: PopupMenuButton<ReadingMode>(
-          onSelected: (mode) => readSetting.saveReadingMode(mode),
-          itemBuilder: (_) => ReadingMode.values.map((mode) {
+        trailing: StyledPopupMenu<ReadingMode>(
+          items: ReadingMode.values.map((mode) {
             final isCurrent = readSetting.readingMode.value == mode;
-            return PopupMenuItem(
+            return StyledPopupItem<ReadingMode>(
               value: mode,
-              child: Text(
-                _modeLabels[mode]!,
-                style: TextStyle(fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400),
-              ),
+              label: _modeLabels[mode]!,
+              isSelected: isCurrent,
+              onSelected: (m) => readSetting.saveReadingMode(m),
             );
           }).toList(),
           child: Row(

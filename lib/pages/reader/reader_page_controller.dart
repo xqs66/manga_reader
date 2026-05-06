@@ -146,7 +146,6 @@ class ReaderPageController extends GetxController {
   }
 
   Future<void> handleDeleteImage(int index) async {
-    Get.back();
     if (localMangaService.isZipFile(state.readInfo.mangaInfo.path)) {
       Fluttertoast.showToast(msg: '压缩包内的图片无法单独删除');
       return;

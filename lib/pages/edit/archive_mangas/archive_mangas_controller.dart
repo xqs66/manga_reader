@@ -11,21 +11,25 @@ class ArchiveMangasController extends GetxController {
 
   final String bodyId = 'bodyId';
   final String titleId = 'titleId';
+  final String mangaItemIdPrefix = 'archiveMangaItem';
 
   Future<void> selectDir() async {
     final dir = await FileUtil.selectDir();
     if (dir != null) {
       state.selectedDir = dir;
+      state.selectedMangas.clear();
+      await _loadMangaList();
       update([bodyId, titleId]);
     }
   }
 
-  Future<void> selectOutputDir() async {
-    final dir = await FileUtil.selectDir();
-    if (dir != null) {
-      state.outputDir = dir;
-      update([bodyId]);
-    }
+  Future<void> _loadMangaList() async {
+    state.mangas = [];
+    state.isLoadingMangas = true;
+    update([bodyId]);
+    final all = await localMangaService.getMangasInDir(state.selectedDir!);
+    state.mangas = all.where((m) => !localMangaService.isZipFile(m.path)).toList();
+    state.isLoadingMangas = false;
   }
 
   void toggleSelection(Manga manga) {
@@ -34,30 +38,27 @@ class ArchiveMangasController extends GetxController {
     } else {
       state.selectedMangas.add(manga);
     }
-    update([bodyId, titleId]);
+    update([titleId, '$mangaItemIdPrefix::${manga.id}']);
   }
 
   void clearSelection() {
+    final ids = state.selectedMangas
+        .map((m) => '$mangaItemIdPrefix::${m.id}')
+        .toList();
     state.selectedMangas.clear();
-    update([bodyId, titleId]);
-  }
-
-  void setDeleteSource(bool value) {
-    state.deleteSource = value;
+    update([...ids, titleId]);
   }
 
   Future<int> startArchive() async {
-    if (state.selectedMangas.isEmpty) return 0;
+    if (state.selectedMangas.isEmpty || state.selectedDir == null) return 0;
 
     state.isWorking = true;
     state.progress = 0;
     state.total = state.selectedMangas.length;
     update([bodyId]);
 
-    final count = await localMangaService.archiveMangas(
+    final count = await localMangaService.archiveMangasInPlace(
       state.selectedMangas.toList(),
-      state.outputDir!,
-      deleteSource: state.deleteSource,
       onProgress: (c, t) {
         state.progress = c;
         state.total = t;
@@ -67,6 +68,7 @@ class ArchiveMangasController extends GetxController {
 
     state.isWorking = false;
     state.selectedMangas.clear();
+    await _loadMangaList();
     update([bodyId, titleId]);
     Fluttertoast.showToast(msg: '归档完成：$count 部');
     return count;

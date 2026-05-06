@@ -14,11 +14,11 @@ import 'package:manga_reader/shared/constants/constants.dart';
 import 'package:manga_reader/shared/extensions/string_ext.dart';
 import 'package:manga_reader/shared/extensions/text_ext.dart';
 import 'package:manga_reader/shared/utils/file_util.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
 import 'package:manga_reader/widgets/common_dialog.dart';
 import 'package:manga_reader/widgets/group_header.dart';
 import 'package:manga_reader/widgets/manga_list_tile_card.dart';
 import 'package:manga_reader/widgets/select_dialog.dart';
+import 'package:manga_reader/widgets/styled_menu.dart';
 
 class MangasPage extends StatefulWidget {
   const MangasPage({super.key});
@@ -84,9 +84,23 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
         GetBuilder<BooksPageController>(
           id: _controller.normalAppBarActionsId,
           builder: (_) {
-            return PopupMenuButton(
-              icon: const Icon(Icons.more_vert_rounded),
-              itemBuilder: (context) => _buildPopUpMenuItems(),
+            return StyledPopupMenu<String>(
+              items: [
+                if (!_state.isAtRoot)
+                  StyledPopupItem(
+                    value: 'new_group',
+                    label: '新建分组',
+                    icon: Icons.create_new_folder_rounded,
+                    onSelected: (_) => Get.dialog(_buildNewGroupDialog()),
+                  ),
+                StyledPopupItem(
+                  value: 'refresh',
+                  label: '刷新',
+                  icon: Icons.refresh_rounded,
+                  onSelected: (_) => _controller.refreshMangas(),
+                ),
+              ],
+              child: const Icon(Icons.more_vert_rounded),
             );
           },
         ),
@@ -149,36 +163,6 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
         isDense: true,
       ),
     );
-  }
-
-  List<PopupMenuItem> _buildPopUpMenuItems() {
-    LogUtil.d(_state.isAtRoot.toString());
-    return [
-      if (!_state.isAtRoot) ...[
-        PopupMenuItem(
-          onTap: () => Get.dialog(_buildNewGroupDialog()),
-          height: UiConfig.popUpMenuHeight,
-          child: const Row(
-            children: [
-              Icon(Icons.create_new_folder_rounded),
-              SizedBox(width: 12),
-              Text('新建分组'),
-            ],
-          ),
-        ),
-      ],
-      PopupMenuItem(
-        onTap: _controller.refreshMangas,
-        height: UiConfig.popUpMenuHeight,
-        child: const Row(
-          children: [
-            Icon(Icons.refresh_rounded),
-            SizedBox(width: 12),
-            Text('刷新'),
-          ],
-        ),
-      ),
-    ];
   }
 
   Widget _buildBody() {

@@ -237,10 +237,10 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   /// Archive mangas to ZIP files. Returns number of successfully archived.
-  Future<int> archiveMangas(
-    List<Manga> mangas,
-    Directory outputDir, {
-    bool deleteSource = false,
+  /// Archive mangas in-place: each manga's folder is zipped to
+  /// `<mangaPath>.zip`, then the source folder is deleted after verification.
+  Future<int> archiveMangasInPlace(
+    List<Manga> mangas, {
     void Function(int current, int total)? onProgress,
   }) async {
     var successCount = 0;
@@ -255,18 +255,28 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
           archive.addFile(a.ArchiveFile(basename(image.path), bytes.length, bytes));
         }
         final zipData = a.ZipEncoder().encode(archive);
-        final outPath = join(outputDir.path, '${manga.title}.zip');
-        await File(outPath).writeAsBytes(zipData);
+        final zipPath = '${manga.path}.zip';
+        await File(zipPath).writeAsBytes(zipData);
 
-        if (deleteSource) {
-          // Verify ZIP wrote correctly before deleting
-          final zipFile = File(outPath);
-          if (await zipFile.exists() && await zipFile.length() > 0) {
-            await FileUtil.deleteDir(Directory(manga.path));
-            await MangaDao.deleteManga(manga.id.value);
+        // Verify ZIP before deleting source
+        final zipFile = File(zipPath);
+        if (await zipFile.exists() && await zipFile.length() > 0) {
+          await FileUtil.deleteDir(Directory(manga.path));
+          await MangaDao.deleteManga(manga.id.value);
+
+          // Update in-memory cache: remove old manga, add new ZIP manga
+          for (final entry in settingPath2Mangas.entries) {
+            entry.value.removeWhere((m) => m.id == manga.id);
           }
+          final zipManga = await _loadZipManga(zipFile);
+          if (zipManga != null) {
+            final parentDir = dirname(zipFile.path);
+            if (settingPath2Mangas.containsKey(parentDir)) {
+              settingPath2Mangas[parentDir]!.add(zipManga);
+            }
+          }
+          successCount++;
         }
-        successCount++;
         onProgress?.call(i + 1, mangas.length);
       } catch (e) {
         LogUtil.e('归档失败: ${manga.title}', error: e);
@@ -344,6 +354,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     List<Manga> mangas,
     Directory output, {
     int imageNameStartFrom = 0,
+    bool outputAsZip = false,
     void Function(int current, int total)? onProgress,
   }) async {
     output = await output.create(recursive: true);
@@ -364,6 +375,24 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         onProgress?.call(imageNameStartFrom, totalCount);
       }
     }
+
+    if (outputAsZip) {
+      final archive = a.Archive();
+      final files = output.listSync().whereType<File>().where((f) => f.isImageExtension).toList()
+        ..sort(FileUtil.naturalCompareFileOrDir);
+      for (final f in files) {
+        final bytes = await f.readAsBytes();
+        archive.addFile(a.ArchiveFile(basename(f.path), bytes.length, bytes));
+      }
+      final zipData = a.ZipEncoder().encode(archive);
+      final zipPath = '${output.path}.zip';
+      await File(zipPath).writeAsBytes(zipData);
+      await output.delete(recursive: true);
+      final manga = await _loadZipManga(File(zipPath));
+      if (manga != null) return manga;
+      return loadManga(Directory(zipPath));
+    }
+
     return loadManga(output);
   }
 

@@ -86,12 +86,11 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
       Fluttertoast.showToast(msg: '请输入合集名');
       return;
     }
-    final outputPath = p.join(
-      state.outputDir!.path,
-      state.targetDirNameController.text.trim(),
-    );
-    if (Directory(outputPath).existsSync()) {
-      Fluttertoast.showToast(msg: '目标目录下存在同名目录，请重新输入合集名');
+    final targetName = state.targetDirNameController.text.trim();
+    final outputPath = p.join(state.outputDir!.path, targetName);
+    final finalPath = state.outputAsZip ? '$outputPath.zip' : outputPath;
+    if (Directory(finalPath).existsSync() || File(finalPath).existsSync()) {
+      Fluttertoast.showToast(msg: '目标路径已存在，请重新输入合集名');
       return;
     }
     if (state.selectedMangas.isEmpty) {
@@ -111,6 +110,7 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
       final outputManga = await localMangaService.mergeMangas(
         mangas,
         Directory(outputPath),
+        outputAsZip: state.outputAsZip,
         onProgress: (current, total) {
           state.mergeProgress = current;
           state.mergeTotal = total;
@@ -153,6 +153,11 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
 
   void handleToggleDeleteSource(bool? value) {
     state.deleteSourceMangas = value ?? false;
+    update([mergeStartDialogId]);
+  }
+
+  void handleToggleOutputAsZip(bool? value) {
+    state.outputAsZip = value ?? false;
     update([mergeStartDialogId]);
   }
 

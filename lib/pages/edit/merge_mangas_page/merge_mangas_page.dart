@@ -393,7 +393,16 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                value: _state.outputAsZip,
+                onChanged: _controller.handleToggleOutputAsZip,
+                title: const Text('输出为 ZIP 压缩包'),
+                contentPadding: .zero,
+                horizontalTitleGap: 0,
+                controlAffinity: .leading,
+                dense: true,
+              ),
               CheckboxListTile(
                 value: _state.deleteSourceMangas,
                 onChanged: _controller.handleToggleDeleteSource,

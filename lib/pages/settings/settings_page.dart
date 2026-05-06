@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/settings/theme_setting.dart';
+import 'package:manga_reader/widgets/styled_menu.dart';
 
 import '../../routes/routes.dart';
 
@@ -12,8 +14,22 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  static const _themeLabels = {
+    ThemeMode.system: '跟随系统',
+    ThemeMode.light: '浅色模式',
+    ThemeMode.dark: '深色模式',
+  };
+
+  static const _themeIcons = {
+    ThemeMode.system: Icons.settings_brightness_rounded,
+    ThemeMode.light: Icons.light_mode_rounded,
+    ThemeMode.dark: Icons.dark_mode_rounded,
+  };
+
   @override
   Widget build(BuildContext context) {
+    final currentMode = getThemeMode();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -22,6 +38,52 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
+          _buildSectionHeader('显示'),
+          const SizedBox(height: 8),
+          _buildSettingsCard([
+            ListTile(
+              leading: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.12),
+                  borderRadius: .circular(10),
+                ),
+                child: Icon(_themeIcons[currentMode]!, color: Colors.orange, size: 22),
+              ),
+              title: const Text('主题', style: TextStyle(fontSize: 15)),
+              subtitle: const Text('切换应用配色方案', style: TextStyle(fontSize: 13)),
+              trailing: StyledPopupMenu<ThemeMode>(
+                items: ThemeMode.values.map((mode) {
+                  final isCurrent = currentMode == mode;
+                  return StyledPopupItem<ThemeMode>(
+                    value: mode,
+                    label: _themeLabels[mode]!,
+                    icon: _themeIcons[mode],
+                    isSelected: isCurrent,
+                    onSelected: (m) {
+                      setThemeMode(m);
+                      Get.changeThemeMode(m);
+                      setState(() {});
+                    },
+                  );
+                }).toList(),
+                child: Row(
+                  mainAxisSize: .min,
+                  children: [
+                    Text(
+                      _themeLabels[currentMode]!,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
+                  ],
+                ),
+              ),
+              shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+            ),
+          ]),
+          const SizedBox(height: 24),
           _buildSectionHeader('数据'),
           const SizedBox(height: 8),
           _buildSettingsCard([
@@ -40,7 +102,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _buildSettingsTile(
               icon: Icons.book_rounded,
               title: '阅读设置',
-              subtitle: '沉浸模式、间距、黑白模式',
+              subtitle: '阅读模式、沉浸模式、图片间距等',
               color: UiConfig.primaryColor,
               onTap: () => Get.toNamed(Routes.readSetting),
             ),
@@ -57,8 +119,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   color: Colors.teal.withValues(alpha: 0.12),
                   borderRadius: .circular(10),
                 ),
-                child: const Icon(Icons.info_outline_rounded,
-                    color: Colors.teal, size: 22),
+                child: const Icon(Icons.info_outline_rounded, color: Colors.teal, size: 22),
               ),
               title: const Text('Manga Reader', style: TextStyle(fontSize: 15)),
               subtitle: const Text('v1.0.0', style: TextStyle(fontSize: 13)),
@@ -92,9 +153,7 @@ class _SettingsPageState extends State<SettingsPage> {
         borderRadius: .circular(12),
         side: BorderSide(color: Colors.grey.shade200),
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 

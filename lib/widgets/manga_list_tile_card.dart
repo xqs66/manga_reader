@@ -1,14 +1,13 @@
 import 'dart:io';
 
 import 'package:extended_image/extended_image.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
-import 'package:manga_reader/shared/extensions/text_ext.dart';
 import 'package:manga_reader/shared/extensions/widget_ext.dart';
 import 'package:manga_reader/widgets/loading_widget.dart';
+import 'package:manga_reader/widgets/styled_menu.dart';
 
 import '../models/local_image.dart';
 import '../models/manga.dart';
@@ -143,27 +142,15 @@ class LongPressActionSheet {
     required BuildContext context,
     List<SheetAction>? actions,
   }) {
-    showCupertinoModalPopup(
+    StyledActionSheet.show(
       context: context,
-      builder: (context) {
-        return CupertinoActionSheet(
-          actions: [
-            ...(actions ?? []).map(
-              (action) => CupertinoActionSheetAction(
-                onPressed: () async {
-                  await action.onPressed();
-                  if (Get.isBottomSheetOpen ?? false) Get.back();
-                },
-                child: Text(action.label).color(action.labelColor),
-              ),
-            ),
-            CupertinoActionSheetAction(
-              onPressed: () => Get.back(),
-              child: const Text('取消'),
-            ),
-          ],
+      actions: (actions ?? []).map((a) {
+        return StyledAction(
+          label: a.label,
+          isDestructive: a.labelColor == Colors.red,
+          onPressed: () => a.onPressed(),
         );
-      },
+      }).toList(),
     );
   }
 }

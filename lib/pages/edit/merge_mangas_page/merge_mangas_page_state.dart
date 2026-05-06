@@ -24,6 +24,7 @@ class MergeMangasPageState with ScrollState {
   bool hasMerged = false;
 
   bool deleteSourceMangas = false;
+  bool outputAsZip = false;
 
   int mergeProgress = 0;
   int mergeTotal = 0;
