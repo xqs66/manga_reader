@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:manga_reader/service/base/config_bean.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/storage_service.dart';
-import 'package:manga_reader/shared/utils/permission_util.dart';
+import 'package:manga_reader/core/utils/permission_util.dart';
 
 PathSetting pathSetting = PathSetting();
 

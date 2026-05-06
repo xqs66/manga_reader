@@ -12,8 +12,8 @@ import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/manga_id.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
-import 'package:manga_reader/shared/constants/constants.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
+import 'package:manga_reader/core/constants/constants.dart';
+import 'package:manga_reader/core/utils/log_util.dart';
 
 class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, ServiceLifeCircleBean {
   final LocalMangaService _service;
@@ -31,35 +31,31 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
   @override
   Future<void> doAfterReady() async {}
 
-  @override
-  Future<Result<List<Manga>>> loadMangasInDir(Directory dir) async {
+  Future<Result<T>> _guard<T>(Future<T> Function() fn, String errorMsg) async {
     try {
-      final mangas = await _service.loadMangasInDir(dir);
-      return Ok(mangas);
+      final value = await fn();
+      return Ok(value);
     } catch (e) {
-      return Err('加载漫画失败', e);
+      LogUtil.e(errorMsg, error: e);
+      return Err(errorMsg, e);
     }
   }
 
   @override
-  Future<Result<Manga>> loadManga(Directory dirOfManga) async {
-    try {
-      final manga = await _service.loadManga(dirOfManga);
-      if (manga == null) return Err('该目录下未发现漫画');
-      return Ok(manga);
-    } catch (e) {
-      return Err('加载漫画失败', e);
-    }
-  }
+  Future<Result<List<Manga>>> loadMangasInDir(Directory dir) =>
+      _guard(() => _service.loadMangasInDir(dir), '加载漫画失败');
 
   @override
-  Future<Result<Manga?>> tryLoadManga(Directory dirOfManga) async {
-    try {
-      return Ok(await _service.loadManga(dirOfManga));
-    } catch (e) {
-      return Err('加载漫画失败', e);
-    }
-  }
+  Future<Result<Manga>> loadManga(Directory dirOfManga) =>
+      _guard(() async {
+        final manga = await _service.loadManga(dirOfManga);
+        if (manga == null) throw Exception('该目录下未发现漫画');
+        return manga;
+      }, '加载漫画失败');
+
+  @override
+  Future<Result<Manga?>> tryLoadManga(Directory dirOfManga) =>
+      _guard(() => _service.loadManga(dirOfManga), '加载漫画失败');
 
   @override
   List<LocalImage> getMangaImages(Manga manga) => _service.getMangaImages(manga);
@@ -69,23 +65,12 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
       _service.getMangaImagesAsync(manga);
 
   @override
-  Future<Result<List<Manga>>> getMangasForPath(String path) async {
-    try {
-      return Ok(_service.settingPath2Mangas[path] ?? []);
-    } catch (e) {
-      return Err('获取漫画列表失败', e);
-    }
-  }
+  Future<Result<List<Manga>>> getMangasForPath(String path) =>
+      _guard(() => Future.value(_service.settingPath2Mangas[path] ?? []), '获取漫画列表失败');
 
   @override
-  Future<Result<void>> refreshMangasInDir(Directory dir) async {
-    try {
-      await _service.refreshMangasInDir(dir);
-      return const Ok(null);
-    } catch (e) {
-      return Err('刷新失败', e);
-    }
-  }
+  Future<Result<void>> refreshMangasInDir(Directory dir) =>
+      _guard(() => _service.refreshMangasInDir(dir), '刷新失败');
 
   @override
   Future<Result<Manga>> mergeMangas(
@@ -93,135 +78,67 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
     Directory output, {
     int imageNameStartFrom = 0,
     void Function(int current, int total)? onProgress,
-  }) async {
-    try {
-      final result = await _service.mergeMangas(
-        mangas,
-        output,
-        imageNameStartFrom: imageNameStartFrom,
-        onProgress: onProgress,
-      );
-      if (result == null) return Err('合并失败：输出目录为空');
-      return Ok(result);
-    } catch (e) {
-      LogUtil.e('合并失败', error: e);
-      return Err('合并失败', e);
-    }
-  }
+  }) =>
+      _guard(() async {
+        final result = await _service.mergeMangas(
+          mangas, output,
+          imageNameStartFrom: imageNameStartFrom,
+          onProgress: onProgress,
+        );
+        if (result == null) throw Exception('合并失败：输出目录为空');
+        return result;
+      }, '合并失败');
 
   @override
-  Future<Result<void>> deleteManga(Manga manga) async {
-    try {
-      await _service.deleteManga(manga);
-      return const Ok(null);
-    } catch (e) {
-      LogUtil.e('删除漫画失败', error: e);
-      return Err('删除漫画失败', e);
-    }
-  }
+  Future<Result<void>> deleteManga(Manga manga) =>
+      _guard(() => _service.deleteManga(manga), '删除漫画失败');
 
   @override
-  Future<Result<void>> deleteMangas(List<Manga> mangas) async {
-    try {
-      await _service.deleteMangas(mangas);
-      return const Ok(null);
-    } catch (e) {
-      LogUtil.e('批量删除漫画失败', error: e);
-      return Err('批量删除漫画失败', e);
-    }
-  }
+  Future<Result<void>> deleteMangas(List<Manga> mangas) =>
+      _guard(() => _service.deleteMangas(mangas), '批量删除漫画失败');
 
   @override
-  Future<Result<void>> deleteImage(LocalImage image) async {
-    try {
-      await _service.deleteImage(image);
-      return const Ok(null);
-    } catch (e) {
-      LogUtil.e('删除图片失败', error: e);
-      return Err('删除图片失败', e);
-    }
-  }
+  Future<Result<void>> deleteImage(LocalImage image) =>
+      _guard(() => _service.deleteImage(image), '删除图片失败');
 
   @override
-  Future<Result<List<GroupInfo>>> fetchGroups(String parentPath) async {
-    try {
-      final groups = await GroupDao.selectAllGroups(parentPath);
-      return Ok(groups
-          .map((g) => GroupInfo(name: g.groupName, isExpanded: g.isExpanded))
-          .toList());
-    } catch (e) {
-      return Err('加载分组失败', e);
-    }
-  }
+  Future<Result<List<GroupInfo>>> fetchGroups(String parentPath) =>
+      _guard(() async {
+        final groups = await GroupDao.selectAllGroups(parentPath);
+        return groups
+            .map((g) => GroupInfo(name: g.groupName, isExpanded: g.isExpanded))
+            .toList();
+      }, '加载分组失败');
 
   @override
-  Future<Result<void>> updateGroupExpand(
-      String name, String parentPath, bool isExpanded) async {
-    try {
-      await GroupDao.updateGroup(
-        name,
-        parentPath,
-        GroupCompanion(isExpanded: Value(isExpanded)),
-      );
-      return const Ok(null);
-    } catch (e) {
-      return Err('更新分组状态失败', e);
-    }
-  }
+  Future<Result<void>> updateGroupExpand(String name, String parentPath, bool isExpanded) =>
+      _guard(() => GroupDao.updateGroup(
+          name, parentPath, GroupCompanion(isExpanded: Value(isExpanded))), '更新分组状态失败');
 
   @override
-  Future<Result<void>> addGroup(String name, String parentPath) async {
-    try {
-      await GroupDao.insertGroup(name, parentPath);
-      return const Ok(null);
-    } catch (e) {
-      return Err('添加分组失败', e);
-    }
-  }
+  Future<Result<void>> addGroup(String name, String parentPath) =>
+      _guard(() => GroupDao.insertGroup(name, parentPath), '添加分组失败');
 
   @override
-  Future<Result<void>> removeGroup(String name, String parentPath) async {
-    try {
-      await GroupDao.deleteGroup(name, parentPath);
-      return const Ok(null);
-    } catch (e) {
-      return Err('删除分组失败', e);
-    }
-  }
+  Future<Result<void>> removeGroup(String name, String parentPath) =>
+      _guard(() => GroupDao.deleteGroup(name, parentPath), '删除分组失败');
 
   @override
-  Future<Result<void>> moveMangasToGroup(
-      Set<MangaId> mangaIds, String groupName) async {
-    try {
-      await MangaDao.updateMangas(
-        mangaIds
-            .map((id) => MangaCompanion(
-                id: Value(id.value), groupName: Value(groupName)))
-            .toList(),
-      );
-      return const Ok(null);
-    } catch (e) {
-      return Err('移动分组失败', e);
-    }
-  }
+  Future<Result<void>> moveMangasToGroup(Set<MangaId> mangaIds, String groupName) =>
+      _guard(() => MangaDao.updateMangas(
+          mangaIds
+              .map((id) => MangaCompanion(id: Value(id.value), groupName: Value(groupName)))
+              .toList()), '移动分组失败');
 
   @override
-  Future<Result<void>> resetMangasToDefaultGroup(
-      String groupName, String? path) async {
-    try {
-      final mangas =
-          path != null ? _service.settingPath2Mangas[path] ?? [] : [];
-      await MangaDao.updateMangas(
-        mangas
-            .where((m) => m.groupName == groupName)
-            .map((m) => MangaCompanion(
-                id: Value(m.id.value),
-                groupName: Value(Constants.defaultGroupName)))
-            .toList(),
-      );
-      return const Ok(null);
-    } catch (e) {
-      return Err('重置分组失败', e);
-    }
-  }
+  Future<Result<void>> resetMangasToDefaultGroup(String groupName, String? path) =>
+      _guard(() {
+        final mangas = path != null ? _service.settingPath2Mangas[path] ?? [] : [];
+        return MangaDao.updateMangas(
+          mangas
+              .where((m) => m.groupName == groupName)
+              .map((m) => MangaCompanion(id: Value(m.id.value), groupName: Value(Constants.defaultGroupName)))
+              .toList(),
+        );
+      }, '重置分组失败');
 }

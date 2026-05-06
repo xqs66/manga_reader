@@ -15,13 +15,13 @@ import 'package:manga_reader/pages/books/mangas_page_state.dart';
 import 'package:manga_reader/pages/home_page_controller.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
-import 'package:manga_reader/shared/constants/constants.dart';
+import 'package:manga_reader/core/constants/constants.dart';
 
-class BooksPageController extends GetxController with ScrollHandler {
-  final state = BooksPageState();
+class MangasPageController extends GetxController with ScrollHandler {
+  final state = MangasPageState();
   final MangaRepository _repo;
 
-  BooksPageController({MangaRepository? repo})
+  MangasPageController({MangaRepository? repo})
       : _repo = repo ?? Get.find<MangaRepository>();
 
   @override

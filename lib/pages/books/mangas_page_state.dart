@@ -4,7 +4,7 @@ import 'package:manga_reader/models/manga_id.dart';
 
 import '../../models/manga.dart';
 
-class BooksPageState with ScrollState {
+class MangasPageState with ScrollState {
   Set<String> displayGroups = {};
 
   List<Manga> mangas = [];

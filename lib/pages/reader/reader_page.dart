@@ -7,9 +7,9 @@ import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/pages/reader/reader_page_controller.dart';
 import 'package:manga_reader/pages/settings/read/read_settings_page.dart';
 import 'package:manga_reader/settings/read_setting.dart';
-import 'package:manga_reader/shared/constants/constants.dart';
+import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/widgets/manga_image.dart';
-import 'package:manga_reader/widgets/manga_list_tile_card.dart';
+import 'package:manga_reader/widgets/styled_menu.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -126,9 +126,9 @@ class _ReaderPageState extends State<ReaderPage> {
     return MangaImage(
       image: _state.readInfo.images[index],
       longPressActions: [
-        SheetAction(
+        StyledAction(
           label: '删除图片',
-          labelColor: Colors.red,
+          isDestructive: true,
           onPressed: () => _controller.handleDeleteImage(index),
         ),
       ],
@@ -175,9 +175,9 @@ class _ReaderPageState extends State<ReaderPage> {
                     fit: .contain,
                     backgroundColor: Colors.black,
                     longPressActions: [
-                      SheetAction(
+                      StyledAction(
                         label: '删除图片',
-                        labelColor: Colors.red,
+                        isDestructive: true,
                         onPressed: () => _controller.handleDeleteImage(index),
                       ),
                     ],

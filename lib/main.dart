@@ -10,7 +10,7 @@ import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/service/path_service.dart';
 import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
+import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:manga_reader/core/repository/manga_repository_impl.dart';
 import 'package:manga_reader/pages/home_page.dart';
 import 'package:manga_reader/routes/routes.dart';
@@ -154,7 +154,7 @@ class MyApp extends StatelessWidget {
       title: 'Manga Reader',
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
-      themeMode: getThemeMode(),
+      themeMode: themeSetting.mode,
       getPages: Routes.pages,
       navigatorObservers: [routeObserver],
       home: HomePage(),

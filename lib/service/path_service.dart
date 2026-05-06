@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../shared/constants/constants.dart';
-import '../shared/utils/log_util.dart';
+import '../core/constants/constants.dart';
+import '../core/utils/log_util.dart';
 
 PathService pathService = PathService();
 

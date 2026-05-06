@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
-import 'package:manga_reader/shared/extensions/text_ext.dart';
+import 'package:manga_reader/core/extensions/text_ext.dart';
 
 class CommonDialog extends StatelessWidget {
   final String title;

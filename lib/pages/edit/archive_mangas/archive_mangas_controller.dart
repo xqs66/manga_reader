@@ -2,7 +2,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
-import 'package:manga_reader/shared/utils/file_util.dart';
+import 'package:manga_reader/core/utils/file_util.dart';
 
 import 'archive_mangas_state.dart';
 

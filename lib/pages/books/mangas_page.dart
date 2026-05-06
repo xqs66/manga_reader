@@ -10,14 +10,17 @@ import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/pages/books/mangas_page_controller.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
 import 'package:manga_reader/settings/path_setting.dart';
-import 'package:manga_reader/shared/constants/constants.dart';
-import 'package:manga_reader/shared/extensions/string_ext.dart';
-import 'package:manga_reader/shared/extensions/text_ext.dart';
-import 'package:manga_reader/shared/utils/file_util.dart';
+import 'package:manga_reader/core/constants/constants.dart';
+import 'package:manga_reader/core/extensions/string_ext.dart';
+import 'package:manga_reader/core/extensions/text_ext.dart';
+import 'package:manga_reader/core/utils/file_util.dart';
 import 'package:manga_reader/widgets/common_dialog.dart';
+import 'package:manga_reader/widgets/empty_state.dart';
 import 'package:manga_reader/widgets/group_header.dart';
 import 'package:manga_reader/widgets/manga_list_tile_card.dart';
 import 'package:manga_reader/widgets/select_dialog.dart';
+import 'package:manga_reader/widgets/selected_item_decoration.dart';
+import 'package:manga_reader/widgets/selection_app_bar.dart';
 import 'package:manga_reader/widgets/styled_menu.dart';
 
 class MangasPage extends StatefulWidget {
@@ -28,8 +31,8 @@ class MangasPage extends StatefulWidget {
 }
 
 class _MangasPageState extends State<MangasPage> with RouteAware {
-  final _controller = Get.put(BooksPageController(), permanent: true);
-  final _state = Get.find<BooksPageController>().state;
+  final _controller = Get.put(MangasPageController(), permanent: true);
+  final _state = Get.find<MangasPageController>().state;
 
   @override
   void didChangeDependencies() {
@@ -44,7 +47,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<BooksPageController>(
+    return GetBuilder<MangasPageController>(
       id: _controller.appBarId,
       builder: (_) {
         return Scaffold(
@@ -60,7 +63,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
     );
   }
 
-  AppBar _buildNormalAppbar() {
+  PreferredSizeWidget _buildNormalAppbar() {
     return AppBar(
       leading: _state.isAtRoot
           ? null
@@ -72,7 +75,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
       centerTitle: true,
       actions: [
         if (!_state.isAtRoot)
-          GetBuilder<BooksPageController>(
+          GetBuilder<MangasPageController>(
             id: _controller.normalAppBarActionsId,
             builder: (context) {
               return IconButton(
@@ -81,7 +84,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
               );
             },
           ),
-        GetBuilder<BooksPageController>(
+        GetBuilder<MangasPageController>(
           id: _controller.normalAppBarActionsId,
           builder: (_) {
             return StyledPopupMenu<String>(
@@ -108,29 +111,16 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
     );
   }
 
-  AppBar _buildSelectModeAppbar() {
-    return AppBar(
-      leading: IconButton(
-        onPressed: _controller.toggleSelectMode,
-        icon: const Icon(Icons.close_rounded),
-      ),
-      title: Text('已选 ${_state.selectedMangaIds.length} 项'),
-      centerTitle: true,
-      actions: [
-        IconButton(
-          onPressed: _controller.handleSelectAll,
-          icon: Icon(
-            _state.isSelectedAll
-                ? Icons.deselect_rounded
-                : Icons.select_all_rounded,
-          ),
-          tooltip: _state.isSelectedAll ? '取消全选' : '全选',
-        ),
-      ],
+  PreferredSizeWidget _buildSelectModeAppbar() {
+    return SelectionAppBar(
+      selectedCount: _state.selectedMangaIds.length,
+      onClear: _controller.toggleSelectMode,
+      onSelectAll: _controller.handleSelectAll,
+      isAllSelected: _state.isSelectedAll,
     );
   }
 
-  AppBar _buildSearchModeAppbar() {
+  PreferredSizeWidget _buildSearchModeAppbar() {
     return AppBar(
       leading: IconButton(
         onPressed: _controller.toggleSearchMode,
@@ -166,7 +156,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   Widget _buildBody() {
-    return GetBuilder<BooksPageController>(
+    return GetBuilder<MangasPageController>(
       id: _controller.bodyId,
       builder: (_) {
         _controller.tryAutoRestore();
@@ -181,7 +171,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   Widget _buildRefreshIndicator() {
-    return GetBuilder<BooksPageController>(
+    return GetBuilder<MangasPageController>(
       id: _controller.refreshProgressId,
       builder: (_) {
         if (!_state.isRefreshing) return const SizedBox.shrink();
@@ -198,27 +188,10 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: .min,
-        children: [
-          Icon(
-            Icons.folder_open_rounded,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '未发现漫画',
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '请先在设置中添加漫画源路径',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-          ),
-        ],
-      ),
+    return const EmptyState(
+      icon: Icons.folder_open_rounded,
+      title: '未发现漫画',
+      subtitle: '请先在设置中添加漫画源路径',
     );
   }
 
@@ -259,23 +232,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
 
   Widget _buildMangaListWithoutGroup() {
     if (_state.searchedMangas.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: .min,
-          children: [
-            Icon(
-              Icons.search_off_rounded,
-              size: 56,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '无搜索结果',
-              style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
-            ),
-          ],
-        ),
-      );
+      return const EmptyState(icon: Icons.search_off_rounded, title: '无搜索结果');
     }
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -314,7 +271,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   Widget _buildElementSliver(int groupIndex, List<Manga> mangas) {
-    return GetBuilder<BooksPageController>(
+    return GetBuilder<MangasPageController>(
       id: '${_controller.mangasInGroupIdPrefix}::${_state.groups[groupIndex]}',
       builder: (_) {
         final isDisplay = _state.displayGroups.contains(
@@ -338,7 +295,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
 
   Widget _buildGroup(int index) {
     final String groupName = _state.groups[index];
-    return GetBuilder<BooksPageController>(
+    return GetBuilder<MangasPageController>(
       id: '${_controller.groupIdPrefix}::$groupName',
       builder: (_) {
         final isDisplay = _state.displayGroups.contains(groupName);
@@ -349,12 +306,12 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
           onTap: () => _controller.toggleGroupExpand(index),
           onLongPress: () {
             if (groupName == Constants.defaultGroupName) return;
-            LongPressActionSheet.show(
+            StyledActionSheet.show(
               context: context,
               actions: [
-                SheetAction(
+                StyledAction(
                   label: '删除分组',
-                  labelColor: Colors.red,
+                  isDestructive: true,
                   onPressed: () =>
                       Get.dialog(_buildDeleteGroupDialog(groupName)),
                 ),
@@ -402,7 +359,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   Widget _buildElement(bool isDisplay, Manga manga) {
-    return GetBuilder<BooksPageController>(
+    return GetBuilder<MangasPageController>(
       id: '${_controller.mangaIdPrefix}::${manga.id}',
       builder: (_) {
         if (!isDisplay) return const SizedBox.shrink();
@@ -410,24 +367,8 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
         final isSelected =
             _state.selectedMangaIds.contains(manga.id) && _state.isSelectMode;
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-          decoration: isSelected
-              ? BoxDecoration(
-                  borderRadius: .circular(12),
-                  border: Border.all(
-                    color: UiConfig.primaryColor.withValues(alpha: 0.5),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: UiConfig.primaryColor.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                )
-              : null,
+        return SelectedItemDecoration(
+          isSelected: isSelected,
           child: Stack(
             children: [
               MangaListTileCard(
@@ -467,7 +408,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   Widget _buildBottomBar() {
-    return GetBuilder<BooksPageController>(
+    return GetBuilder<MangasPageController>(
       id: _controller.bottomBarId,
       builder: (_) {
         if (!_state.isSelectMode) return const SizedBox.shrink();
@@ -563,7 +504,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   Widget _buildDeleteGroupDialog(String groupName) {
-    return GetBuilder<BooksPageController>(
+    return GetBuilder<MangasPageController>(
       id: _controller.deleteGroupDialogId,
       builder: (_) {
         return CommonDialog(

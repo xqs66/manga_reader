@@ -6,14 +6,9 @@ import 'package:manga_reader/widgets/styled_menu.dart';
 
 import '../../routes/routes.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
-  @override
-  State<SettingsPage> createState() => _SettingsPageState();
-}
-
-class _SettingsPageState extends State<SettingsPage> {
   static const _themeLabels = {
     ThemeMode.system: '跟随系统',
     ThemeMode.light: '浅色模式',
@@ -28,61 +23,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentMode = getThemeMode();
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('设置'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('设置'), centerTitle: true),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
           _buildSectionHeader('显示'),
           const SizedBox(height: 8),
-          _buildSettingsCard([
-            ListTile(
-              leading: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.12),
-                  borderRadius: .circular(10),
-                ),
-                child: Icon(_themeIcons[currentMode]!, color: Colors.orange, size: 22),
-              ),
-              title: const Text('主题', style: TextStyle(fontSize: 15)),
-              subtitle: const Text('切换应用配色方案', style: TextStyle(fontSize: 13)),
-              trailing: StyledPopupMenu<ThemeMode>(
-                items: ThemeMode.values.map((mode) {
-                  final isCurrent = currentMode == mode;
-                  return StyledPopupItem<ThemeMode>(
-                    value: mode,
-                    label: _themeLabels[mode]!,
-                    icon: _themeIcons[mode],
-                    isSelected: isCurrent,
-                    onSelected: (m) {
-                      setThemeMode(m);
-                      Get.changeThemeMode(m);
-                      setState(() {});
-                    },
-                  );
-                }).toList(),
-                child: Row(
-                  mainAxisSize: .min,
-                  children: [
-                    Text(
-                      _themeLabels[currentMode]!,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
-                  ],
-                ),
-              ),
-              shape: RoundedRectangleBorder(borderRadius: .circular(12)),
-            ),
-          ]),
+          Obx(() => _buildSettingsCard([
+                _buildThemeTile(),
+              ])),
           const SizedBox(height: 24),
           _buildSectionHeader('数据'),
           const SizedBox(height: 8),
@@ -128,6 +78,44 @@ class _SettingsPageState extends State<SettingsPage> {
           ]),
         ],
       ),
+    );
+  }
+
+  Widget _buildThemeTile() {
+    final currentMode = themeSetting.currentMode.value;
+    return ListTile(
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.12),
+          borderRadius: .circular(10),
+        ),
+        child: Icon(_themeIcons[currentMode]!, color: Colors.orange, size: 22),
+      ),
+      title: const Text('主题', style: TextStyle(fontSize: 15)),
+      subtitle: const Text('切换应用配色方案', style: TextStyle(fontSize: 13)),
+      trailing: StyledPopupMenu<ThemeMode>(
+        items: ThemeMode.values.map((mode) {
+          final isCurrent = currentMode == mode;
+          return StyledPopupItem<ThemeMode>(
+            value: mode,
+            label: _themeLabels[mode]!,
+            icon: _themeIcons[mode],
+            isSelected: isCurrent,
+            onSelected: (m) => themeSetting.setMode(m),
+          );
+        }).toList(),
+        child: Row(
+          mainAxisSize: .min,
+          children: [
+            Text(_themeLabels[currentMode]!, style: const TextStyle(fontSize: 14, color: Color(0xFF616161))),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
+          ],
+        ),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: .circular(12)),
     );
   }
 

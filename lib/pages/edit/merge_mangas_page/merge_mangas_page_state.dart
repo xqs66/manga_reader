@@ -9,6 +9,7 @@ class MergeMangasPageState with ScrollState {
   Directory? outputDir;
 
   List<Manga> mangas = [];
+  bool isLoadingMangas = false;
 
   bool get isDirSelected => selectedDir != null;
   bool get isOutputDirSelected => outputDir != null;

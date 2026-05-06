@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:manga_reader/shared/extensions/widget_ext.dart';
+import 'package:manga_reader/core/extensions/widget_ext.dart';
 import 'package:manga_reader/widgets/loading_widget.dart';
-import 'package:manga_reader/widgets/manga_list_tile_card.dart';
+import 'package:manga_reader/widgets/styled_menu.dart';
 
 import '../models/local_image.dart';
 
@@ -21,7 +21,7 @@ class MangaImage extends StatelessWidget {
   final int? maxBytes;
   final Color backgroundColor;
   final void Function()? onLongPress;
-  final List<SheetAction>? longPressActions;
+  final List<StyledAction>? longPressActions;
   final LoadingWidgetBuilder? loadingWidgetBuilder;
   final LoadFailedWidgetBuilder? loadFailedWidgetBuilder;
   final LoadCompleteCallBack? loadCompleteCallBack;
@@ -46,9 +46,9 @@ class MangaImage extends StatelessWidget {
     return GestureDetector(
       onLongPress:
           onLongPress ??
-          () => LongPressActionSheet.show(
+          () => StyledActionSheet.show(
             context: context,
-            actions: longPressActions,
+            actions: longPressActions ?? [],
           ),
       child: Container(
         height: height,

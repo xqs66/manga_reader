@@ -172,7 +172,7 @@ class ReaderPageController extends GetxController {
   Future<void> deleteImage(int index) async {
     final image = state.readInfo.images[index];
     final readingManga = state.readInfo.mangaInfo;
-    final booksController = Get.find<BooksPageController>();
+    final booksController = Get.find<MangasPageController>();
     final mangaList = booksController.state.mangas;
     final indexOfReadingManga =
         mangaList.indexWhere((m) => m.id == readingManga.id);

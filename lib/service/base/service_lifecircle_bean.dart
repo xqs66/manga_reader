@@ -1,6 +1,6 @@
-import 'package:manga_reader/shared/utils/log_util.dart';
+import 'package:manga_reader/core/utils/log_util.dart';
 
-import '../../shared/constants/constants.dart';
+import '../../core/constants/constants.dart';
 
 abstract interface class ServiceLifeCircleBean {
   List<ServiceLifeCircleBean> get initDependencies;

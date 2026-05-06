@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:manga_reader/shared/constants/constants.dart';
+import 'package:manga_reader/core/constants/constants.dart';
 
 @TableIndex(name: 'a_idx_parent_path', columns: {#parentPath})
 @TableIndex(name: 'a_idx_title', columns: {#title})

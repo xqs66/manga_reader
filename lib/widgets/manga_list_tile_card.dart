@@ -5,13 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
-import 'package:manga_reader/shared/extensions/widget_ext.dart';
+import 'package:manga_reader/core/extensions/widget_ext.dart';
 import 'package:manga_reader/widgets/loading_widget.dart';
-import 'package:manga_reader/widgets/styled_menu.dart';
 
 import '../models/local_image.dart';
 import '../models/manga.dart';
-import '../shared/utils/file_util.dart';
+import '../core/utils/file_util.dart';
 
 class MangaListTileCard extends StatelessWidget {
   final Manga manga;
@@ -135,34 +134,4 @@ class MangaListTileCard extends StatelessWidget {
       ],
     );
   }
-}
-
-class LongPressActionSheet {
-  static void show({
-    required BuildContext context,
-    List<SheetAction>? actions,
-  }) {
-    StyledActionSheet.show(
-      context: context,
-      actions: (actions ?? []).map((a) {
-        return StyledAction(
-          label: a.label,
-          isDestructive: a.labelColor == Colors.red,
-          onPressed: () => a.onPressed(),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class SheetAction {
-  final String label;
-  final Future<void> Function() onPressed;
-  final Color? labelColor;
-
-  const SheetAction({
-    required this.label,
-    required this.onPressed,
-    this.labelColor,
-  });
 }

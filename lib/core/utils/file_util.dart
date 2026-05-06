@@ -5,8 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:path/path.dart' as p;
-import 'package:manga_reader/shared/extensions/file_system_entity_ext.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
+import 'package:manga_reader/core/extensions/file_system_entity_ext.dart';
+import 'package:manga_reader/core/utils/log_util.dart';
 
 import '../constants/constants.dart';
 

@@ -7,9 +7,10 @@ import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/path_setting.dart';
-import 'package:manga_reader/shared/utils/file_util.dart';
-import 'package:manga_reader/shared/utils/log_util.dart';
-import 'package:manga_reader/widgets/manga_list_tile_card.dart';
+import 'package:manga_reader/core/utils/file_util.dart';
+import 'package:manga_reader/core/utils/log_util.dart';
+import 'package:manga_reader/widgets/progress_view.dart';
+import 'package:manga_reader/widgets/styled_menu.dart';
 import 'package:path/path.dart' as p;
 
 import 'merge_mangas_page_state.dart';
@@ -34,8 +35,20 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
     final dir = await FileUtil.selectDir();
     if (dir != null) {
       state.selectedDir = dir;
+      state.selectedMangas.clear();
+      state.selectedMangaIndexes.clear();
+      await _loadMangaList();
       update([selectDirId, bodyId, titleId]);
     }
+  }
+
+  Future<void> _loadMangaList() async {
+    state.mangas = [];
+    state.isLoadingMangas = true;
+    update([bodyId]);
+    final all = await localMangaService.getMangasInDir(state.selectedDir!);
+    state.mangas = all;
+    state.isLoadingMangas = false;
   }
 
   void selectOutputDir() async {
@@ -60,8 +73,16 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
     update([titleId, cancelButtonId]);
   }
 
-  void handleLongPressManga(BuildContext context, List<SheetAction> actions) {
-    LongPressActionSheet.show(context: context, actions: actions);
+  void handleLongPressManga(BuildContext context, Manga manga) {
+    StyledActionSheet.show(
+      context: context,
+      actions: [
+        StyledAction(
+          label: '复制漫画名',
+          onPressed: () => FileUtil.copyMangaName(manga.title),
+        ),
+      ],
+    );
   }
 
   void cancelSelected() {
@@ -165,28 +186,12 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
     return GetBuilder<MergeMangasPageController>(
       id: mergeProgressId,
       builder: (_) {
-        final progress = state.mergeTotal > 0
-            ? state.mergeProgress / state.mergeTotal
-            : 0.0;
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: .circular(16)),
           title: const Text('正在合并...'),
-          content: Column(
-            mainAxisSize: .min,
-            children: [
-              ClipRRect(
-                borderRadius: .circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 8,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '${state.mergeProgress} / ${state.mergeTotal}',
-                style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
-              ),
-            ],
+          content: ProgressView(
+            current: state.mergeProgress,
+            total: state.mergeTotal,
           ),
         );
       },

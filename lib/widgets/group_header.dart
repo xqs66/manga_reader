@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:manga_reader/shared/extensions/widget_ext.dart';
+import 'package:manga_reader/core/extensions/widget_ext.dart';
 
 import '../config/ui_config.dart';
 

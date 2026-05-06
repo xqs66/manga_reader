@@ -11,14 +11,14 @@ import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/path_service.dart';
 import 'package:manga_reader/settings/path_setting.dart';
-import 'package:manga_reader/shared/constants/constants.dart';
-import 'package:manga_reader/shared/extensions/file_system_entity_ext.dart';
-import 'package:manga_reader/shared/utils/file_util.dart';
+import 'package:manga_reader/core/constants/constants.dart';
+import 'package:manga_reader/core/extensions/file_system_entity_ext.dart';
+import 'package:manga_reader/core/utils/file_util.dart';
 import 'package:path/path.dart';
 
 import '../models/manga.dart';
 import '../models/manga_id.dart';
-import '../shared/utils/log_util.dart';
+import '../core/utils/log_util.dart';
 
 LocalMangaService localMangaService = LocalMangaService();
 
