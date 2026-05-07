@@ -11,6 +11,11 @@ enum ReadingMode {
   singleRTL,
 }
 
+enum BookshelfLayout {
+  list,
+  grid,
+}
+
 ReadSetting readSetting = ReadSetting();
 
 class ReadSetting extends ConfigBean with ServiceBeanMixin {
@@ -19,6 +24,7 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
   late final RxBool enableGrayscaleMode;
   late final Rx<ReadingMode> readingMode;
   late final RxBool continueFromLastRead;
+  late final Rx<BookshelfLayout> bookshelfLayout;
 
   @override
   List<ServiceLifeCircleBean> get initDependencies => [storageService];
@@ -48,6 +54,14 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
     readingMode = ReadingMode.values[modeIndex.clamp(0, ReadingMode.values.length - 1)].obs;
     continueFromLastRead =
         (storageService.read<bool>(ReadSettingKeys.continueFromLastRead) ?? true).obs;
+    final layoutIndex =
+        storageService.read<int>(ReadSettingKeys.bookshelfLayout) ?? 0;
+    bookshelfLayout = BookshelfLayout.values[layoutIndex.clamp(0, 1)].obs;
+  }
+
+  Future<void> saveBookshelfLayout(BookshelfLayout value) async {
+    bookshelfLayout.value = value;
+    await saveConfig(ReadSettingKeys.bookshelfLayout, value.index);
   }
 
   Future<void> saveContinueFromLastRead(bool value) async {
@@ -82,4 +96,5 @@ class ReadSettingKeys {
   static const String enableGrayscaleMode = 'enableGrayScaleMode';
   static const String readingMode = 'readingMode';
   static const String continueFromLastRead = 'continueFromLastRead';
+  static const String bookshelfLayout = 'bookshelfLayout';
 }

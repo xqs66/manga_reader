@@ -6,7 +6,7 @@ import 'package:manga_reader/widgets/manga_list_tile_card.dart';
 import 'package:manga_reader/widgets/path_selector_tile.dart';
 import 'package:manga_reader/widgets/progress_view.dart';
 import 'package:manga_reader/widgets/selected_item_decoration.dart';
-import 'package:manga_reader/widgets/selection_bottom_bar.dart';
+import 'package:manga_reader/widgets/selection/selection_bottom_bar.dart';
 
 import 'archive_mangas_controller.dart';
 

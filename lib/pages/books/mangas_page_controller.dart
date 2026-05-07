@@ -42,6 +42,15 @@ class MangasPageController extends GetxController with ScrollHandler {
   static const _lastPathKey = 'last_source_path';
   bool _autoRestoreAttempted = false;
 
+  @override
+  void onInit() {
+    super.onInit();
+    ever(readSetting.bookshelfLayout, (_) {
+      state.currentGridGroup = null;
+      update([bodyId, appBarId]);
+    });
+  }
+
   void tryAutoRestore() {
     if (_autoRestoreAttempted || !state.isAtRoot) return;
     _autoRestoreAttempted = true;
@@ -77,6 +86,30 @@ class MangasPageController extends GetxController with ScrollHandler {
     storageService.remove(_lastPathKey);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
+
+  void toggleLayoutMode() {
+    final next = readSetting.bookshelfLayout.value == BookshelfLayout.list
+        ? BookshelfLayout.grid
+        : BookshelfLayout.list;
+    readSetting.saveBookshelfLayout(next);
+    state.currentGridGroup = null;
+    update([bodyId, normalAppBarActionsId, appBarId]);
+  }
+
+  void enterGridGroup(String groupName) {
+    state.currentGridGroup = groupName;
+    update([bodyId, normalAppBarActionsId, appBarId]);
+  }
+
+  void backFromGridGroup() {
+    state.currentGridGroup = null;
+    update([bodyId, normalAppBarActionsId, appBarId]);
+  }
+
+  List<Manga> get mangasForCurrentGrid =>
+      state.currentGridGroup == null
+          ? state.mangas
+          : state.mangas.where((m) => m.groupName == state.currentGridGroup).toList();
 
   Future<void> _syncGroupsFromPath() async {
     final path = state.currentPath;

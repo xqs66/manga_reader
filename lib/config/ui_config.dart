@@ -27,6 +27,12 @@ class UiConfig {
   ///merge page
   static const double bottomHeightInMergePasge = 65;
 
+  ///grid card
+  static const double gridCardTargetWidth = 130;
+  static const double gridCardAspectRatio = 1.4;
+  static const double gridCardSpacing = 8;
+  static const double gridCardPadding = 12;
+
   ///manga card list tile
   static const double mangaListCardHeight = 150;
   static const double mangaListCardPadding = 5;

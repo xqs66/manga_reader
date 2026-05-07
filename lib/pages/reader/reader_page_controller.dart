@@ -126,7 +126,6 @@ class ReaderPageController extends GetxController {
   }
 
   void handleJumpToPage(int index) {
-    state.currentIndex = index;
     if (readSetting.readingMode.value == ReadingMode.strip) {
       handleSlideEnd((index + 1).toDouble());
     } else {
@@ -209,9 +208,13 @@ class ReaderPageController extends GetxController {
   }
 
   void handleSlideEnd(double value) {
-    state.itemScrollController.jumpTo(index: value.toInt() - 1);
+    final index = value.toInt() - 1;
+    state.itemScrollController.jumpTo(index: index);
+    state.currentIndex = index;
+    _updateCachesSync(index);
     scrollThumbnailToCurrent();
-    update([bottomRightInfoId]);
+    update([bottomMenuId, bottomRightInfoId]);
+    _debouncedSaveProgress();
   }
 
   int? getCurrentIndex() {

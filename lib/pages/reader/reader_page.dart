@@ -314,7 +314,7 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildThumbnailStrip(int currentPage, int pageCount, bool isRTL) {
-    const selectedColor = Color(0xFF90CAF9);
+    const selectedColor = Color(0xFF9990F9);
 
     return SizedBox(
       height: UiConfig.thumbnailStripHeight,

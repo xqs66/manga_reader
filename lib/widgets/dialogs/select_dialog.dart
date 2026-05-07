@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:manga_reader/config/ui_config.dart';
-import 'package:manga_reader/widgets/common_dialog.dart';
+import 'package:manga_reader/widgets/dialogs/common_dialog.dart';
 
 class SelectDialog extends StatefulWidget {
   final List<String> items;

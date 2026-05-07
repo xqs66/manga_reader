@@ -14,13 +14,16 @@ import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/core/extensions/string_ext.dart';
 import 'package:manga_reader/core/extensions/text_ext.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
-import 'package:manga_reader/widgets/common_dialog.dart';
+import 'package:manga_reader/settings/read_setting.dart';
+import 'package:manga_reader/widgets/dialogs/common_dialog.dart';
 import 'package:manga_reader/widgets/empty_state.dart';
 import 'package:manga_reader/widgets/group_header.dart';
+import 'package:manga_reader/widgets/grid/manga_grid_view.dart';
+import 'package:manga_reader/widgets/grid/group_grid_view.dart';
 import 'package:manga_reader/widgets/manga_list_tile_card.dart';
-import 'package:manga_reader/widgets/select_dialog.dart';
+import 'package:manga_reader/widgets/dialogs/select_dialog.dart';
 import 'package:manga_reader/widgets/selected_item_decoration.dart';
-import 'package:manga_reader/widgets/selection_app_bar.dart';
+import 'package:manga_reader/widgets/selection/selection_app_bar.dart';
 import 'package:manga_reader/widgets/styled_menu.dart';
 
 class MangasPage extends StatefulWidget {
@@ -64,14 +67,25 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   PreferredSizeWidget _buildNormalAppbar() {
+    final isGridGroup =
+        readSetting.bookshelfLayout.value == BookshelfLayout.grid && _state.currentGridGroup != null;
     return AppBar(
       leading: _state.isAtRoot
           ? null
-          : IconButton(
-              onPressed: _controller.backToRoot,
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-      title: Text(_state.isAtRoot ? '书架' : _state.currentPath?.split('/').last ?? '书架'),
+          : isGridGroup
+              ? IconButton(
+                  onPressed: _controller.backFromGridGroup,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                )
+              : IconButton(
+                  onPressed: _controller.backToRoot,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+      title: Text(isGridGroup
+          ? _state.currentGridGroup!
+          : _state.isAtRoot
+              ? '书架'
+              : _state.currentPath?.split('/').last ?? '书架'),
       centerTitle: true,
       actions: [
         if (!_state.isAtRoot)
@@ -89,13 +103,21 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
           builder: (_) {
             return StyledPopupMenu<String>(
               items: [
-                if (!_state.isAtRoot)
+                if (!_state.isAtRoot && _state.currentGridGroup == null)
                   StyledPopupItem(
                     value: 'new_group',
                     label: '新建分组',
                     icon: Icons.create_new_folder_rounded,
                     onSelected: (_) => Get.dialog(_buildNewGroupDialog()),
                   ),
+                StyledPopupItem(
+                  value: 'toggle_layout',
+                  label: readSetting.bookshelfLayout.value == BookshelfLayout.list ? '切换为网格' : '切换为列表',
+                  icon: readSetting.bookshelfLayout.value == BookshelfLayout.list
+                      ? Icons.grid_view_rounded
+                      : Icons.view_list_rounded,
+                  onSelected: (_) => _controller.toggleLayoutMode(),
+                ),
                 StyledPopupItem(
                   value: 'refresh',
                   label: '刷新',
@@ -184,7 +206,31 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
     if (_state.isAtRoot) return _buildLocalPaths();
     if (_state.isSearchMode) return _buildMangaListWithoutGroup();
     if (_state.mangas.isEmpty) return _buildEmptyState();
+    if (readSetting.bookshelfLayout.value == BookshelfLayout.grid) return _buildGridLayout();
     return _buildGroupedBooksList();
+  }
+
+  // ── Grid layout ──
+
+  Widget _buildGridLayout() {
+    if (_state.currentGridGroup != null) {
+      return _buildMangaGrid(_controller.mangasForCurrentGrid);
+    }
+    return _buildGroupFoldersGrid();
+  }
+
+  Widget _buildGroupFoldersGrid() {
+    return GroupGridView(
+      groups: _state.groups,
+      allMangas: _state.mangas,
+      controller: _controller,
+      onEnter: _controller.enterGridGroup,
+      deleteGroupDialogBuilder: _buildDeleteGroupDialog,
+    );
+  }
+
+  Widget _buildMangaGrid(List<Manga> mangas) {
+    return MangaGridView(mangas: mangas, controller: _controller);
   }
 
   Widget _buildEmptyState() {
@@ -233,6 +279,9 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   Widget _buildMangaListWithoutGroup() {
     if (_state.searchedMangas.isEmpty) {
       return const EmptyState(icon: Icons.search_off_rounded, title: '无搜索结果');
+    }
+    if (readSetting.bookshelfLayout.value == BookshelfLayout.grid) {
+      return _buildMangaGrid(_state.searchedMangas);
     }
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),

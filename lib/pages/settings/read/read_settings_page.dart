@@ -36,6 +36,9 @@ class ReadSettingsPage extends StatelessWidget {
             _buildSectionHeader('阅读模式'),
             _buildReadingModeCard(),
             const SizedBox(height: 24),
+            _buildSectionHeader('书架'),
+            _buildBookshelfCard(),
+            const SizedBox(height: 24),
             _buildSectionHeader('显示'),
             _buildDisplayCard(),
             const SizedBox(height: 24),
@@ -95,6 +98,52 @@ class ReadSettingsPage extends StatelessWidget {
           ),
         ),
         shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+      ),
+    );
+  }
+
+  static const _layoutLabels = {
+    BookshelfLayout.list: '列表',
+    BookshelfLayout.grid: '网格',
+  };
+
+  Widget _buildBookshelfCard() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: .circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.grid_view_rounded),
+            title: const Text('书架布局'),
+            trailing: StyledPopupMenu<BookshelfLayout>(
+              items: BookshelfLayout.values.map((layout) {
+                final isCurrent = readSetting.bookshelfLayout.value == layout;
+                return StyledPopupItem<BookshelfLayout>(
+                  value: layout,
+                  label: _layoutLabels[layout]!,
+                  isSelected: isCurrent,
+                  onSelected: (l) => readSetting.saveBookshelfLayout(l),
+                );
+              }).toList(),
+              child: Row(
+                mainAxisSize: .min,
+                children: [
+                  Text(
+                    _layoutLabels[readSetting.bookshelfLayout.value]!,
+                    style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
+                ],
+              ),
+            ),
+            shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+          ),
+        ],
       ),
     );
   }

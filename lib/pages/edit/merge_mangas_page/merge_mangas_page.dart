@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/models/manga.dart';
-import 'package:manga_reader/widgets/common_dialog.dart';
+import 'package:manga_reader/widgets/dialogs/common_dialog.dart';
 import 'package:manga_reader/widgets/empty_state.dart';
 import 'package:manga_reader/widgets/manga_list_tile_card.dart';
 import 'package:manga_reader/widgets/path_selector_tile.dart';

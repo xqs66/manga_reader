@@ -35,4 +35,7 @@ class MangasPageState with ScrollState {
   bool get deleteOnceGroupDeleted => !toDefaultGroupOnceDelete;
 
   bool isRefreshing = false;
+
+  /// When non-null in grid mode, shows only mangas from this group.
+  String? currentGridGroup;
 }
