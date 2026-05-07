@@ -141,4 +141,16 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
               .toList(),
         );
       }, '重置分组失败');
+
+  @override
+  Future<void> updateMangaReadProgress(MangaId id, int lastReadPage) async {
+    try {
+      await MangaDao.updateManga(MangaCompanion(
+        id: Value(id.value),
+        lastReadPage: Value(lastReadPage),
+      ));
+    } catch (e) {
+      LogUtil.e('保存阅读进度失败', error: e);
+    }
+  }
 }

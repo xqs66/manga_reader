@@ -18,6 +18,7 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
   late final RxInt imageSpacing;
   late final RxBool enableGrayscaleMode;
   late final Rx<ReadingMode> readingMode;
+  late final RxBool continueFromLastRead;
 
   @override
   List<ServiceLifeCircleBean> get initDependencies => [storageService];
@@ -45,6 +46,13 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
     final modeIndex =
         storageService.read<int>(ReadSettingKeys.readingMode) ?? 0;
     readingMode = ReadingMode.values[modeIndex.clamp(0, ReadingMode.values.length - 1)].obs;
+    continueFromLastRead =
+        (storageService.read<bool>(ReadSettingKeys.continueFromLastRead) ?? true).obs;
+  }
+
+  Future<void> saveContinueFromLastRead(bool value) async {
+    continueFromLastRead.value = value;
+    await saveConfig(ReadSettingKeys.continueFromLastRead, value);
   }
 
   Future<void> saveEnableImmersiveMode(bool value) async {
@@ -73,4 +81,5 @@ class ReadSettingKeys {
   static const String imageSpacing = 'imageSpacing';
   static const String enableGrayscaleMode = 'enableGrayScaleMode';
   static const String readingMode = 'readingMode';
+  static const String continueFromLastRead = 'continueFromLastRead';
 }

@@ -45,4 +45,6 @@ abstract class MangaRepository {
   Future<Result<void>> updateGroupExpand(String name, String parentPath, bool isExpanded);
   Future<Result<void>> moveMangasToGroup(Set<MangaId> mangaIds, String groupName);
   Future<Result<void>> resetMangasToDefaultGroup(String groupName, String? path);
+
+  Future<void> updateMangaReadProgress(MangaId id, int lastReadPage);
 }

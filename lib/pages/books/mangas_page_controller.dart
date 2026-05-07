@@ -15,6 +15,7 @@ import 'package:manga_reader/pages/books/mangas_page_state.dart';
 import 'package:manga_reader/pages/home_page_controller.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
+import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 
 class MangasPageController extends GetxController with ScrollHandler {
@@ -174,12 +175,14 @@ class MangasPageController extends GetxController with ScrollHandler {
   }
 
   void handleMangaCardTap(Manga manga) {
+    final startIndex = readSetting.continueFromLastRead.value ? manga.lastReadPage : 0;
     Get.toNamed(
       Routes.reader,
       arguments: ReadInfo(
         mangaInfo: manga,
         images: localMangaService.getMangaImages(manga),
         pageCount: manga.pageCount,
+        lastReadIndex: startIndex,
       ),
     );
   }

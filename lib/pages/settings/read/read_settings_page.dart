@@ -123,7 +123,49 @@ class ReadSettingsPage extends StatelessWidget {
         borderRadius: .circular(12),
         side: BorderSide(color: Colors.grey.shade200),
       ),
-      child: _buildImmersiveModeSetting(),
+      child: Column(
+        children: [
+          _buildContinueFromLastReadSetting(),
+          const Divider(height: 1, indent: 56),
+          _buildImmersiveModeSetting(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContinueFromLastReadSetting() {
+    return ListTile(
+      leading: const Icon(Icons.history_rounded),
+      title: const Text('继续阅读'),
+      // subtitle: const Text('选择是否从上次阅读位置开始', style: TextStyle(fontSize: 13)),
+      trailing: StyledPopupMenu<bool>(
+        items: [
+          StyledPopupItem<bool>(
+            value: true,
+            label: '继续上次阅读位置',
+            isSelected: readSetting.continueFromLastRead.value,
+            onSelected: (_) => readSetting.saveContinueFromLastRead(true),
+          ),
+          StyledPopupItem<bool>(
+            value: false,
+            label: '从头开始',
+            isSelected: !readSetting.continueFromLastRead.value,
+            onSelected: (_) => readSetting.saveContinueFromLastRead(false),
+          ),
+        ],
+        child: Row(
+          mainAxisSize: .min,
+          children: [
+            Text(
+              readSetting.continueFromLastRead.value ? '继续上次阅读位置' : '从头开始',
+              style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
+          ],
+        ),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: .circular(12)),
     );
   }
 

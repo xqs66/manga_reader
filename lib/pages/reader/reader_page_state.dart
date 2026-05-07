@@ -27,11 +27,12 @@ class ReaderPageState {
 
   bool isMenuOpen = false;
 
-  int currentIndex = 0;
+  late int currentIndex;
 
   double? _lastLayoutWidth;
 
   ReaderPageState() {
+    currentIndex = readInfo.lastReadIndex;
     pageController = PageController(initialPage: readInfo.lastReadIndex);
     imageContainerSizes = List.generate(readInfo.pageCount, (_) => null);
   }

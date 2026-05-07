@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/pages/reader/reader_page_controller.dart';
-import 'package:manga_reader/pages/settings/read/read_settings_page.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/widgets/manga_image.dart';
@@ -84,6 +83,7 @@ class _ReaderPageState extends State<ReaderPage> {
                 itemCount: _state.readInfo.pageCount,
                 itemScrollController: _state.itemScrollController,
                 itemPositionsListener: _state.itemPositionsListener,
+                initialScrollIndex: _state.readInfo.lastReadIndex,
                 initialAlignment: 0,
                 minCacheExtent: Get.height * 5,
                 itemBuilder: (context, index) => _buildImageItem(index),
@@ -156,11 +156,7 @@ class _ReaderPageState extends State<ReaderPage> {
           reverse: isRTL,
           itemCount: _state.readInfo.pageCount,
           pageController: _state.pageController,
-          onPageChanged: (index) {
-            _state.currentIndex = index;
-            _controller.scrollThumbnailToCurrent();
-            _controller.update([_controller.bottomMenuId, _controller.bottomRightInfoId]);
-          },
+          onPageChanged: _controller.handlePageChanged,
           builder: (context, index) {
             return PhotoViewGalleryPageOptions.customChild(
               controller: _state.photoViewController,
@@ -236,18 +232,12 @@ class _ReaderPageState extends State<ReaderPage> {
                 elevation: 0,
                 actions: [
                   IconButton(
-                    onPressed: () {
-                      Get.bottomSheet(
-                        ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
-                          ),
-                          child: const ReadSettingsPage(isBottomSheet: true),
-                        ),
-                      );
-                      _controller.toggleMenuOpen();
-                    },
+                    onPressed: _controller.handleOpenMangaInfo,
+                    icon: const Icon(Icons.info_outline_rounded),
+                    tooltip: '漫画信息',
+                  ),
+                  IconButton(
+                    onPressed: _controller.handleOpenSettings,
                     icon: const Icon(Icons.tune_rounded),
                     tooltip: '阅读设置',
                   ),
@@ -337,7 +327,7 @@ class _ReaderPageState extends State<ReaderPage> {
         itemBuilder: (context, index) {
           final isCurrent = index == currentPage;
           return GestureDetector(
-            onTap: () => _jumpToPage(index),
+            onTap: () => _controller.handleJumpToPage(index),
             child: Container(
               width: UiConfig.thumbnailStripWidth,
               margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -399,15 +389,15 @@ class _ReaderPageState extends State<ReaderPage> {
             _buildNavButton(
               icon: Icons.skip_previous_rounded,
               onTap: isRTL
-                  ? (currentPage < pageCount - 1 ? () => _jumpToPage(pageCount - 1) : null)
-                  : (currentPage > 0 ? () => _jumpToPage(0) : null),
+                  ? (currentPage < pageCount - 1 ? () => _controller.handleJumpToPage(pageCount - 1) : null)
+                  : (currentPage > 0 ? () => _controller.handleJumpToPage(0) : null),
             ),
             const SizedBox(width: 4),
             _buildNavButton(
               icon: Icons.navigate_before_rounded,
               onTap: isRTL
-                  ? (currentPage < pageCount - 1 ? () => _jumpToPage(currentPage + 1) : null)
-                  : (currentPage > 0 ? () => _jumpToPage(currentPage - 1) : null),
+                  ? (currentPage < pageCount - 1 ? () => _controller.handleJumpToPage(currentPage + 1) : null)
+                  : (currentPage > 0 ? () => _controller.handleJumpToPage(currentPage - 1) : null),
             ),
             Expanded(
               child: SliderTheme(
@@ -426,11 +416,8 @@ class _ReaderPageState extends State<ReaderPage> {
                     min: 1,
                     max: pageCount.toDouble(),
                     value: displayPage.toDouble(),
-                    onChanged: (v) {
-                      _state.currentIndex = v.toInt() - 1;
-                      _controller.update([_controller.bottomMenuId]);
-                    },
-                    onChangeEnd: (v) => _jumpToPage(v.toInt() - 1),
+                    onChanged: _controller.handleSliderChanged,
+                    onChangeEnd: _controller.handleSliderChangeEnd,
                   ),
                 ),
               ),
@@ -438,32 +425,20 @@ class _ReaderPageState extends State<ReaderPage> {
             _buildNavButton(
               icon: Icons.navigate_next_rounded,
               onTap: isRTL
-                  ? (currentPage > 0 ? () => _jumpToPage(currentPage - 1) : null)
-                  : (currentPage < pageCount - 1 ? () => _jumpToPage(currentPage + 1) : null),
+                  ? (currentPage > 0 ? () => _controller.handleJumpToPage(currentPage - 1) : null)
+                  : (currentPage < pageCount - 1 ? () => _controller.handleJumpToPage(currentPage + 1) : null),
             ),
             const SizedBox(width: 4),
             _buildNavButton(
               icon: Icons.skip_next_rounded,
               onTap: isRTL
-                  ? (currentPage > 0 ? () => _jumpToPage(0) : null)
-                  : (currentPage < pageCount - 1 ? () => _jumpToPage(pageCount - 1) : null),
+                  ? (currentPage > 0 ? () => _controller.handleJumpToPage(0) : null)
+                  : (currentPage < pageCount - 1 ? () => _controller.handleJumpToPage(pageCount - 1) : null),
             ),
           ],
         ),
       ),
     );
-  }
-
-  void _jumpToPage(int index) {
-    _state.currentIndex = index;
-    if (readSetting.readingMode.value == ReadingMode.strip) {
-      _controller.handleSlideEnd((index + 1).toDouble());
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _state.pageController.jumpToPage(index);
-      });
-    }
-    _controller.update([_controller.bottomMenuId, _controller.bottomRightInfoId]);
   }
 
   Widget _buildNavButton({required IconData icon, VoidCallback? onTap}) {

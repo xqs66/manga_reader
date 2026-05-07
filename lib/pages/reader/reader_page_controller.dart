@@ -12,7 +12,9 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
+import 'package:manga_reader/pages/settings/read/read_settings_page.dart';
 import 'package:manga_reader/settings/read_setting.dart';
+import 'package:manga_reader/widgets/manga_info_sheet.dart';
 
 class ReaderPageController extends GetxController {
   final state = ReaderPageState();
@@ -25,6 +27,7 @@ class ReaderPageController extends GetxController {
 
   late Worker _immersiveModeListener;
   late Worker _readingModeListener;
+  Timer? _saveTimer;
 
   @override
   void onReady() {
@@ -44,14 +47,42 @@ class ReaderPageController extends GetxController {
     });
 
     state.itemPositionsListener.itemPositions.addListener(_positionListener);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scrollThumbnailToCurrent();
+    });
   }
 
   @override
   void onClose() {
+    _saveTimer?.cancel();
+    _persistToDb();
     _immersiveModeListener.dispose();
     _readingModeListener.dispose();
     super.onClose();
     SystemChrome.setEnabledSystemUIMode(.edgeToEdge);
+  }
+
+  void _updateCachesSync(int page) {
+    final manga = state.readInfo.mangaInfo;
+    final updated = manga.copyWith(lastReadPage: page);
+    state.readInfo.mangaInfo = updated;
+    final parentPath = Directory(updated.path).parent.path;
+    final list = localMangaService.settingPath2Mangas[parentPath];
+    if (list != null) {
+      final i = list.indexWhere((m) => m.id == updated.id);
+      if (i != -1) list[i] = updated;
+    }
+  }
+
+  void _persistToDb() {
+    final manga = state.readInfo.mangaInfo;
+    Get.find<MangaRepository>().updateMangaReadProgress(manga.id, manga.lastReadPage);
+  }
+
+  void _debouncedSaveProgress() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 500), _persistToDb);
   }
 
   void applyEnableImmersive() {
@@ -67,8 +98,10 @@ class ReaderPageController extends GetxController {
 
     if (index != state.currentIndex) {
       state.currentIndex = index;
+      _updateCachesSync(index);
       scrollThumbnailToCurrent();
       update([bottomMenuId, bottomRightInfoId]);
+      _debouncedSaveProgress();
     }
   }
 
@@ -90,6 +123,61 @@ class ReaderPageController extends GetxController {
   void toggleMenuOpen() {
     state.isMenuOpen = !state.isMenuOpen;
     update([topMenuId, bottomMenuId, bottomRightInfoId]);
+  }
+
+  void handleJumpToPage(int index) {
+    state.currentIndex = index;
+    if (readSetting.readingMode.value == ReadingMode.strip) {
+      handleSlideEnd((index + 1).toDouble());
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        state.pageController.jumpToPage(index);
+      });
+    }
+    update([bottomMenuId, bottomRightInfoId]);
+  }
+
+  void handlePageChanged(int index) {
+    state.currentIndex = index;
+    _updateCachesSync(index);
+    scrollThumbnailToCurrent();
+    update([bottomMenuId, bottomRightInfoId]);
+    _debouncedSaveProgress();
+  }
+
+  void handleSliderChanged(double value) {
+    state.currentIndex = value.toInt() - 1;
+    update([bottomMenuId]);
+  }
+
+  void handleSliderChangeEnd(double value) {
+    handleJumpToPage(value.toInt() - 1);
+  }
+
+  void handleOpenSettings() {
+    Get.bottomSheet(
+      const ClipRRect(
+        borderRadius: .only(
+          topLeft: .circular(16),
+          topRight: .circular(16),
+        ),
+        child: ReadSettingsPage(isBottomSheet: true),
+      ),
+    );
+    toggleMenuOpen();
+  }
+
+  void handleOpenMangaInfo() {
+    Get.bottomSheet(
+      ClipRRect(
+        borderRadius: const .only(
+          topLeft: .circular(16),
+          topRight: .circular(16),
+        ),
+        child: MangaInfoSheet(manga: state.readInfo.mangaInfo),
+      ),
+    );
+    toggleMenuOpen();
   }
 
   void onLoadCompleteCallBack(
