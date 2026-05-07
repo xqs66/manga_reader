@@ -10,7 +10,11 @@ class MangaInfoSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isZip = localMangaService.isZipFile(manga.path);
+    final typeName = manga.path.endsWith('.epub')
+        ? 'EPUB 电子书'
+        : localMangaService.isZipFile(manga.path)
+            ? 'ZIP 压缩包'
+            : '文件夹';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? const Color(0xFFE0E0E0) : const Color(0xFF1A1A1A);
     final subtitleColor = isDark ? const Color(0xFF9E9E9E) : const Color(0xFF757575);
@@ -51,7 +55,7 @@ class MangaInfoSheet extends StatelessWidget {
                 children: [
                   _buildInfoRow('名称', manga.title, textColor, subtitleColor),
                   _buildDivider(isDark),
-                  _buildInfoRow('类型', isZip ? 'ZIP 压缩包' : '文件夹', textColor, subtitleColor),
+                  _buildInfoRow('类型', typeName, textColor, subtitleColor),
                   _buildDivider(isDark),
                   _buildInfoRow('页数', '${manga.pageCount} 页', textColor, subtitleColor),
                   _buildDivider(isDark),

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart' as a;
 import 'package:drift/drift.dart' show Value;
+import 'package:xml/xml.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get_rx/get_rx.dart';
 import 'package:manga_reader/database/dao/manga_dao.dart';
@@ -87,6 +89,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   Future<Manga?> loadManga(Directory dirOfManga) async {
+    if (dirOfManga.path.endsWith('.epub')) {
+      return _loadEpubManga(File(dirOfManga.path));
+    }
     if (isZipFile(dirOfManga.path)) {
       return _loadZipManga(File(dirOfManga.path));
     }
@@ -94,7 +99,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   bool isZipFile(String path) =>
-      path.endsWith('.zip') || path.endsWith('.cbz');
+      path.endsWith('.zip') || path.endsWith('.cbz') || path.endsWith('.epub');
 
   Future<Manga?> _loadFolderManga(Directory dirOfManga) async {
     try {
@@ -217,6 +222,114 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     }
   }
 
+  Future<Manga?> _loadEpubManga(File epubFile) async {
+    try {
+      final mangaId = MangaId.fromPath(epubFile.path);
+      final mangaRecord = await MangaDao.getManga(mangaId.value);
+
+      final bytes = await epubFile.readAsBytes();
+      final archive = a.ZipDecoder().decodeBytes(bytes);
+
+      final imageEntries = _parseEpubImages(archive);
+      if (imageEntries.isEmpty) return null;
+
+      final cacheDir = Directory(
+        join(Directory.systemTemp.path, 'manga_reader', mangaId.value),
+      );
+      if (!cacheDir.existsSync()) {
+        cacheDir.createSync(recursive: true);
+      }
+      for (final entry in imageEntries) {
+        final name = entry.name.replaceAll('/', '_');
+        final outFile = File(join(cacheDir.path, name));
+        if (!outFile.existsSync()) {
+          outFile.writeAsBytesSync(entry.content as List<int>);
+        }
+      }
+
+      final images = imageEntries
+          .map((e) => LocalImage(path: join(cacheDir.path, e.name.replaceAll('/', '_'))))
+          .toList();
+
+      final result = Manga(
+        id: mangaId,
+        path: epubFile.path,
+        cover: images.first,
+        title: basenameWithoutExtension(epubFile.path),
+        lastReadPage: mangaRecord?.lastReadPage ?? 0,
+        groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
+        pageCount: images.length,
+        size: epubFile.lengthSync(),
+      );
+
+      if (mangaRecord == null) {
+        MangaDao.insertManga(MangaCompanion.insert(
+          id: result.id.value,
+          title: result.title,
+          coverPath: result.cover.path,
+          parentPath: dirname(epubFile.path),
+          pageCount: result.pageCount,
+          size: result.size,
+          sortOrder: 0,
+          type: 3,
+        ));
+      }
+      return result;
+    } catch (e) {
+      LogUtil.e('Failed to load EPUB manga from ${epubFile.path}', error: e);
+      return null;
+    }
+  }
+
+  List<a.ArchiveFile> _parseEpubImages(a.Archive archive) {
+    try {
+      final containerEntry = archive.files.firstWhere(
+        (f) => f.name == 'META-INF/container.xml',
+      );
+
+      final containerXml =
+          XmlDocument.parse(utf8.decode(containerEntry.content as List<int>));
+      final rootfile = containerXml
+          .descendants
+          .whereType<XmlElement>()
+          .firstWhere((e) => e.name.local == 'rootfile');
+      final opfPath = rootfile.getAttribute('full-path')!;
+
+      final opfEntry = archive.files.firstWhere((f) => f.name == opfPath);
+      final opfXml =
+          XmlDocument.parse(utf8.decode(opfEntry.content as List<int>));
+
+      final manifest = <String, String>{};
+      for (final e in opfXml.descendants.whereType<XmlElement>()) {
+        if (e.name.local == 'item') {
+          manifest[e.getAttribute('id')!] = e.getAttribute('href')!;
+        }
+      }
+
+      final opfDir = dirname(opfPath);
+      final spineImages = <a.ArchiveFile>[];
+      for (final e in opfXml.descendants.whereType<XmlElement>()) {
+        if (e.name.local != 'itemref') continue;
+        final href = manifest[e.getAttribute('idref')];
+        if (href == null) continue;
+        final fullPath = normalize(join(opfDir, href));
+        final entry =
+            archive.files.where((f) => f.name == fullPath).firstOrNull;
+        if (entry != null && _isImageName(entry.name)) {
+          spineImages.add(entry);
+        }
+      }
+
+      if (spineImages.isNotEmpty) return spineImages;
+    } catch (_) {}
+
+    // Fallback: natural sort of all image files in the archive
+    return archive.files
+        .where((f) => f.isFile && _isImageName(f.name))
+        .toList()
+      ..sort((a, b) => FileUtil.naturalCompare(a.name, b.name));
+  }
+
   bool _isImageName(String name) {
     final lower = name.toLowerCase();
     return lower.endsWith('.jpg') ||
@@ -286,6 +399,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   List<LocalImage> getMangaImages(Manga manga) {
+    if (manga.path.endsWith('.epub')) {
+      return _getEpubImages(File(manga.path));
+    }
     if (isZipFile(manga.path)) {
       return _getZipMangaImagesSync(File(manga.path));
     }
@@ -296,6 +412,23 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         .toList()
       ..sort(FileUtil.naturalCompareFileOrDir);
     return imageFiles.map((f) => LocalImage(path: f.path)).toList();
+  }
+
+  List<LocalImage> _getEpubImages(File epubFile) {
+    final mangaId = MangaId.fromPath(epubFile.path);
+    final cacheDir = Directory(
+      join(Directory.systemTemp.path, 'manga_reader', mangaId.value),
+    );
+    cacheDir.createSync(recursive: true);
+    final bytes = epubFile.readAsBytesSync();
+    final archive = a.ZipDecoder().decodeBytes(bytes);
+    final entries = _parseEpubImages(archive);
+    return entries.map((e) {
+      final name = e.name.replaceAll('/', '_');
+      final outFile = File(join(cacheDir.path, name));
+      if (!outFile.existsSync()) outFile.writeAsBytesSync(e.content as List<int>);
+      return LocalImage(path: outFile.path);
+    }).toList();
   }
 
   List<LocalImage> _getZipMangaImagesSync(File zipFile) {
@@ -318,6 +451,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   Future<List<LocalImage>> getMangaImagesAsync(Manga manga) async {
+    if (manga.path.endsWith('.epub')) {
+      return _getEpubImages(File(manga.path));
+    }
     if (isZipFile(manga.path)) {
       return _getZipMangaImagesAsync(File(manga.path));
     }
