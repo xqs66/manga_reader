@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
+import 'package:manga_reader/core/extensions/widget_ext.dart';
 import 'package:manga_reader/widgets/loading_widget.dart';
 
 /// Shared cover-image widget used by both [MangaGridCard] and
@@ -34,9 +35,10 @@ class GridCoverImage extends StatelessWidget {
       clearMemoryCacheIfFailed: true,
       loadStateChanged: (state) {
         return switch (state.extendedImageLoadState) {
-          LoadState.loading => LoadingWidget(width: width, height: height),
+          LoadState.loading =>
+            LoadingWidget(width: width, height: height, size: 20),
           LoadState.completed =>
-            ExtendedRawImage(image: state.extendedImageInfo?.image, fit: BoxFit.cover),
+            ExtendedRawImage(image: state.extendedImageInfo?.image, fit: BoxFit.cover).fadeIn(),
           LoadState.failed =>
             const Icon(Icons.broken_image_rounded, color: Colors.grey),
         };

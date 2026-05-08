@@ -21,12 +21,22 @@ class MangaGridView extends GridLayout {
   @override
   Widget buildItem(BuildContext context, int index, double cardWidth) {
     final manga = mangas[index];
-    final isSelectMode = controller.state.isSelectMode;
+
+    // Non-select mode: skip GetBuilder and AnimatedContainer entirely
+    // for lighter widget tree during scrolling.
+    if (!controller.state.isSelectMode) {
+      return MangaGridCard(
+        manga: manga,
+        width: cardWidth,
+        onTap: () => controller.handleMangaCardTap(manga),
+        onLongPress: () => controller.handleLongPressManga(manga),
+      );
+    }
 
     return GetBuilder<MangasPageController>(
       id: '${controller.mangaIdPrefix}::${manga.id}',
       builder: (_) {
-        final selected = isSelectMode &&
+        final selected =
             controller.state.selectedMangaIds.contains(manga.id);
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -45,12 +55,8 @@ class MangaGridView extends GridLayout {
           child: MangaGridCard(
             manga: manga,
             width: cardWidth,
-            onTap: isSelectMode
-                ? () => controller.handleSelectManga(manga)
-                : () => controller.handleMangaCardTap(manga),
-            onLongPress: isSelectMode
-                ? null
-                : () => controller.handleLongPressManga(manga),
+            onTap: () => controller.handleSelectManga(manga),
+            onLongPress: null,
           ),
         );
       },

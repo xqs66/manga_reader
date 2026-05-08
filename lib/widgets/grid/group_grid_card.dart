@@ -42,7 +42,7 @@ class GroupGridCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    _buildPreviewGrid(width),
+                    _buildPreviewGrid(width, h),
                     _labelBar(),
                   ],
                 ),
@@ -54,11 +54,12 @@ class GroupGridCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPreviewGrid(double totalWidth) {
+  Widget _buildPreviewGrid(double totalWidth, double totalHeight) {
     if (previewMangas.isEmpty) {
       return Container(color: Colors.grey.shade800);
     }
-    final half = (totalWidth - 2) / 2;
+    final halfW = (totalWidth - 2) / 2;
+    final halfH = (totalHeight - 2) / 2;
     final cells = [
       (previewMangas.elementAtOrNull(0), const BorderRadius.only(topLeft: Radius.circular(10))),
       (previewMangas.elementAtOrNull(1), const BorderRadius.only(topRight: Radius.circular(10))),
@@ -69,15 +70,15 @@ class GroupGridCard extends StatelessWidget {
     return Column(
       children: [
         Row(children: [
-          _cell(cells[0].$1, half, half, cells[0].$2),
+          _cell(cells[0].$1, halfW, halfH, cells[0].$2),
           const SizedBox(width: 2),
-          _cell(cells[1].$1, half, half, cells[1].$2),
+          _cell(cells[1].$1, halfW, halfH, cells[1].$2),
         ]),
         const SizedBox(height: 2),
         Row(children: [
-          _cell(cells[2].$1, half, half, cells[2].$2),
+          _cell(cells[2].$1, halfW, halfH, cells[2].$2),
           const SizedBox(width: 2),
-          _cell(cells[3].$1, half, half, cells[3].$2),
+          _cell(cells[3].$1, halfW, halfH, cells[3].$2),
         ]),
       ],
     );

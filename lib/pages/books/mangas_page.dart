@@ -125,7 +125,10 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
                   onSelected: (_) => _controller.refreshMangas(),
                 ),
               ],
-              child: const Icon(Icons.more_vert_rounded),
+              child: const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: Icon(Icons.more_vert_rounded),
+              ),
             );
           },
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/settings/theme_setting.dart';
 import 'package:manga_reader/widgets/styled_menu.dart';
 
@@ -30,9 +31,11 @@ class SettingsPage extends StatelessWidget {
         children: [
           _buildSectionHeader('显示'),
           const SizedBox(height: 8),
-          Obx(() => _buildSettingsCard([
-                _buildThemeTile(),
-              ])),
+          _buildSettingsCard([
+            Obx(() => _buildThemeTile()),
+            const Divider(height: 1, indent: 56),
+            Obx(() => _buildBookshelfLayoutTile()),
+          ]),
           const SizedBox(height: 24),
           _buildSectionHeader('数据'),
           const SizedBox(height: 8),
@@ -110,6 +113,46 @@ class SettingsPage extends StatelessWidget {
           mainAxisSize: .min,
           children: [
             Text(_themeLabels[currentMode]!, style: const TextStyle(fontSize: 14, color: Color(0xFF616161))),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
+          ],
+        ),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+    );
+  }
+
+  Widget _buildBookshelfLayoutTile() {
+    return ListTile(
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.indigo.withValues(alpha: 0.12),
+          borderRadius: .circular(10),
+        ),
+        child: const Icon(Icons.grid_view_rounded, color: Colors.indigo, size: 22),
+      ),
+      title: const Text('书架布局', style: TextStyle(fontSize: 15)),
+      subtitle: const Text('切换漫画列表和网格展示', style: TextStyle(fontSize: 13)),
+      trailing: StyledPopupMenu<BookshelfLayout>(
+        items: BookshelfLayout.values.map((layout) {
+          final isCurrent = readSetting.bookshelfLayout.value == layout;
+          final label = layout == BookshelfLayout.list ? '列表' : '网格';
+          return StyledPopupItem<BookshelfLayout>(
+            value: layout,
+            label: label,
+            isSelected: isCurrent,
+            onSelected: (l) => readSetting.saveBookshelfLayout(l),
+          );
+        }).toList(),
+        child: Row(
+          mainAxisSize: .min,
+          children: [
+            Text(
+              readSetting.bookshelfLayout.value == BookshelfLayout.list ? '列表' : '网格',
+              style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
+            ),
             const SizedBox(width: 4),
             const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
           ],

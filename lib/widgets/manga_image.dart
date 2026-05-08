@@ -67,10 +67,11 @@ class MangaImage extends StatelessWidget {
                 return LoadingWidget(
                   height: height ?? Get.width * 1.78,
                   width: width ?? Get.width,
+                  size: 28,
                 );
               case .completed:
                 loadCompleteCallBack?.call(state);
-                return _buildExtendedRawImage(state);
+                return _buildExtendedRawImage(state).fadeIn();
               case .failed:
                 return Icon(Icons.broken_image);
             }

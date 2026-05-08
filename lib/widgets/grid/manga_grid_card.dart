@@ -72,7 +72,7 @@ class MangaGridCard extends StatelessWidget {
       right: 0,
       bottom: 0,
       child: Container(
-        height: height * 0.22,
+        height: height * 0.26,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -84,9 +84,9 @@ class MangaGridCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(8, 12, 8, 6),
         child: Text(
           manga.title,
-          maxLines: 1,
+          maxLines: 2,
           overflow: .ellipsis,
-          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500, height: 1.3),
         ),
       ),
     );
