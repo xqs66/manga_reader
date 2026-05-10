@@ -7,6 +7,7 @@ class Manga {
   final String title;
   final int pageCount;
   final int lastReadPage;
+  final DateTime? lastReadTime;
   final int size;
   final String groupName;
   final LocalImage cover;
@@ -17,6 +18,7 @@ class Manga {
     required this.title,
     required this.size,
     required this.lastReadPage,
+    this.lastReadTime,
     required this.pageCount,
     required this.groupName,
     required this.cover,
@@ -29,6 +31,7 @@ class Manga {
     int? pageCount,
     int? size,
     int? lastReadPage,
+    DateTime? lastReadTime,
     String? groupName,
     LocalImage? cover,
   }) {
@@ -38,6 +41,7 @@ class Manga {
       title: title ?? this.title,
       size: size ?? this.size,
       lastReadPage: lastReadPage ?? this.lastReadPage,
+      lastReadTime: lastReadTime ?? this.lastReadTime,
       pageCount: pageCount ?? this.pageCount,
       groupName: groupName ?? this.groupName,
       cover: cover ?? this.cover,

@@ -28,6 +28,7 @@ dependencies:
   flutter_slidable: ^4.0.3
   archive: ^4.0.9
   xml: ^6.5.0
+  battery_plus: ^6.2.1
 
 dev_dependencies:
   flutter_test:

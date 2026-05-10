@@ -63,6 +63,8 @@ class MangaInfoSheet extends StatelessWidget {
                   _buildDivider(isDark),
                   _buildInfoRow('阅读进度', '第 ${manga.lastReadPage + 1} 页 / 共 ${manga.pageCount} 页', textColor, subtitleColor),
                   _buildDivider(isDark),
+                  _buildInfoRow('上次阅读', manga.lastReadTime != null ? _formatTime(manga.lastReadTime!) : '暂无记录', textColor, subtitleColor),
+                  _buildDivider(isDark),
                   _buildInfoRow('分组', manga.groupName, textColor, subtitleColor),
                   _buildDivider(isDark),
                   _buildInfoRow('路径', manga.path, textColor, subtitleColor, maxLines: 3),
@@ -74,6 +76,16 @@ class MangaInfoSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatTime(DateTime t) {
+    final now = DateTime.now();
+    final diff = now.difference(t);
+    if (diff.inMinutes < 1) return '刚刚';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} 分钟前';
+    if (diff.inHours < 24) return '${diff.inHours} 小时前';
+    if (diff.inDays < 7) return '${diff.inDays} 天前';
+    return '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')}';
   }
 
   Widget _buildDivider(bool isDark) {

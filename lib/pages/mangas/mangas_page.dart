@@ -1,28 +1,24 @@
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/models/manga.dart';
-import 'package:manga_reader/pages/books/mangas_page_controller.dart';
+import 'package:manga_reader/pages/mangas/mangas_page_controller.dart';
+import 'package:manga_reader/widgets/sort_sheet.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
 import 'package:manga_reader/settings/path_setting.dart';
-import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/core/extensions/string_ext.dart';
 import 'package:manga_reader/core/extensions/text_ext.dart';
-import 'package:manga_reader/core/utils/file_util.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/widgets/dialogs/common_dialog.dart';
 import 'package:manga_reader/widgets/empty_state.dart';
-import 'package:manga_reader/widgets/group_header.dart';
-import 'package:manga_reader/widgets/grid/manga_grid_view.dart';
-import 'package:manga_reader/widgets/grid/group_grid_view.dart';
-import 'package:manga_reader/widgets/manga_list_tile_card.dart';
+import 'package:manga_reader/pages/mangas/layout/manga_grid_view.dart';
+import 'package:manga_reader/pages/mangas/layout/group_grid_view.dart';
+import 'package:manga_reader/pages/mangas/layout/manga_list_view.dart';
+import 'package:manga_reader/pages/mangas/layout/group_list_view.dart';
 import 'package:manga_reader/widgets/dialogs/select_dialog.dart';
-import 'package:manga_reader/widgets/selected_item_decoration.dart';
 import 'package:manga_reader/widgets/selection/selection_app_bar.dart';
 import 'package:manga_reader/widgets/styled_menu.dart';
 
@@ -67,12 +63,11 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   }
 
   PreferredSizeWidget _buildNormalAppbar() {
-    final isGridGroup =
-        readSetting.bookshelfLayout.value == BookshelfLayout.grid && _state.currentGridGroup != null;
+    final isInGroup = _state.currentGridGroup != null;
     return AppBar(
       leading: _state.isAtRoot
           ? null
-          : isGridGroup
+          : isInGroup
               ? IconButton(
                   onPressed: _controller.backFromGridGroup,
                   icon: const Icon(Icons.arrow_back_rounded),
@@ -81,23 +76,34 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
                   onPressed: _controller.backToRoot,
                   icon: const Icon(Icons.arrow_back_rounded),
                 ),
-      title: Text(isGridGroup
+      title: Text(isInGroup
           ? _state.currentGridGroup!
           : _state.isAtRoot
               ? '书架'
               : _state.currentPath?.split('/').last ?? '书架'),
       centerTitle: true,
       actions: [
-        if (!_state.isAtRoot)
+        if (!_state.isAtRoot) ...[
           GetBuilder<MangasPageController>(
             id: _controller.normalAppBarActionsId,
-            builder: (context) {
+            builder: (_) {
               return IconButton(
                 onPressed: _controller.toggleSearchMode,
                 icon: const Icon(Icons.search_rounded),
               );
             },
           ),
+          GetBuilder<MangasPageController>(
+            id: _controller.normalAppBarActionsId,
+            builder: (_) {
+              return IconButton(
+                onPressed: () => SortSheet.show(context, _controller),
+                icon: const Icon(Icons.sort_rounded),
+                tooltip: '排序',
+              );
+            },
+          ),
+        ],
         GetBuilder<MangasPageController>(
           id: _controller.normalAppBarActionsId,
           builder: (_) {
@@ -118,6 +124,20 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
                       : Icons.view_list_rounded,
                   onSelected: (_) => _controller.toggleLayoutMode(),
                 ),
+                if (!_state.isAtRoot)
+                  StyledPopupItem(
+                    value: 'continue_last',
+                    label: '继续上次阅读',
+                    icon: Icons.history_rounded,
+                    onSelected: (_) => _controller.openLastReadManga(),
+                  ),
+                if (!_state.isAtRoot)
+                  StyledPopupItem(
+                    value: 'random',
+                    label: '打开随机一本',
+                    icon: Icons.shuffle_rounded,
+                    onSelected: (_) => _controller.openRandomManga(),
+                  ),
                 StyledPopupItem(
                   value: 'refresh',
                   label: '刷新',
@@ -207,33 +227,52 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
 
   Widget _buildBodyContent() {
     if (_state.isAtRoot) return _buildLocalPaths();
-    if (_state.isSearchMode) return _buildMangaListWithoutGroup();
+    if (_state.isSearchMode) return _buildSearchResults();
     if (_state.mangas.isEmpty) return _buildEmptyState();
-    if (readSetting.bookshelfLayout.value == BookshelfLayout.grid) return _buildGridLayout();
-    return _buildGroupedBooksList();
+    return _buildMangas();
   }
 
-  // ── Grid layout ──
+  // ── Unified manga/group display ──
 
-  Widget _buildGridLayout() {
+  /// Dispatches to the correct layout widget based on [readSetting.bookshelfLayout]
+  /// and whether a group folder is currently selected.
+  Widget _buildMangas() {
     if (_state.currentGridGroup != null) {
-      return _buildMangaGrid(_controller.mangasForCurrentGrid);
+      return readSetting.bookshelfLayout.value == BookshelfLayout.grid
+          ? MangaGridView(mangas: _controller.mangasForCurrentGrid, controller: _controller)
+          : MangaListView(
+              mangas: _controller.mangasForCurrentGrid,
+              controller: _controller,
+              scrollController: _state.scrollController,
+              onScroll: _controller.handleScrollEvent,
+              onDeleteManga: (m) => Get.dialog(_buildDeleteMangaDialog(m)),
+            );
     }
-    return _buildGroupFoldersGrid();
+    return readSetting.bookshelfLayout.value == BookshelfLayout.grid
+        ? GroupGridView(
+            groups: _state.groups, allMangas: _state.mangas,
+            controller: _controller, onEnter: _controller.enterGridGroup,
+            deleteGroupDialogBuilder: _buildDeleteGroupDialog)
+        : GroupListView(
+            groups: _state.groups, allMangas: _state.mangas,
+            onEnter: _controller.enterGridGroup,
+            deleteGroupDialogBuilder: _buildDeleteGroupDialog);
   }
 
-  Widget _buildGroupFoldersGrid() {
-    return GroupGridView(
-      groups: _state.groups,
-      allMangas: _state.mangas,
+  Widget _buildSearchResults() {
+    if (_state.searchedMangas.isEmpty) {
+      return const EmptyState(icon: Icons.search_off_rounded, title: '无搜索结果');
+    }
+    if (readSetting.bookshelfLayout.value == BookshelfLayout.grid) {
+      return MangaGridView(mangas: _state.searchedMangas, controller: _controller);
+    }
+    return MangaListView(
+      mangas: _state.searchedMangas,
       controller: _controller,
-      onEnter: _controller.enterGridGroup,
-      deleteGroupDialogBuilder: _buildDeleteGroupDialog,
+      scrollController: _state.scrollController,
+      onScroll: _controller.handleScrollEvent,
+      onDeleteManga: (m) => Get.dialog(_buildDeleteMangaDialog(m)),
     );
-  }
-
-  Widget _buildMangaGrid(List<Manga> mangas) {
-    return MangaGridView(mangas: mangas, controller: _controller);
   }
 
   Widget _buildEmptyState() {
@@ -273,186 +312,6 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
             trailing: const Icon(Icons.chevron_right_rounded),
             shape: RoundedRectangleBorder(borderRadius: .circular(12)),
             onTap: () => _controller.enterMangaDir(path),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMangaListWithoutGroup() {
-    if (_state.searchedMangas.isEmpty) {
-      return const EmptyState(icon: Icons.search_off_rounded, title: '无搜索结果');
-    }
-    if (readSetting.bookshelfLayout.value == BookshelfLayout.grid) {
-      return _buildMangaGrid(_state.searchedMangas);
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _state.searchedMangas.length,
-      itemBuilder: (context, index) =>
-          _buildElement(true, _state.searchedMangas[index]),
-    );
-  }
-
-  Widget _buildGroupedBooksList() {
-    return CupertinoScrollbar(
-      controller: _state.scrollController,
-      child: NotificationListener(
-        onNotification: (ScrollNotification notification) =>
-            _controller.handleScrollEvent(notification),
-        child: CustomScrollView(
-          slivers: _buildSlivers(),
-          controller: _state.scrollController,
-          cacheExtent: Get.height * 0.5,
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildSlivers() {
-    final List<Widget> slivers = [];
-    for (int i = 0; i < _state.groups.length; i++) {
-      final mangasInGroup = _state.mangas
-          .where((m) => m.groupName == _state.groups[i])
-          .toList();
-      slivers.add(_buildGroupSliver(i));
-      if (mangasInGroup.isEmpty) continue;
-      slivers.add(_buildElementSliver(i, mangasInGroup));
-    }
-    return slivers;
-  }
-
-  Widget _buildElementSliver(int groupIndex, List<Manga> mangas) {
-    return GetBuilder<MangasPageController>(
-      id: '${_controller.mangasInGroupIdPrefix}::${_state.groups[groupIndex]}',
-      builder: (_) {
-        final isDisplay = _state.displayGroups.contains(
-          _state.groups[groupIndex],
-        );
-        return SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => _buildElement(isDisplay, mangas[index]),
-            childCount: mangas.length,
-            addAutomaticKeepAlives: true,
-            addRepaintBoundaries: true,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildGroupSliver(int index) {
-    return SliverToBoxAdapter(child: _buildGroup(index));
-  }
-
-  Widget _buildGroup(int index) {
-    final String groupName = _state.groups[index];
-    return GetBuilder<MangasPageController>(
-      id: '${_controller.groupIdPrefix}::$groupName',
-      builder: (_) {
-        final isDisplay = _state.displayGroups.contains(groupName);
-        final mangaCount = _state.mangas
-            .where((m) => m.groupName == groupName)
-            .length;
-        return GroupHeader(
-          onTap: () => _controller.toggleGroupExpand(index),
-          onLongPress: () {
-            if (groupName == Constants.defaultGroupName) return;
-            StyledActionSheet.show(
-              context: context,
-              actions: [
-                StyledAction(
-                  label: '删除分组',
-                  isDestructive: true,
-                  onPressed: () =>
-                      Get.dialog(_buildDeleteGroupDialog(groupName)),
-                ),
-              ],
-            );
-          },
-          child: Row(
-            mainAxisAlignment: .spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        groupName,
-                        maxLines: 1,
-                        overflow: .ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$mangaCount',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                isDisplay
-                    ? Icons.keyboard_arrow_up_rounded
-                    : Icons.keyboard_arrow_down_rounded,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildElement(bool isDisplay, Manga manga) {
-    return GetBuilder<MangasPageController>(
-      id: '${_controller.mangaIdPrefix}::${manga.id}',
-      builder: (_) {
-        if (!isDisplay) return const SizedBox.shrink();
-
-        final isSelected =
-            _state.selectedMangaIds.contains(manga.id) && _state.isSelectMode;
-
-        return SelectedItemDecoration(
-          isSelected: isSelected,
-          child: Stack(
-            children: [
-              MangaListTileCard(
-                key: ValueKey(manga.id),
-                buildCover:
-                    !(_state.isScrolling && _state.currentVelocity.abs() > 500),
-                onTap: () => _state.isSelectMode
-                    ? _controller.handleSelectManga(manga)
-                    : _controller.handleMangaCardTap(manga),
-                onLongPressed: () => _state.isSelectMode
-                    ? null
-                    : _controller.handleLongPressManga(manga),
-                endActionPane: ActionPane(
-                  motion: const ScrollMotion(),
-                  children: [
-                    SlidableAction(
-                      onPressed: (_) => FileUtil.copyMangaName(manga.title),
-                      icon: Icons.copy_rounded,
-                      label: '复制',
-                    ),
-                    SlidableAction(
-                      onPressed: (_) =>
-                          Get.dialog(_buildDeleteMangaDialog(manga)),
-                      foregroundColor: Colors.red,
-                      icon: Icons.delete_rounded,
-                      label: '删除',
-                    ),
-                  ],
-                ),
-                manga: manga,
-              ),
-            ],
           ),
         );
       },
@@ -517,6 +376,7 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
     );
   }
 
+  
   Widget _buildNewGroupDialog() {
     final textController = TextEditingController();
     return CommonDialog(

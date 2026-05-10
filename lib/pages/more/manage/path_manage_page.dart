@@ -1,30 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/core/extensions/string_ext.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
 
 import '../../../settings/path_setting.dart';
 
-class PathSettingPage extends StatefulWidget {
-  const PathSettingPage({super.key});
+class PathManagePage extends StatefulWidget {
+  const PathManagePage({super.key});
 
   @override
-  State<PathSettingPage> createState() => _PathSettingPageState();
+  State<PathManagePage> createState() => _PathManagePageState();
 }
 
-class _PathSettingPageState extends State<PathSettingPage> {
+class _PathManagePageState extends State<PathManagePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('漫画源路径'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: _handleAddPath,
-            icon: const Icon(Icons.add_rounded),
-          ),
-        ],
+      appBar: AppBar(title: const Text('漫画源路径'), centerTitle: true),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _handleAddPath,
+        child: const Icon(Icons.add_rounded),
       ),
       body: Obx(
         () => pathSetting.paths.isEmpty
@@ -85,7 +81,7 @@ class _PathSettingPageState extends State<PathSettingPage> {
                         ),
                       ),
                       title: Text(
-                        path,
+                        path.displayPath(),
                         maxLines: 1,
                         overflow: .ellipsis,
                         style: const TextStyle(fontSize: 14),

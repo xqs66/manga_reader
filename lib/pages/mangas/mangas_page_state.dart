@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:manga_reader/core/enums/sort_mode.dart';
 import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga_id.dart';
 
@@ -38,4 +39,7 @@ class MangasPageState with ScrollState {
 
   /// When non-null in grid mode, shows only mangas from this group.
   String? currentGridGroup;
+
+  SortMode sortMode = SortMode.title;
+  bool sortAscending = true;
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/widgets/grid/grid_cover_image.dart';
-import 'package:manga_reader/widgets/grid/grid_layout.dart';
+import 'package:manga_reader/pages/mangas/layout/grid_layout.dart';
 
 class GroupGridCard extends StatelessWidget {
   final String groupName;
@@ -28,8 +28,18 @@ class GroupGridCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
-      child: SizedBox(
+      child: Container(
         width: width,
+        decoration: BoxDecoration(
+          borderRadius: .circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Column(
           mainAxisSize: .min,
           crossAxisAlignment: .start,
@@ -42,7 +52,7 @@ class GroupGridCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    _buildPreviewGrid(width, h),
+                    _buildPreviewGrid(width, h, Theme.of(context).colorScheme.surfaceContainerHighest),
                     _labelBar(),
                   ],
                 ),
@@ -54,9 +64,9 @@ class GroupGridCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPreviewGrid(double totalWidth, double totalHeight) {
+  Widget _buildPreviewGrid(double totalWidth, double totalHeight, Color bg) {
     if (previewMangas.isEmpty) {
-      return Container(color: Colors.grey.shade800);
+      return Container(color: bg);
     }
     final halfW = (totalWidth - 2) / 2;
     final halfH = (totalHeight - 2) / 2;
@@ -70,29 +80,29 @@ class GroupGridCard extends StatelessWidget {
     return Column(
       children: [
         Row(children: [
-          _cell(cells[0].$1, halfW, halfH, cells[0].$2),
+          _cell(cells[0].$1, halfW, halfH, cells[0].$2, bg),
           const SizedBox(width: 2),
-          _cell(cells[1].$1, halfW, halfH, cells[1].$2),
+          _cell(cells[1].$1, halfW, halfH, cells[1].$2, bg),
         ]),
         const SizedBox(height: 2),
         Row(children: [
-          _cell(cells[2].$1, halfW, halfH, cells[2].$2),
+          _cell(cells[2].$1, halfW, halfH, cells[2].$2, bg),
           const SizedBox(width: 2),
-          _cell(cells[3].$1, halfW, halfH, cells[3].$2),
+          _cell(cells[3].$1, halfW, halfH, cells[3].$2, bg),
         ]),
       ],
     );
   }
 
-  Widget _cell(Manga? manga, double w, double h, BorderRadius br) {
+  Widget _cell(Manga? manga, double w, double h, BorderRadius br, Color bg) {
     return ClipRRect(
       borderRadius: br,
       child: SizedBox(
         width: w,
         height: h,
         child: manga != null
-            ? GridCoverImage(path: manga.cover.path, width: w, height: h, placeholder: Container(color: Colors.grey.shade800))
-            : Container(color: Colors.grey.shade800),
+            ? GridCoverImage(path: manga.cover.path, width: w, height: h, placeholder: Container(color: bg))
+            : Container(color: bg),
       ),
     );
   }

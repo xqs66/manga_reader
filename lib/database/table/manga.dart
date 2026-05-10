@@ -31,7 +31,6 @@ class Manga extends Table {
 
   IntColumn get sortOrder => integer()();
 
-  ///1 - 文件夹
   IntColumn get type => integer()();
 
   IntColumn get size => integer()();

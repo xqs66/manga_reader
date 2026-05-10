@@ -156,6 +156,7 @@ class MyApp extends StatelessWidget {
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: themeSetting.mode,
       getPages: Routes.pages,
+      defaultTransition: .cupertino,
       navigatorObservers: [routeObserver],
       home: HomePage(),
       onReady: () {

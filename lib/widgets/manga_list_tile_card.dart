@@ -66,7 +66,7 @@ class MangaListTileCard extends StatelessWidget {
                   fit: .cover,
                   width: constraints.maxHeight * 0.72,
                   height: constraints.maxHeight,
-                  cacheWidth: 256,
+                  cacheWidth: (constraints.maxHeight * 1.44).ceil(),
                   clearMemoryCacheIfFailed: true,
                   loadStateChanged: (state) {
                     switch (state.extendedImageLoadState) {

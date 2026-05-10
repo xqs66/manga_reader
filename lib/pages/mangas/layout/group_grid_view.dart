@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/models/manga.dart';
-import 'package:manga_reader/pages/books/mangas_page_controller.dart';
-import 'package:manga_reader/widgets/grid/grid_layout.dart';
+import 'package:manga_reader/pages/mangas/mangas_page_controller.dart';
+import 'package:manga_reader/pages/mangas/layout/grid_layout.dart';
 import 'package:manga_reader/widgets/grid/group_grid_card.dart';
 import 'package:manga_reader/widgets/styled_menu.dart';
 

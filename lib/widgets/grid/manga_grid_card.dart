@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/widgets/grid/grid_cover_image.dart';
-import 'package:manga_reader/widgets/grid/grid_layout.dart';
+import 'package:manga_reader/pages/mangas/layout/grid_layout.dart';
 
 class MangaGridCard extends StatelessWidget {
   final Manga manga;

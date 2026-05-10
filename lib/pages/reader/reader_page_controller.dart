@@ -7,13 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
 import 'package:manga_reader/core/result.dart';
-import 'package:manga_reader/pages/books/mangas_page_controller.dart';
+import 'package:manga_reader/pages/mangas/mangas_page_controller.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
-import 'package:manga_reader/pages/settings/read/read_settings_page.dart';
+import 'package:manga_reader/pages/more/settings/read/read_settings_page.dart';
 import 'package:manga_reader/settings/read_setting.dart';
+import 'package:battery_plus/battery_plus.dart';
 import 'package:manga_reader/widgets/manga_info_sheet.dart';
 
 class ReaderPageController extends GetxController {
@@ -28,12 +29,36 @@ class ReaderPageController extends GetxController {
   late Worker _immersiveModeListener;
   late Worker _readingModeListener;
   Timer? _saveTimer;
+  Timer? _timeTimer;
+  String _batteryLevel = '--';
+  final _battery = Battery();
+
+  String get currentTime {
+    final now = DateTime.now();
+    return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+  }
+
+  String get batteryLevel => _batteryLevel;
+
+  Future<void> _updateBattery() async {
+    try {
+      _batteryLevel = '${await _battery.batteryLevel}';
+    } catch (_) {
+      _batteryLevel = '--';
+    }
+  }
 
   @override
   void onReady() {
     super.onReady();
 
     applyEnableImmersive();
+
+    _updateBattery();
+    _timeTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _updateBattery();
+      update([bottomRightInfoId]);
+    });
 
     _immersiveModeListener = ever(readSetting.enableImmersiveMode, (value) {
       applyEnableImmersive();
@@ -56,6 +81,7 @@ class ReaderPageController extends GetxController {
   @override
   void onClose() {
     _saveTimer?.cancel();
+    _timeTimer?.cancel();
     _persistToDb();
     _immersiveModeListener.dispose();
     _readingModeListener.dispose();
@@ -65,7 +91,10 @@ class ReaderPageController extends GetxController {
 
   void _updateCachesSync(int page) {
     final manga = state.readInfo.mangaInfo;
-    final updated = manga.copyWith(lastReadPage: page);
+    final updated = manga.copyWith(
+      lastReadPage: page,
+      lastReadTime: DateTime.now(),
+    );
     state.readInfo.mangaInfo = updated;
     final parentPath = Directory(updated.path).parent.path;
     final list = localMangaService.settingPath2Mangas[parentPath];
@@ -76,8 +105,12 @@ class ReaderPageController extends GetxController {
   }
 
   void _persistToDb() {
+    _updateCachesSync(state.currentIndex);
     final manga = state.readInfo.mangaInfo;
-    Get.find<MangaRepository>().updateMangaReadProgress(manga.id, manga.lastReadPage);
+    Get.find<MangaRepository>().updateMangaReadProgress(
+      manga.id,
+      manga.lastReadPage,
+    );
   }
 
   void _debouncedSaveProgress() {
@@ -108,9 +141,11 @@ class ReaderPageController extends GetxController {
   void scrollThumbnailToCurrent() {
     final controller = state.thumbnailScrollController;
     if (!controller.hasClients) return;
-    final itemWidth = UiConfig.thumbnailStripWidth + 6; // 3px margin on each side
+    final itemWidth =
+        UiConfig.thumbnailStripWidth + 6; // 3px margin on each side
     final targetCenter = state.currentIndex * itemWidth + itemWidth / 2;
-    final offset = targetCenter - Get.width / 2 + 8; // 8px ListView left padding
+    final offset =
+        targetCenter - Get.width / 2 + 8; // 8px ListView left padding
     if (offset > 0) {
       controller.animateTo(
         offset.clamp(0.0, controller.position.maxScrollExtent),
@@ -156,10 +191,7 @@ class ReaderPageController extends GetxController {
   void handleOpenSettings() {
     Get.bottomSheet(
       const ClipRRect(
-        borderRadius: .only(
-          topLeft: .circular(16),
-          topRight: .circular(16),
-        ),
+        borderRadius: .only(topLeft: .circular(16), topRight: .circular(16)),
         child: ReadSettingsPage(isBottomSheet: true),
       ),
     );
@@ -265,8 +297,9 @@ class ReaderPageController extends GetxController {
     final readingManga = state.readInfo.mangaInfo;
     final booksController = Get.find<MangasPageController>();
     final mangaList = booksController.state.mangas;
-    final indexOfReadingManga =
-        mangaList.indexWhere((m) => m.id == readingManga.id);
+    final indexOfReadingManga = mangaList.indexWhere(
+      (m) => m.id == readingManga.id,
+    );
     if (indexOfReadingManga == -1) return;
 
     final repo = Get.find<MangaRepository>();
@@ -283,8 +316,9 @@ class ReaderPageController extends GetxController {
     if (afterManga != null) {
       mangaList[indexOfReadingManga] = afterManga;
       state.readInfo.mangaInfo = afterManga;
-      booksController.update(
-          ['${booksController.mangaIdPrefix}::$indexOfReadingManga']);
+      booksController.update([
+        '${booksController.mangaIdPrefix}::$indexOfReadingManga',
+      ]);
     }
   }
 }

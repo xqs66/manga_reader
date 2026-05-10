@@ -1,0 +1,1 @@
+enum SortMode { title, lastRead, pageCount, random }

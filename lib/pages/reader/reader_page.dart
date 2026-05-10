@@ -166,19 +166,7 @@ class _ReaderPageState extends State<ReaderPage> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  MangaImage(
-                    image: _state.readInfo.images[index],
-                    fit: .contain,
-                    backgroundColor: Colors.black,
-                    longPressActions: [
-                      StyledAction(
-                        label: '删除图片',
-                        isDestructive: true,
-                        onPressed: () => _controller.handleDeleteImage(index),
-                      ),
-                    ],
-                    loadCompleteCallBack: (_) {},
-                  ),
+                  _buildImageItem(index),
                   GestureDetector(
                     onTap: _controller.toggleMenuOpen,
                     behavior: .translucent,
@@ -464,17 +452,32 @@ class _ReaderPageState extends State<ReaderPage> {
         builder: (context) {
           return IgnorePointer(
             child: Container(
-              margin: const EdgeInsets.all(12),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              margin: const EdgeInsets.only(right: 10, bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: const Color(0x99000000),
-                borderRadius: .circular(12),
+                borderRadius: .circular(10),
               ),
               child: Material(
                 color: Colors.transparent,
-                child: Text(
-                  '${_state.currentIndex + 1} / ${_state.readInfo.pageCount}',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFFE0E0E0), fontWeight: FontWeight.w500),
+                child: Row(
+                  mainAxisSize: .min,
+                  children: [
+                    Text(
+                      _controller.currentTime,
+                      style: const TextStyle(fontSize: 10.5, color: Color(0xFFE0E0E0)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_controller.batteryLevel}%',
+                      style: const TextStyle(fontSize: 10.5, color: Color(0xFFE0E0E0)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_state.currentIndex + 1}/${_state.readInfo.pageCount}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFE0E0E0), fontWeight: FontWeight.w500),
+                    ),
+                  ],
                 ),
               ),
             ),

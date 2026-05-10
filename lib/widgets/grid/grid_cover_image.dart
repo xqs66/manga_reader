@@ -31,7 +31,7 @@ class GridCoverImage extends StatelessWidget {
       fit: BoxFit.cover,
       width: width,
       height: height,
-      cacheWidth: 400,
+      cacheWidth: (width * 1.6).ceil(),
       clearMemoryCacheIfFailed: true,
       loadStateChanged: (state) {
         return switch (state.extendedImageLoadState) {

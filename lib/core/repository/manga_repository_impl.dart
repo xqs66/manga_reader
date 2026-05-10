@@ -148,6 +148,7 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
       await MangaDao.updateManga(MangaCompanion(
         id: Value(id.value),
         lastReadPage: Value(lastReadPage),
+        lastReadTime: Value(DateTime.now()),
       ));
     } catch (e) {
       LogUtil.e('保存阅读进度失败', error: e);

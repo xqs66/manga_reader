@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/core/enums/sort_mode.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
 import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/core/result.dart';
@@ -11,7 +13,7 @@ import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/manga_id.dart';
 import 'package:manga_reader/models/read_info.dart';
-import 'package:manga_reader/pages/books/mangas_page_state.dart';
+import 'package:manga_reader/pages/mangas/mangas_page_state.dart';
 import 'package:manga_reader/pages/home_page_controller.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
@@ -40,6 +42,7 @@ class MangasPageController extends GetxController with ScrollHandler {
   Timer? searchDebounceTimer;
 
   static const _lastPathKey = 'last_source_path';
+  static const _lastGroupKey = 'last_group_name';
   bool _autoRestoreAttempted = false;
 
   @override
@@ -51,32 +54,39 @@ class MangasPageController extends GetxController with ScrollHandler {
     });
   }
 
-  void tryAutoRestore() {
+  Future<void> tryAutoRestore() async {
     if (_autoRestoreAttempted || !state.isAtRoot) return;
     _autoRestoreAttempted = true;
     final path = storageService.read<String>(_lastPathKey);
     if (path == null) return;
     if (!localMangaService.settingPath2Mangas.containsKey(path)) {
-      // Data may not be loaded yet; retry once
       _autoRestoreAttempted = false;
       Future.delayed(const Duration(seconds: 1), () => tryAutoRestore());
       return;
     }
-    enterMangaDir(path);
+    await enterMangaDir(path);
+    final group = storageService.read<String>(_lastGroupKey);
+    if (group != null && state.groups.contains(group)) {
+      state.currentGridGroup = group;
+      update([bodyId, appBarId]);
+    }
   }
 
   void handlePopNext() {
     state.mangas =
         localMangaService.settingPath2Mangas[state.currentPath] ?? [];
     _syncGroupsFromPath();
+    _applySort();
     update([bodyId]);
   }
 
-  void enterMangaDir(String path) async {
+  Future<void> enterMangaDir(String path) async {
     state.isAtRoot = false;
     state.currentPath = path;
+    state.currentGridGroup = null;
     state.mangas = localMangaService.settingPath2Mangas[path] ?? [];
     await _syncGroupsFromPath();
+    _applySort();
     storageService.write(_lastPathKey, path);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
@@ -98,11 +108,13 @@ class MangasPageController extends GetxController with ScrollHandler {
 
   void enterGridGroup(String groupName) {
     state.currentGridGroup = groupName;
+    storageService.write(_lastGroupKey, groupName);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
 
   void backFromGridGroup() {
     state.currentGridGroup = null;
+    storageService.remove(_lastGroupKey);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
 
@@ -126,6 +138,70 @@ class MangasPageController extends GetxController with ScrollHandler {
           if (g.isExpanded) state.displayGroups.add(g.name);
         }
       }
+    }
+  }
+
+  Future<void> handleAddGroupToPath(String name, String path) async {
+    final result = await _repo.addGroup(name, path);
+    if (result is Ok) {
+      if (state.currentPath == path) state.groups.add(name);
+      update([bodyId]);
+    }
+  }
+
+  Future<void> handleRenameGroupInPath(String oldName, String newName, String path) async {
+    await _repo.removeGroup(oldName, path);
+    await _repo.addGroup(newName, path);
+    final mangas = localMangaService.settingPath2Mangas[path] ?? [];
+    final ids = mangas.where((m) => m.groupName == oldName).map((m) => m.id).toSet();
+    final result = await _repo.moveMangasToGroup(ids, newName);
+    if (result is Ok) {
+      for (final m in mangas.where((m) => m.groupName == oldName)) {
+        mangas[mangas.indexOf(m)] = m.copyWith(groupName: newName);
+      }
+      if (state.currentPath == path) {
+        state.groups[state.groups.indexOf(oldName)] = newName;
+        if (state.currentGridGroup == oldName) state.currentGridGroup = newName;
+      }
+      update([bodyId, appBarId]);
+    }
+  }
+
+  Future<void> handleDeleteGroupInPath(String groupName, String path) async {
+    if (state.toDefaultGroupOnceDelete) {
+      final mangas = localMangaService.settingPath2Mangas[path] ?? [];
+      final ids = mangas.where((m) => m.groupName == groupName).map((m) => m.id).toSet();
+      await _repo.moveMangasToGroup(ids, Constants.defaultGroupName);
+    } else {
+      final mangas = localMangaService.settingPath2Mangas[path] ?? [];
+      final toDelete = mangas.where((m) => m.groupName == groupName).toList();
+      localMangaService.deleteMangas(toDelete);
+    }
+    await _repo.removeGroup(groupName, path);
+    if (state.currentPath == path) {
+      state.groups.remove(groupName);
+      if (state.currentGridGroup == groupName) state.currentGridGroup = null;
+    }
+    update([bodyId, appBarId]);
+  }
+
+  Future<void> handleRenameGroup(String oldName, String newName) async {
+    if (!state.groups.contains(oldName)) return;
+    final path = state.currentPath;
+    if (path == null) return;
+    await _repo.removeGroup(oldName, path);
+    await _repo.addGroup(newName, path);
+    final result = await _repo.moveMangasToGroup(
+      state.mangas.where((m) => m.groupName == oldName).map((m) => m.id).toSet(),
+      newName,
+    );
+    if (result is Ok) {
+      state.groups[state.groups.indexOf(oldName)] = newName;
+      if (state.currentGridGroup == oldName) state.currentGridGroup = newName;
+      for (final m in state.mangas.where((m) => m.groupName == oldName)) {
+        state.mangas[state.mangas.indexOf(m)] = m.copyWith(groupName: newName);
+      }
+      update([bodyId, appBarId]);
     }
   }
 
@@ -175,6 +251,70 @@ class MangasPageController extends GetxController with ScrollHandler {
       );
       update([bodyId]);
     });
+  }
+
+  void openRandomManga() {
+    final list = state.isSearchMode ? state.searchedMangas : state.mangas;
+    if (list.isEmpty) return;
+    handleMangaCardTap(list[Random().nextInt(list.length)]);
+  }
+
+  void openLastReadManga() {
+    final list = state.isSearchMode ? state.searchedMangas : state.mangas;
+    Manga? last;
+    for (final m in list) {
+      if (m.lastReadTime == null) continue;
+      if (last == null || m.lastReadTime!.isAfter(last.lastReadTime!)) {
+        last = m;
+      }
+    }
+    if (last != null) {
+      handleMangaCardTap(last);
+    } else {
+      Fluttertoast.showToast(msg: '暂无阅读记录');
+    }
+  }
+
+  void handleSort(SortMode mode) {
+    if (mode == SortMode.random) {
+      _shuffleMangas();
+      return;
+    }
+    if (state.sortMode == mode) {
+      state.sortAscending = !state.sortAscending;
+    } else {
+      state.sortMode = mode;
+      state.sortAscending = true;
+    }
+    _applySort();
+    update([bodyId]);
+  }
+
+  void _shuffleMangas() {
+    state.mangas.shuffle(Random());
+    state.sortMode = SortMode.random;
+    state.sortAscending = false;
+    update([bodyId]);
+  }
+
+  void _applySort() {
+    int cmp(Manga a, Manga b) {
+      return switch (state.sortMode) {
+        SortMode.title => a.title.compareTo(b.title),
+        SortMode.lastRead => (a.lastReadTime ?? DateTime(2000)).compareTo(b.lastReadTime ?? DateTime(2000)),
+        SortMode.pageCount => a.pageCount.compareTo(b.pageCount),
+        SortMode.random => 0,
+      };
+    }
+
+    if (state.sortAscending) {
+      state.mangas.sort(cmp);
+    } else {
+      state.mangas.sort((a, b) => cmp(b, a));
+    }
+    if (state.currentPath != null) {
+      localMangaService.settingPath2Mangas[state.currentPath!] = state.mangas;
+    }
   }
 
   void handleLongPressManga(Manga manga) {
