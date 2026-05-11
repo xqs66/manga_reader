@@ -68,19 +68,21 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
       leading: _state.isAtRoot
           ? null
           : isInGroup
-              ? IconButton(
-                  onPressed: _controller.backFromGridGroup,
-                  icon: const Icon(Icons.arrow_back_rounded),
-                )
-              : IconButton(
-                  onPressed: _controller.backToRoot,
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-      title: Text(isInGroup
-          ? _state.currentGridGroup!
-          : _state.isAtRoot
-              ? '书架'
-              : _state.currentPath?.split('/').last ?? '书架'),
+          ? IconButton(
+              onPressed: _controller.backFromGridGroup,
+              icon: const Icon(Icons.arrow_back_rounded),
+            )
+          : IconButton(
+              onPressed: _controller.backToRoot,
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+      title: Text(
+        isInGroup
+            ? _state.currentGridGroup!
+            : _state.isAtRoot
+            ? '书架'
+            : _state.currentPath?.displayPath() ?? '书架',
+      ),
       centerTitle: true,
       actions: [
         if (!_state.isAtRoot) ...[
@@ -106,62 +108,72 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
         ],
         GetBuilder<MangasPageController>(
           id: _controller.normalAppBarActionsId,
-          builder: (_) {
-            return StyledPopupMenu<String>(
-              items: [
-                if (!_state.isAtRoot && _state.currentGridGroup == null)
-                  StyledPopupItem(
-                    value: 'new_group',
-                    label: '新建分组',
-                    icon: Icons.create_new_folder_rounded,
-                    onSelected: (_) => Get.dialog(_buildNewGroupDialog()),
-                  ),
-                StyledPopupItem(
-                  value: 'toggle_layout',
-                  label: readSetting.bookshelfLayout.value == BookshelfLayout.list ? '切换为网格' : '切换为列表',
-                  icon: readSetting.bookshelfLayout.value == BookshelfLayout.list
-                      ? Icons.grid_view_rounded
-                      : Icons.view_list_rounded,
-                  onSelected: (_) => _controller.toggleLayoutMode(),
-                ),
-                if (!_state.isAtRoot)
-                  StyledPopupItem(
-                    value: 'continue_last',
-                    label: '继续上次阅读',
-                    icon: Icons.history_rounded,
-                    onSelected: (_) => _controller.openLastReadManga(),
-                  ),
-                if (!_state.isAtRoot)
-                  StyledPopupItem(
-                    value: 'random',
-                    label: '打开随机一本',
-                    icon: Icons.shuffle_rounded,
-                    onSelected: (_) => _controller.openRandomManga(),
-                  ),
-                StyledPopupItem(
-                  value: 'refresh',
-                  label: '刷新',
-                  icon: Icons.refresh_rounded,
-                  onSelected: (_) => _controller.refreshMangas(),
-                ),
-              ],
-              child: const Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: Icon(Icons.more_vert_rounded),
-              ),
-            );
-          },
+          builder: (_) => _buildPopMenu(),
         ),
       ],
     );
   }
 
+  StyledPopupMenu<String> _buildPopMenu() {
+    return StyledPopupMenu<String>(
+      items: [
+        if (!_state.isAtRoot && _state.currentGridGroup == null)
+          StyledPopupItem(
+            value: 'new_group',
+            label: '新建分组',
+            icon: Icons.create_new_folder_rounded,
+            onSelected: (_) => Get.dialog(_buildNewGroupDialog()),
+          ),
+        StyledPopupItem(
+          value: 'toggle_layout',
+          label: readSetting.bookshelfLayout.value == BookshelfLayout.list
+              ? '切换为网格'
+              : '切换为列表',
+          icon: readSetting.bookshelfLayout.value == BookshelfLayout.list
+              ? Icons.grid_view_rounded
+              : Icons.view_list_rounded,
+          onSelected: (_) => _controller.toggleLayoutMode(),
+        ),
+        if (!_state.isAtRoot)
+          StyledPopupItem(
+            value: 'continue_last',
+            label: '继续上次阅读',
+            icon: Icons.history_rounded,
+            onSelected: (_) => _controller.openLastReadManga(),
+          ),
+        if (!_state.isAtRoot)
+          StyledPopupItem(
+            value: 'random',
+            label: '打开随机一本',
+            icon: Icons.shuffle_rounded,
+            onSelected: (_) => _controller.openRandomManga(),
+          ),
+        StyledPopupItem(
+          value: 'refresh',
+          label: '刷新',
+          icon: Icons.refresh_rounded,
+          onSelected: (_) => _controller.refreshMangas(),
+        ),
+      ],
+      child: const Padding(
+        padding: EdgeInsets.only(right: 12),
+        child: Icon(Icons.more_vert_rounded),
+      ),
+    );
+  }
+
   PreferredSizeWidget _buildSelectModeAppbar() {
+    final list = _state.isSearchMode
+        ? _state.searchedMangas
+        : _state.currentGridGroup != null
+        ? _controller.mangasForCurrentGrid
+        : _state.mangas;
     return SelectionAppBar(
       selectedCount: _state.selectedMangaIds.length,
       onClear: _controller.toggleSelectMode,
       onSelectAll: _controller.handleSelectAll,
-      isAllSelected: _state.isSelectedAll,
+      isAllSelected:
+          _state.selectedMangaIds.length == list.length && list.isNotEmpty,
     );
   }
 
@@ -239,7 +251,10 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
   Widget _buildMangas() {
     if (_state.currentGridGroup != null) {
       return readSetting.bookshelfLayout.value == BookshelfLayout.grid
-          ? MangaGridView(mangas: _controller.mangasForCurrentGrid, controller: _controller)
+          ? MangaGridView(
+              mangas: _controller.mangasForCurrentGrid,
+              controller: _controller,
+            )
           : MangaListView(
               mangas: _controller.mangasForCurrentGrid,
               controller: _controller,
@@ -250,13 +265,18 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
     }
     return readSetting.bookshelfLayout.value == BookshelfLayout.grid
         ? GroupGridView(
-            groups: _state.groups, allMangas: _state.mangas,
-            controller: _controller, onEnter: _controller.enterGridGroup,
-            deleteGroupDialogBuilder: _buildDeleteGroupDialog)
-        : GroupListView(
-            groups: _state.groups, allMangas: _state.mangas,
+            groups: _state.groups,
+            allMangas: _state.mangas,
+            controller: _controller,
             onEnter: _controller.enterGridGroup,
-            deleteGroupDialogBuilder: _buildDeleteGroupDialog);
+            deleteGroupDialogBuilder: _buildDeleteGroupDialog,
+          )
+        : GroupListView(
+            groups: _state.groups,
+            allMangas: _state.mangas,
+            onEnter: _controller.enterGridGroup,
+            deleteGroupDialogBuilder: _buildDeleteGroupDialog,
+          );
   }
 
   Widget _buildSearchResults() {
@@ -264,7 +284,10 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
       return const EmptyState(icon: Icons.search_off_rounded, title: '无搜索结果');
     }
     if (readSetting.bookshelfLayout.value == BookshelfLayout.grid) {
-      return MangaGridView(mangas: _state.searchedMangas, controller: _controller);
+      return MangaGridView(
+        mangas: _state.searchedMangas,
+        controller: _controller,
+      );
     }
     return MangaListView(
       mangas: _state.searchedMangas,
@@ -376,7 +399,6 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
     );
   }
 
-  
   Widget _buildNewGroupDialog() {
     final textController = TextEditingController();
     return CommonDialog(

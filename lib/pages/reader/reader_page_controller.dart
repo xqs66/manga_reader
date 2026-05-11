@@ -25,6 +25,7 @@ class ReaderPageController extends GetxController {
   final String topMenuId = 'topMenuId';
   final String bottomRightInfoId = 'bottomRightInfoId';
   final String bottomMenuId = 'bottomMenuId';
+  final String loadingImagesId = 'loadingImagesId';
 
   late Worker _immersiveModeListener;
   late Worker _readingModeListener;
@@ -75,14 +76,23 @@ class ReaderPageController extends GetxController {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       scrollThumbnailToCurrent();
+      _loadImagesIfNeeded();
     });
+  }
+
+  Future<void> _loadImagesIfNeeded() async {
+    if (state.readInfo.images.isNotEmpty) return;
+    final manga = state.readInfo.mangaInfo;
+    final images = await localMangaService.getMangaImagesAsync(manga);
+    state.readInfo.images = images;
+    update([loadingImagesId, imageListId, pageListId]);
   }
 
   @override
   void onClose() {
     _saveTimer?.cancel();
     _timeTimer?.cancel();
-    _persistToDb();
+    persistToDb();
     _immersiveModeListener.dispose();
     _readingModeListener.dispose();
     super.onClose();
@@ -104,7 +114,7 @@ class ReaderPageController extends GetxController {
     }
   }
 
-  void _persistToDb() {
+  void persistToDb() {
     _updateCachesSync(state.currentIndex);
     final manga = state.readInfo.mangaInfo;
     Get.find<MangaRepository>().updateMangaReadProgress(
@@ -115,7 +125,7 @@ class ReaderPageController extends GetxController {
 
   void _debouncedSaveProgress() {
     _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(milliseconds: 500), _persistToDb);
+    _saveTimer = Timer(const Duration(milliseconds: 500), persistToDb);
   }
 
   void applyEnableImmersive() {

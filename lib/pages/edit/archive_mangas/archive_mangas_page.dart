@@ -93,7 +93,7 @@ class _ArchiveMangasPageState extends State<ArchiveMangasPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_state.isWorking) {
-      return ProgressView(current: _state.progress, total: _state.total);
+      return Center(child: ProgressView(current: _state.progress, total: _state.total));
     }
     if (_state.mangas.isEmpty) {
       return const EmptyState(

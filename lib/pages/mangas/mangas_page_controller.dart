@@ -25,7 +25,7 @@ class MangasPageController extends GetxController with ScrollHandler {
   final MangaRepository _repo;
 
   MangasPageController({MangaRepository? repo})
-      : _repo = repo ?? Get.find<MangaRepository>();
+    : _repo = repo ?? Get.find<MangaRepository>();
 
   @override
   ScrollState get scrollState => state;
@@ -43,15 +43,30 @@ class MangasPageController extends GetxController with ScrollHandler {
 
   static const _lastPathKey = 'last_source_path';
   static const _lastGroupKey = 'last_group_name';
+  static const _sortModeKey = 'sort_mode';
+  static const _sortAscKey = 'sort_ascending';
   bool _autoRestoreAttempted = false;
 
   @override
   void onInit() {
     super.onInit();
+    _restoreSort();
     ever(readSetting.bookshelfLayout, (_) {
       state.currentGridGroup = null;
       update([bodyId, appBarId]);
     });
+  }
+
+  void _restoreSort() {
+    final modeIndex = storageService.read<int>(_sortModeKey) ?? 0;
+    state.sortMode =
+        SortMode.values[modeIndex.clamp(0, SortMode.values.length - 1)];
+    state.sortAscending = storageService.read<bool>(_sortAscKey) ?? true;
+  }
+
+  void _saveSort() {
+    storageService.write(_sortModeKey, state.sortMode.index);
+    storageService.write(_sortAscKey, state.sortAscending);
   }
 
   Future<void> tryAutoRestore() async {
@@ -118,10 +133,11 @@ class MangasPageController extends GetxController with ScrollHandler {
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
 
-  List<Manga> get mangasForCurrentGrid =>
-      state.currentGridGroup == null
-          ? state.mangas
-          : state.mangas.where((m) => m.groupName == state.currentGridGroup).toList();
+  List<Manga> get mangasForCurrentGrid => state.currentGridGroup == null
+      ? state.mangas
+      : state.mangas
+            .where((m) => m.groupName == state.currentGridGroup)
+            .toList();
 
   Future<void> _syncGroupsFromPath() async {
     final path = state.currentPath;
@@ -149,11 +165,18 @@ class MangasPageController extends GetxController with ScrollHandler {
     }
   }
 
-  Future<void> handleRenameGroupInPath(String oldName, String newName, String path) async {
+  Future<void> handleRenameGroupInPath(
+    String oldName,
+    String newName,
+    String path,
+  ) async {
     await _repo.removeGroup(oldName, path);
     await _repo.addGroup(newName, path);
     final mangas = localMangaService.settingPath2Mangas[path] ?? [];
-    final ids = mangas.where((m) => m.groupName == oldName).map((m) => m.id).toSet();
+    final ids = mangas
+        .where((m) => m.groupName == oldName)
+        .map((m) => m.id)
+        .toSet();
     final result = await _repo.moveMangasToGroup(ids, newName);
     if (result is Ok) {
       for (final m in mangas.where((m) => m.groupName == oldName)) {
@@ -170,7 +193,10 @@ class MangasPageController extends GetxController with ScrollHandler {
   Future<void> handleDeleteGroupInPath(String groupName, String path) async {
     if (state.toDefaultGroupOnceDelete) {
       final mangas = localMangaService.settingPath2Mangas[path] ?? [];
-      final ids = mangas.where((m) => m.groupName == groupName).map((m) => m.id).toSet();
+      final ids = mangas
+          .where((m) => m.groupName == groupName)
+          .map((m) => m.id)
+          .toSet();
       await _repo.moveMangasToGroup(ids, Constants.defaultGroupName);
     } else {
       final mangas = localMangaService.settingPath2Mangas[path] ?? [];
@@ -192,7 +218,10 @@ class MangasPageController extends GetxController with ScrollHandler {
     await _repo.removeGroup(oldName, path);
     await _repo.addGroup(newName, path);
     final result = await _repo.moveMangasToGroup(
-      state.mangas.where((m) => m.groupName == oldName).map((m) => m.id).toSet(),
+      state.mangas
+          .where((m) => m.groupName == oldName)
+          .map((m) => m.id)
+          .toSet(),
       newName,
     );
     if (result is Ok) {
@@ -247,7 +276,12 @@ class MangasPageController extends GetxController with ScrollHandler {
       state.searchedMangas.assignAll(
         keyword.isEmpty
             ? state.mangas
-            : state.mangas.where((m) => m.title.contains(keyword)).toList(),
+            : state.mangas
+                  .where(
+                    (m) =>
+                        m.title.toLowerCase().contains(keyword.toLowerCase()),
+                  )
+                  .toList(),
       );
       update([bodyId]);
     });
@@ -284,16 +318,17 @@ class MangasPageController extends GetxController with ScrollHandler {
       state.sortAscending = !state.sortAscending;
     } else {
       state.sortMode = mode;
-      state.sortAscending = true;
+      state.sortAscending = mode != SortMode.lastRead;
     }
     _applySort();
-    update([bodyId]);
+    _saveSort();
   }
 
   void _shuffleMangas() {
     state.mangas.shuffle(Random());
     state.sortMode = SortMode.random;
     state.sortAscending = false;
+    _saveSort();
     update([bodyId]);
   }
 
@@ -301,7 +336,9 @@ class MangasPageController extends GetxController with ScrollHandler {
     int cmp(Manga a, Manga b) {
       return switch (state.sortMode) {
         SortMode.title => a.title.compareTo(b.title),
-        SortMode.lastRead => (a.lastReadTime ?? DateTime(2000)).compareTo(b.lastReadTime ?? DateTime(2000)),
+        SortMode.lastRead => (a.lastReadTime ?? DateTime(2000)).compareTo(
+          b.lastReadTime ?? DateTime(2000),
+        ),
         SortMode.pageCount => a.pageCount.compareTo(b.pageCount),
         SortMode.random => 0,
       };
@@ -315,6 +352,7 @@ class MangasPageController extends GetxController with ScrollHandler {
     if (state.currentPath != null) {
       localMangaService.settingPath2Mangas[state.currentPath!] = state.mangas;
     }
+    update([bodyId]);
   }
 
   void handleLongPressManga(Manga manga) {
@@ -337,23 +375,27 @@ class MangasPageController extends GetxController with ScrollHandler {
   }
 
   void handleSelectAll() {
-    if (state.isSelectedAll) {
+    final list = state.isSearchMode
+        ? state.searchedMangas
+        : state.currentGridGroup != null
+        ? mangasForCurrentGrid
+        : state.mangas;
+    if (state.isSelectedAll || state.selectedMangaIds.length == list.length) {
       state.selectedMangaIds.clear();
     } else {
-      state.selectedMangaIds.assignAll(
-        (state.isSearchMode ? state.searchedMangas : state.mangas).map((e) => e.id),
-      );
+      state.selectedMangaIds.assignAll(list.map((e) => e.id));
     }
     update([appBarId, bodyId]);
   }
 
   void handleMangaCardTap(Manga manga) {
-    final startIndex = readSetting.continueFromLastRead.value ? manga.lastReadPage : 0;
+    final startIndex = readSetting.continueFromLastRead.value
+        ? manga.lastReadPage
+        : 0;
     Get.toNamed(
       Routes.reader,
       arguments: ReadInfo(
         mangaInfo: manga,
-        images: localMangaService.getMangaImages(manga),
         pageCount: manga.pageCount,
         lastReadIndex: startIndex,
       ),
@@ -369,7 +411,10 @@ class MangasPageController extends GetxController with ScrollHandler {
       final added = await _repo.addGroup(groupName, state.currentPath!);
       if (added is Ok) state.groups.add(groupName);
     }
-    final result = await _repo.moveMangasToGroup(state.selectedMangaIds, groupName);
+    final result = await _repo.moveMangasToGroup(
+      state.selectedMangaIds,
+      groupName,
+    );
     if (result is Err) {
       Fluttertoast.showToast(msg: result.message);
       return;
@@ -420,8 +465,9 @@ class MangasPageController extends GetxController with ScrollHandler {
       await _repo.resetMangasToDefaultGroup(groupName, state.currentPath);
       for (var i = 0; i < state.mangas.length; i++) {
         if (state.mangas[i].groupName == groupName) {
-          state.mangas[i] =
-              state.mangas[i].copyWith(groupName: Constants.defaultGroupName);
+          state.mangas[i] = state.mangas[i].copyWith(
+            groupName: Constants.defaultGroupName,
+          );
         }
       }
     } else {
@@ -446,6 +492,8 @@ class MangasPageController extends GetxController with ScrollHandler {
     await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
     state.mangas =
         localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+    _syncGroupsFromPath();
+    _applySort();
     state.isRefreshing = false;
     update([bodyId, refreshProgressId]);
   }
@@ -462,8 +510,9 @@ class MangasPageController extends GetxController with ScrollHandler {
   }
 
   Future<void> handleDeleteMangas() async {
-    final mangasToDelete =
-        state.mangas.where((m) => state.selectedMangaIds.contains(m.id)).toList();
+    final mangasToDelete = state.mangas
+        .where((m) => state.selectedMangaIds.contains(m.id))
+        .toList();
     final result = await _repo.deleteMangas(mangasToDelete);
     if (result is Err) {
       Fluttertoast.showToast(msg: result.message);

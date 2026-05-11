@@ -192,6 +192,7 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
           content: ProgressView(
             current: state.mergeProgress,
             total: state.mergeTotal,
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
           ),
         );
       },

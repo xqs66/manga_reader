@@ -53,7 +53,10 @@ class MangaInfoSheet extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  _buildInfoRow('名称', manga.title, textColor, subtitleColor),
+                  _buildInfoRow('名称', manga.title, textColor, subtitleColor, trailing: GestureDetector(
+                    onTap: () => FileUtil.copyMangaName(manga.title),
+                    child: Icon(Icons.copy_rounded, size: 18, color: subtitleColor),
+                  )),
                   _buildDivider(isDark),
                   _buildInfoRow('类型', typeName, textColor, subtitleColor),
                   _buildDivider(isDark),
@@ -98,6 +101,7 @@ class MangaInfoSheet extends StatelessWidget {
     Color textColor,
     Color subtitleColor, {
     int maxLines = 1,
+    Widget? trailing,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -117,6 +121,8 @@ class MangaInfoSheet extends StatelessWidget {
               overflow: maxLines > 1 ? .ellipsis : .clip,
             ),
           ),
+          if (trailing != null) const SizedBox(width: 8),
+          if (trailing != null) trailing,
         ],
       ),
     );

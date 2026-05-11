@@ -12,7 +12,6 @@ import 'package:manga_reader/widgets/selected_item_decoration.dart';
 class MangaListView extends ListLayout {
   final List<Manga> mangas;
   final MangasPageController controller;
-  final ScrollController? scrollController;
   final void Function(ScrollNotification) onScroll;
   final void Function(Manga)? onDeleteManga;
 
@@ -20,7 +19,7 @@ class MangaListView extends ListLayout {
     super.key,
     required this.mangas,
     required this.controller,
-    this.scrollController,
+    super.scrollController,
     required this.onScroll,
     this.onDeleteManga,
   });

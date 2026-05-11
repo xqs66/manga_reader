@@ -3,18 +3,10 @@ import 'package:manga_reader/service/base/config_bean.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/core/constants/constants.dart';
-
-enum ReadingMode {
-  strip,
-  singleVertical,
-  singleLTR,
-  singleRTL,
-}
-
-enum BookshelfLayout {
-  list,
-  grid,
-}
+export 'package:manga_reader/core/enums/bookshelf_layout.dart';
+export 'package:manga_reader/core/enums/reading_mode.dart';
+import 'package:manga_reader/core/enums/bookshelf_layout.dart';
+import 'package:manga_reader/core/enums/reading_mode.dart';
 
 ReadSetting readSetting = ReadSetting();
 

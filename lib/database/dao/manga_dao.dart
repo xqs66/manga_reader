@@ -11,6 +11,12 @@ class MangaDao {
     )..where((manga) => manga.id.equals(id))).getSingleOrNull();
   }
 
+  static Future<List<MangaData>> getMangasByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value([]);
+    return (appDb.select(appDb.manga)
+      ..where((m) => m.id.isIn(ids))).get();
+  }
+
   static Future<int> deleteManga(String id) {
     return (appDb.delete(
       appDb.manga,

@@ -8,6 +8,7 @@ import 'package:manga_reader/pages/reader/reader_page_controller.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/widgets/manga_image.dart';
+import 'package:manga_reader/widgets/loading_widget.dart';
 import 'package:manga_reader/widgets/styled_menu.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -33,7 +34,15 @@ class _ReaderPageState extends State<ReaderPage> {
           builder: (_, constraints) {
             _state.onLayoutWidthChanged(constraints.maxWidth);
             final isStrip = readSetting.readingMode.value == ReadingMode.strip;
-            return AnnotatedRegion<SystemUiOverlayStyle>(
+            return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop) {
+                  _controller.persistToDb();
+                  Get.back();
+                }
+              },
+              child: AnnotatedRegion<SystemUiOverlayStyle>(
               value: const SystemUiOverlayStyle(
                 systemNavigationBarColor: Colors.transparent,
                 systemNavigationBarDividerColor: Colors.transparent,
@@ -53,9 +62,17 @@ class _ReaderPageState extends State<ReaderPage> {
                     _buildPageInfoOverlay(),
                     _buildTopMenu(),
                     _buildBottomMenu(),
+                    GetBuilder<ReaderPageController>(
+                      id: _controller.loadingImagesId,
+                      builder: (_) {
+                        if (_state.readInfo.images.isNotEmpty) return const SizedBox.shrink();
+                        return const SizedBox.expand(child: Center(child: LoadingWidget(height: 48, width: 48)));
+                      },
+                    ),
                   ],
                 ),
               ),
+            ),
             );
           },
         );
@@ -99,6 +116,7 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildImageItem(int index) {
+    if (index >= _state.readInfo.images.length) return const SizedBox.shrink();
     return GetBuilder<ReaderPageController>(
       id: '{ReadPageImage::$index}',
       builder: (_) {
@@ -123,6 +141,7 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildStripImage(BoxConstraints constraints, int index) {
+    if (index >= _state.readInfo.images.length) return const SizedBox.shrink();
     return MangaImage(
       image: _state.readInfo.images[index],
       longPressActions: [
@@ -302,8 +321,6 @@ class _ReaderPageState extends State<ReaderPage> {
   }
 
   Widget _buildThumbnailStrip(int currentPage, int pageCount, bool isRTL) {
-    const selectedColor = Color(0xFF9990F9);
-
     return SizedBox(
       height: UiConfig.thumbnailStripHeight,
       child: ListView.builder(
@@ -312,55 +329,69 @@ class _ReaderPageState extends State<ReaderPage> {
         scrollDirection: .horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         itemCount: pageCount,
-        itemBuilder: (context, index) {
-          final isCurrent = index == currentPage;
-          return GestureDetector(
-            onTap: () => _controller.handleJumpToPage(index),
-            child: Container(
-              width: UiConfig.thumbnailStripWidth,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      decoration: BoxDecoration(
-                        borderRadius: .circular(6),
-                        border: .all(
-                          color: isCurrent ? selectedColor : Colors.white24,
-                          width: isCurrent ? 2.5 : 1,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: .circular(6),
-                        child: MangaImage(
-                          image: LocalImage(path: _state.readInfo.images[index].path),
-                          fit: .fitWidth,
-                          maxBytes: 1024 * 50,
-                          width: UiConfig.thumbnailStripWidth,
-                          height: double.infinity,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Material(
-                    color: Colors.transparent,
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                        fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                      textAlign: .center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+        itemBuilder: (_, index) => _buildThumbnailItem(index, currentPage),
+      ),
+    );
+  }
+
+  Widget _buildThumbnailItem(int index, int currentPage) {
+    final isCurrent = index == currentPage;
+    return GestureDetector(
+      onTap: () => _controller.handleJumpToPage(index),
+      child: Container(
+        width: UiConfig.thumbnailStripWidth,
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        child: Column(
+          children: [
+            _buildThumbnailImage(index, isCurrent),
+            const SizedBox(height: 4),
+            _buildPageNumber(index, isCurrent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static const _selectedColor = Color(0xFF9990F9);
+
+  Widget _buildThumbnailImage(int index, bool isCurrent) {
+    return Expanded(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: .circular(6),
+          border: .all(
+            color: isCurrent ? _selectedColor : Colors.white24,
+            width: isCurrent ? 2.5 : 1,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: .circular(6),
+          child: index < _state.readInfo.images.length
+              ? MangaImage(
+                  image: LocalImage(path: _state.readInfo.images[index].path),
+                  fit: .fitWidth,
+                  maxBytes: 1024 * 50,
+                  width: UiConfig.thumbnailStripWidth,
+                  height: double.infinity,
+                )
+              : const SizedBox.shrink(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageNumber(int index, bool isCurrent) {
+    return Material(
+      color: Colors.transparent,
+      child: Text(
+        '${index + 1}',
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.white,
+          fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
+        ),
+        textAlign: .center,
       ),
     );
   }

@@ -38,14 +38,6 @@ class SettingsPage extends ListPage {
           onTap: () => Get.toNamed(Routes.moreReadSetting),
         ),
       ])),
-      const SizedBox(height: 24),
-      section('关于', card([
-        tile(
-          icon: Icons.info_outline_rounded, title: '关于',
-          subtitle: 'v1.0.0', color: Colors.teal,
-          trailing: const SizedBox.shrink(),
-        ),
-      ])),
     ];
   }
 

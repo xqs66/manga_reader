@@ -22,6 +22,7 @@ class PathService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
   @override
   Future<void> doInit() async {
+    if (!Platform.isAndroid) return;
     await getExternalStorageDirectory()
         .then((value) => appExternalStorageDir = value)
         .onError((e, stack) {

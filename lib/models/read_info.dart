@@ -3,12 +3,12 @@ import 'package:manga_reader/models/manga.dart';
 
 class ReadInfo {
   Manga mangaInfo;
-  final List<LocalImage> images;
+  List<LocalImage> images;
   int lastReadIndex;
   int pageCount;
 
   ReadInfo({
-    required this.images,
+    this.images = const [],
     required this.mangaInfo,
     this.lastReadIndex = 0,
     required this.pageCount,

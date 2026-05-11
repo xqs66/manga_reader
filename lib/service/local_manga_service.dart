@@ -16,6 +16,7 @@ import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/core/extensions/file_system_entity_ext.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
+import 'package:manga_reader/core/utils/zip_reader.dart';
 import 'package:path/path.dart';
 
 import '../models/manga.dart';
@@ -48,33 +49,44 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     return Future.wait(futures);
   }
 
-  Future<List<Manga>> loadMangasInDir(Directory dir) async {
-    final completer = Completer<List<Manga>>();
-    final mangas = <Manga>[];
-    final futures = <Future>[];
+  /// [concurrency] controls how many mangas are loaded in parallel per batch.
+  /// 0 (default) = all at once (for startup where no UI is rendered).
+  /// >0 = batched with event-loop yields between batches (for refresh with UI visible).
+  Future<List<Manga>> loadMangasInDir(Directory dir, {int concurrency = 0}) async {
+    final entities = (await dir.list().toList())
+        .where((e) => e is Directory || (e is File && isZipFile(e.path)))
+        .toList();
+    if (entities.isEmpty) {
+      if (pathSetting.paths.contains(dir.path)) {
+        settingPath2Mangas[dir.path] = [];
+      }
+      return [];
+    }
 
-    dir.list().listen(
-      (entity) {
-        if (entity is Directory || (entity is File && isZipFile(entity.path))) {
-          futures.add(
-            loadManga(Directory(entity.path)).then((manga) {
-              if (manga != null) mangas.add(manga);
-            }),
-          );
-        }
-      },
-      onDone: () {
-        Future.wait(futures).then((_) {
-          mangas.sort((a, b) => FileUtil.naturalCompare(a.title, b.title));
-          if (pathSetting.paths.contains(dir.path)) {
-            (settingPath2Mangas[dir.path] ??= []).assignAll(mangas);
-          }
-          completer.complete(mangas);
-        });
-      },
-      onError: completer.completeError,
-    );
-    return completer.future;
+    final ids = entities.map((e) => MangaId.fromPath(e.path).value).toList();
+    final dbRecords = await MangaDao.getMangasByIds(ids);
+    final recordMap = {for (final r in dbRecords) r.id: r};
+
+    final poolSize = concurrency > 0 ? concurrency : entities.length;
+    final mangas = <Manga>[];
+    for (var i = 0; i < entities.length; i += poolSize) {
+      final batch = entities.skip(i).take(poolSize).toList();
+      final results = await Future.wait(batch.map((e) =>
+        loadManga(Directory(e.path), dbRecord: recordMap[MangaId.fromPath(e.path).value]),
+      ));
+      for (final m in results) {
+        if (m != null) mangas.add(m);
+      }
+      if (concurrency > 0 && i + poolSize < entities.length) {
+        await Future(() {});
+      }
+    }
+
+    mangas.sort((a, b) => FileUtil.naturalCompare(a.title, b.title));
+    if (pathSetting.paths.contains(dir.path)) {
+      (settingPath2Mangas[dir.path] ??= []).assignAll(mangas);
+    }
+    return mangas;
   }
 
   Future<List<Manga>> getMangasInDir(Directory dir) async {
@@ -85,33 +97,31 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   Future<void> refreshMangasInDir(Directory dir) async {
-    await loadMangasInDir(dir);
+    await loadMangasInDir(dir, concurrency: 3);
   }
 
-  Future<Manga?> loadManga(Directory dirOfManga) async {
+  Future<Manga?> loadManga(Directory dirOfManga, {MangaData? dbRecord}) async {
     if (dirOfManga.path.endsWith('.epub')) {
-      return _loadEpubManga(File(dirOfManga.path));
+      return _loadEpubManga(File(dirOfManga.path), dbRecord: dbRecord);
     }
     if (isZipFile(dirOfManga.path)) {
-      return _loadZipManga(File(dirOfManga.path));
+      return _loadZipManga(File(dirOfManga.path), dbRecord: dbRecord);
     }
-    return _loadFolderManga(dirOfManga);
+    return _loadFolderManga(dirOfManga, dbRecord: dbRecord);
   }
 
   bool isZipFile(String path) =>
       path.endsWith('.zip') || path.endsWith('.cbz') || path.endsWith('.epub');
 
-  Future<Manga?> _loadFolderManga(Directory dirOfManga) async {
+  Future<Manga?> _loadFolderManga(Directory dirOfManga, {MangaData? dbRecord}) async {
     try {
       final mangaId = MangaId.fromPath(dirOfManga.path);
-      final mangaRecord = await MangaDao.getManga(mangaId.value);
+      final mangaRecord = dbRecord ?? await MangaDao.getManga(mangaId.value);
 
-      final imageFiles = <File>[];
-      await for (final entity in dirOfManga.list()) {
-        if (entity is File && entity.isImageExtension) {
-          imageFiles.add(entity);
-        }
-      }
+      final imageFiles = (await dirOfManga.list().toList())
+          .whereType<File>()
+          .where((f) => f.isImageExtension)
+          .toList();
 
       if (imageFiles.isEmpty) return null;
 
@@ -136,7 +146,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       );
 
       if (mangaRecord == null) {
-        MangaDao.insertManga(MangaCompanion.insert(
+        await MangaDao.insertManga(MangaCompanion.insert(
           id: result.id.value,
           title: result.title,
           coverPath: result.cover.path,
@@ -147,7 +157,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
           type: 1,
         ));
       } else if (countChanged) {
-        MangaDao.updateManga(MangaCompanion(
+        await MangaDao.updateManga(MangaCompanion(
           id: Value(result.id.value),
           size: Value(result.size),
           pageCount: Value(result.pageCount),
@@ -160,53 +170,57 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     }
   }
 
-  Future<Manga?> _loadZipManga(File zipFile) async {
+  Future<Manga?> _loadZipManga(File zipFile, {MangaData? dbRecord}) async {
     try {
       final mangaId = MangaId.fromPath(zipFile.path);
-      final mangaRecord = await MangaDao.getManga(mangaId.value);
+      final mangaRecord = dbRecord ?? await MangaDao.getManga(mangaId.value);
 
-      final bytes = await zipFile.readAsBytes();
-      final archive = a.ZipDecoder().decodeBytes(bytes);
-      final imageEntries = archive.files
-          .where((f) => !f.isFile == false && _isImageName(f.name))
-          .toList()
-        ..sort((a, b) => FileUtil.naturalCompare(a.name, b.name));
+      final reader = await ZipReader.open(zipFile);
+      String coverPath;
+      int pageCount;
+      try {
+        final imageEntries = reader
+            .readEntries()
+            .where((e) => _isImageName(e.name))
+            .toList()
+          ..sort((a, b) => FileUtil.naturalCompare(a.name, b.name));
+        if (imageEntries.isEmpty) return null;
+        pageCount = imageEntries.length;
 
-      if (imageEntries.isEmpty) return null;
-
-      // Extract to cache dir
-      final cacheDir = Directory(
-        join(Directory.systemTemp.path, 'manga_reader', mangaId.value),
-      );
-      if (!cacheDir.existsSync()) {
-        cacheDir.createSync(recursive: true);
-      }
-      for (final entry in imageEntries) {
-        final outFile = File(join(cacheDir.path, entry.name));
-        if (!outFile.existsSync()) {
-          outFile.writeAsBytesSync(entry.content as List<int>);
+        final cacheDir = Directory(
+          join(Directory.systemTemp.path, 'manga_reader', mangaId.value),
+        );
+        if (!await cacheDir.exists()) {
+          await cacheDir.create(recursive: true);
         }
-      }
 
-      final images = imageEntries
-          .map((e) => LocalImage(path: join(cacheDir.path, e.name)))
-          .toList();
+        // Only extract cover image during scan; rest on demand
+        final coverEntry = imageEntries.first;
+        final coverFile = File(join(cacheDir.path, coverEntry.name));
+        coverPath = coverFile.path;
+        if (!await coverFile.exists()) {
+          final coverBytes = reader.readEntryContent(coverEntry);
+          await coverFile.writeAsBytes(coverBytes);
+        }
+      } finally {
+        reader.close();
+      }
 
       final totalSize = zipFile.lengthSync();
       final result = Manga(
         id: mangaId,
         path: zipFile.path,
-        cover: images.first,
+        cover: LocalImage(path: coverPath),
         title: basenameWithoutExtension(zipFile.path),
         lastReadPage: mangaRecord?.lastReadPage ?? 0,
         lastReadTime: mangaRecord?.lastReadTime,
         groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
-        pageCount: images.length,
+        pageCount: pageCount,
         size: totalSize,
       );
 
       if (mangaRecord == null) {
-        MangaDao.insertManga(MangaCompanion.insert(
+        await MangaDao.insertManga(MangaCompanion.insert(
           id: result.id.value,
           title: result.title,
           coverPath: result.cover.path,
@@ -224,49 +238,53 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     }
   }
 
-  Future<Manga?> _loadEpubManga(File epubFile) async {
+  Future<Manga?> _loadEpubManga(File epubFile, {MangaData? dbRecord}) async {
     try {
       final mangaId = MangaId.fromPath(epubFile.path);
-      final mangaRecord = await MangaDao.getManga(mangaId.value);
+      final mangaRecord = dbRecord ?? await MangaDao.getManga(mangaId.value);
 
-      final bytes = await epubFile.readAsBytes();
-      final archive = a.ZipDecoder().decodeBytes(bytes);
+      final reader = await ZipReader.open(epubFile);
+      String coverPath;
+      int pageCount;
+      try {
+        final entries = reader.readEntries();
+        final imageEntries = _resolveEpubImageEntries(reader, entries);
+        if (imageEntries.isEmpty) return null;
+        pageCount = imageEntries.length;
 
-      final imageEntries = _parseEpubImages(archive);
-      if (imageEntries.isEmpty) return null;
-
-      final cacheDir = Directory(
-        join(Directory.systemTemp.path, 'manga_reader', mangaId.value),
-      );
-      if (!cacheDir.existsSync()) {
-        cacheDir.createSync(recursive: true);
-      }
-      for (final entry in imageEntries) {
-        final name = entry.name.replaceAll('/', '_');
-        final outFile = File(join(cacheDir.path, name));
-        if (!outFile.existsSync()) {
-          outFile.writeAsBytesSync(entry.content as List<int>);
+        final cacheDir = Directory(
+          join(Directory.systemTemp.path, 'manga_reader', mangaId.value),
+        );
+        if (!await cacheDir.exists()) {
+          await cacheDir.create(recursive: true);
         }
-      }
 
-      final images = imageEntries
-          .map((e) => LocalImage(path: join(cacheDir.path, e.name.replaceAll('/', '_'))))
-          .toList();
+        final coverEntry = imageEntries.first;
+        final coverName = coverEntry.name.replaceAll('/', '_');
+        final coverFile = File(join(cacheDir.path, coverName));
+        coverPath = coverFile.path;
+        if (!await coverFile.exists()) {
+          final coverBytes = reader.readEntryContent(coverEntry);
+          await coverFile.writeAsBytes(coverBytes);
+        }
+      } finally {
+        reader.close();
+      }
 
       final result = Manga(
         id: mangaId,
         path: epubFile.path,
-        cover: images.first,
+        cover: LocalImage(path: coverPath),
         title: basenameWithoutExtension(epubFile.path),
         lastReadPage: mangaRecord?.lastReadPage ?? 0,
         lastReadTime: mangaRecord?.lastReadTime,
         groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
-        pageCount: images.length,
+        pageCount: pageCount,
         size: epubFile.lengthSync(),
       );
 
       if (mangaRecord == null) {
-        MangaDao.insertManga(MangaCompanion.insert(
+        await MangaDao.insertManga(MangaCompanion.insert(
           id: result.id.value,
           title: result.title,
           coverPath: result.cover.path,
@@ -282,6 +300,55 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       LogUtil.e('Failed to load EPUB manga from ${epubFile.path}', error: e);
       return null;
     }
+  }
+
+  /// Resolves the image entries from an EPUB's OPF spine order.
+  /// Falls back to natural sort of all image files if OPF parsing fails.
+  List<ZipEntryMeta> _resolveEpubImageEntries(ZipReader reader, List<ZipEntryMeta> entries) {
+    try {
+      final containerEntry = entries.where((e) => e.name == 'META-INF/container.xml').firstOrNull;
+      if (containerEntry == null) return _fallbackEpubImages(entries);
+
+      final containerXml = XmlDocument.parse(utf8.decode(reader.readEntryContent(containerEntry)));
+      final rootfile = containerXml.descendants
+          .whereType<XmlElement>()
+          .firstWhere((e) => e.name.local == 'rootfile');
+      final opfPath = rootfile.getAttribute('full-path')!;
+
+      final opfEntry = entries.where((e) => e.name == opfPath).firstOrNull;
+      if (opfEntry == null) return _fallbackEpubImages(entries);
+
+      final opfXml = XmlDocument.parse(utf8.decode(reader.readEntryContent(opfEntry)));
+      final manifest = <String, String>{};
+      for (final e in opfXml.descendants.whereType<XmlElement>()) {
+        if (e.name.local == 'item') {
+          manifest[e.getAttribute('id')!] = e.getAttribute('href')!;
+        }
+      }
+
+      final opfDir = dirname(opfPath);
+      final spineImages = <ZipEntryMeta>[];
+      for (final e in opfXml.descendants.whereType<XmlElement>()) {
+        if (e.name.local != 'itemref') continue;
+        final href = manifest[e.getAttribute('idref')];
+        if (href == null) continue;
+        final fullPath = normalize(join(opfDir, href));
+        final entry = reader.findEntry(fullPath);
+        if (entry != null && _isImageName(entry.name)) {
+          spineImages.add(entry);
+        }
+      }
+      if (spineImages.isNotEmpty) return spineImages;
+    } catch (_) {}
+
+    return _fallbackEpubImages(entries);
+  }
+
+  List<ZipEntryMeta> _fallbackEpubImages(List<ZipEntryMeta> entries) {
+    return entries
+        .where((e) => _isImageName(e.name))
+        .toList()
+      ..sort((a, b) => FileUtil.naturalCompare(a.name, b.name));
   }
 
   List<a.ArchiveFile> _parseEpubImages(a.Archive archive) {
@@ -344,12 +411,11 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
   }
 
   Future<int> _calculateTotalSize(List<File> images) async {
-    final futures = <Future<int>>[];
+    var total = 0;
     for (final f in images) {
-      futures.add(f.length());
+      total += await f.length();
     }
-    final sizes = await Future.wait(futures);
-    return sizes.fold<int>(0, (sum, s) => sum + s);
+    return total;
   }
 
   /// Archive mangas to ZIP files. Returns number of successfully archived.
@@ -364,7 +430,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       final manga = mangas[i];
       try {
         final archive = a.Archive();
-        final images = getMangaImages(manga);
+        final images = await getMangaImagesAsync(manga);
         for (final image in images) {
           final file = File(image.path);
           final bytes = await file.readAsBytes();
@@ -455,17 +521,15 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
   Future<List<LocalImage>> getMangaImagesAsync(Manga manga) async {
     if (manga.path.endsWith('.epub')) {
-      return _getEpubImages(File(manga.path));
+      return _getEpubImagesAsync(File(manga.path));
     }
     if (isZipFile(manga.path)) {
       return _getZipMangaImagesAsync(File(manga.path));
     }
-    final imageFiles = <File>[];
-    await for (final entity in Directory(manga.path).list()) {
-      if (entity is File && entity.isImageExtension) {
-        imageFiles.add(entity);
-      }
-    }
+    final imageFiles = (await Directory(manga.path).list().toList())
+        .whereType<File>()
+        .where((f) => f.isImageExtension)
+        .toList();
     imageFiles.sort(FileUtil.naturalCompareFileOrDir);
     return imageFiles.map((f) => LocalImage(path: f.path)).toList();
   }
@@ -481,12 +545,33 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     final cacheDir = Directory(
       join(Directory.systemTemp.path, 'manga_reader', MangaId.fromPath(zipFile.path).value),
     );
-    if (!cacheDir.existsSync()) cacheDir.createSync(recursive: true);
-    return entries.map((e) {
+    if (!await cacheDir.exists()) await cacheDir.create(recursive: true);
+    final result = <LocalImage>[];
+    for (final e in entries) {
       final outFile = File(join(cacheDir.path, e.name));
-      if (!outFile.existsSync()) outFile.writeAsBytesSync(e.content as List<int>);
-      return LocalImage(path: outFile.path);
-    }).toList();
+      if (!await outFile.exists()) await outFile.writeAsBytes(e.content as List<int>);
+      result.add(LocalImage(path: outFile.path));
+    }
+    return result;
+  }
+
+  Future<List<LocalImage>> _getEpubImagesAsync(File epubFile) async {
+    final mangaId = MangaId.fromPath(epubFile.path);
+    final cacheDir = Directory(
+      join(Directory.systemTemp.path, 'manga_reader', mangaId.value),
+    );
+    if (!await cacheDir.exists()) await cacheDir.create(recursive: true);
+    final bytes = await epubFile.readAsBytes();
+    final archive = a.ZipDecoder().decodeBytes(bytes);
+    final entries = _parseEpubImages(archive);
+    final result = <LocalImage>[];
+    for (final e in entries) {
+      final name = e.name.replaceAll('/', '_');
+      final outFile = File(join(cacheDir.path, name));
+      if (!await outFile.exists()) await outFile.writeAsBytes(e.content as List<int>);
+      result.add(LocalImage(path: outFile.path));
+    }
+    return result;
   }
 
   Future<Manga?> mergeMangas(

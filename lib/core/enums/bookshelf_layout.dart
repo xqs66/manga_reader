@@ -1,0 +1,1 @@
+enum BookshelfLayout { list, grid }

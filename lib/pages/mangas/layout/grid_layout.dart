@@ -48,8 +48,7 @@ abstract class GridLayout extends StatelessWidget {
               final start = rowIndex * columns;
               final rowChildren = <Widget>[];
               for (var j = 0; j < columns && start + j < itemCount; j++) {
-                if (j > 0)
-                  rowChildren.add(SizedBox(width: UiConfig.gridCardSpacing));
+                if (j > 0) rowChildren.add(SizedBox(width: UiConfig.gridCardSpacing));
                 rowChildren.add(
                   SizedBox(
                     width: cardW,

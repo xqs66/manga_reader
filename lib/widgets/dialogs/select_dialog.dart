@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/widgets/dialogs/common_dialog.dart';
 
+/// A generic single-selection dialog. Shows [items] in a scrollable list
+/// with a radio-style check. Confirming calls [onConfirm] with the index.
 class SelectDialog extends StatefulWidget {
   final List<String> items;
   final String title;
@@ -30,40 +32,42 @@ class _SelectDialogState extends State<SelectDialog> {
       },
       title: widget.title,
       isConfirmable: selectedIndex != null,
-      content: ListView.builder(
-        shrinkWrap: true,
-        itemCount: widget.items.length,
-        itemBuilder: (context, index) {
-          final isSelected = selectedIndex == index;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 4),
-            decoration: isSelected
-                ? BoxDecoration(
-                    borderRadius: .circular(12),
-                    color: UiConfig.primaryColor.withValues(alpha: 0.1),
-                  )
-                : null,
-            child: ListTile(
-              leading: isSelected
-                  ? const Icon(Icons.check_rounded, color: UiConfig.primaryColor)
-                  : null,
-              title: Text(
-                widget.items[index],
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: widget.items.length,
+          itemBuilder: (context, index) {
+            final isSelected = selectedIndex == index;
+            return Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: .circular(12),
+                side: BorderSide(
+                  color: isSelected ? UiConfig.primaryColor.withValues(alpha: 0.4) : Colors.transparent,
                 ),
               ),
-              shape: RoundedRectangleBorder(borderRadius: .circular(12)),
-              selected: isSelected,
-              selectedTileColor: UiConfig.primaryColor.withValues(alpha: 0.05),
-              onTap: () {
-                setState(() {
-                  selectedIndex = index;
-                });
-              },
-            ),
-          );
-        },
+              color: isSelected ? UiConfig.primaryColor.withValues(alpha: 0.08) : Colors.transparent,
+              child: ListTile(
+                leading: Icon(
+                  isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                  color: isSelected ? UiConfig.primaryColor : Colors.grey.shade400,
+                  size: 22,
+                ),
+                title: Text(
+                  widget.items[index],
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+                shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+                onTap: () => setState(() => selectedIndex = index),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
