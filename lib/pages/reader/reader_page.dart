@@ -9,6 +9,7 @@ import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/widgets/manga_image.dart';
 import 'package:manga_reader/widgets/loading_widget.dart';
+import 'package:manga_reader/widgets/hit_accumulate_stack.dart';
 import 'package:manga_reader/widgets/styled_menu.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -55,9 +56,19 @@ class _ReaderPageState extends State<ReaderPage> {
                 color: Colors.black,
                 child: Stack(
                   children: [
-                    KeyedSubtree(
-                      key: ValueKey(isStrip ? 'strip' : 'page'),
-                      child: isStrip ? _buildStripMode() : _buildPageMode(),
+                    HitAccumulateStack(
+                      children: [
+                        KeyedSubtree(
+                          key: ValueKey(isStrip ? 'strip' : 'page'),
+                          child: isStrip ? _buildStripMode() : _buildPageMode(),
+                        ),
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: _controller.toggleMenuOpen,
+                            behavior: HitTestBehavior.opaque,
+                          ),
+                        ),
+                      ],
                     ),
                     _buildPageInfoOverlay(),
                     _buildTopMenu(),
@@ -122,17 +133,13 @@ class _ReaderPageState extends State<ReaderPage> {
       builder: (_) {
         return LayoutBuilder(
           builder: (_, constraints) {
-            return GestureDetector(
-              onTap: _controller.toggleMenuOpen,
-              behavior: .opaque,
-              child: Obx(
-                () => readSetting.enableGrayscaleMode.value
-                    ? ColorFiltered(
-                        colorFilter: ColorFilter.matrix(Constants.grayscaleMatrix),
-                        child: _buildStripImage(constraints, index),
-                      )
-                    : _buildStripImage(constraints, index),
-              ),
+            return Obx(
+              () => readSetting.enableGrayscaleMode.value
+                  ? ColorFiltered(
+                      colorFilter: ColorFilter.matrix(Constants.grayscaleMatrix),
+                      child: _buildStripImage(constraints, index),
+                    )
+                  : _buildStripImage(constraints, index),
             );
           },
         );
@@ -182,16 +189,7 @@ class _ReaderPageState extends State<ReaderPage> {
               initialScale: PhotoViewComputedScale.contained,
               minScale: PhotoViewComputedScale.contained,
               maxScale: 3.0,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildImageItem(index),
-                  GestureDetector(
-                    onTap: _controller.toggleMenuOpen,
-                    behavior: .translucent,
-                  ),
-                ],
-              ),
+              child: _buildImageItem(index),
             );
           },
         );

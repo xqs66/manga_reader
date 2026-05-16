@@ -17,6 +17,7 @@ class Routes {
   static const String morePaths = '/more/paths';
   static const String moreReadSetting = '/more/readSetting';
   static const String moreGroupManage = '/more/groupManage';
+  static const String tapDemo = '/tapdemo';
 
   static final pages = [
     GetPage(name: root, page: () => HomePage()),

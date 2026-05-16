@@ -4,7 +4,10 @@
       "Bash(dart analyze *)",
       "Bash(git mv *)",
       "Bash(git rm *)",
-      "Bash(dart pub *)"
+      "Bash(dart pub *)",
+      "Bash(ls \"d:\\\\\\\\Projects\\\\\\\\manga_reader\\\\\\\\packages\\\\\\\\photo_view\\\\\\\\pubspec.yaml\")",
+      "Bash(ls \"d:\\\\\\\\Projects\\\\\\\\manga_reader\\\\\\\\packages\\\\\\\\photo_view\\\\\\\\lib\\\\\\\\photo_view.dart\")",
+      "Bash(wc -l \"d:\\\\\\\\Projects\\\\\\\\manga_reader\\\\\\\\docs\\\\\\\\interview_guide.md\")"
     ]
   }
 }

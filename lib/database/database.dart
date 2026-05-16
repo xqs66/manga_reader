@@ -22,7 +22,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase() => _instance;
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -35,6 +35,9 @@ class AppDatabase extends _$AppDatabase {
         if (oldVersion < 2) {
           await m.addColumn(group, group.parentPath);
         }
+        if (oldVersion < 3) {
+          await m.addColumn(manga, manga.coverPath);
+        }
       },
     );
   }
@@ -42,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _insertDefaultGroup() async {
     await into(
       group,
-    ).insert(GroupCompanion.insert(groupName: '默认分组', parentPath: '', sortOrder: 0));
+    ).insert(GroupCompanion.insert(groupName: '默认分组', parentPath: const Value(''), sortOrder: 0));
   }
 }
 

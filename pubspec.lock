@@ -667,11 +667,12 @@ packages:
   photo_view:
     dependency: "direct main"
     description:
-      name: photo_view
-      sha256: "1fc3d970a91295fbd1364296575f854c9863f225505c28c46e0a03e48960c75e"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "0.15.0"
+      path: "."
+      ref: main
+      resolved-ref: d12d1f826ad55269f174599cb4866c2ad10a86fb
+      url: "https://github.com/xqs66/photo_view.git"
+    source: git
+    version: "0.14.0"
   platform:
     dependency: transitive
     description:

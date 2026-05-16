@@ -46,7 +46,8 @@ class $MangaTable extends Manga with TableInfo<$MangaTable, MangaData> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
   );
   static const VerificationMeta _groupNameMeta = const VerificationMeta(
     'groupName',
@@ -185,8 +186,6 @@ class $MangaTable extends Manga with TableInfo<$MangaTable, MangaData> {
         _coverPathMeta,
         coverPath.isAcceptableOrUnknown(data['cover_path']!, _coverPathMeta),
       );
-    } else if (isInserting) {
-      context.missing(_coverPathMeta);
     }
     if (data.containsKey('group_name')) {
       context.handle(
@@ -326,8 +325,6 @@ class MangaData extends DataClass implements Insertable<MangaData> {
   final DateTime? lastReadTime;
   final int lastReadPage;
   final int sortOrder;
-
-  ///1 - 文件夹
   final int type;
   final int size;
   final int pageCount;
@@ -560,7 +557,7 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
     required String id,
     required String parentPath,
     required String title,
-    required String coverPath,
+    this.coverPath = const Value.absent(),
     this.groupName = const Value.absent(),
     this.tags = const Value.absent(),
     this.lastReadTime = const Value.absent(),
@@ -573,7 +570,6 @@ class MangaCompanion extends UpdateCompanion<MangaData> {
   }) : id = Value(id),
        parentPath = Value(parentPath),
        title = Value(title),
-       coverPath = Value(coverPath),
        sortOrder = Value(sortOrder),
        type = Value(type),
        size = Value(size),
@@ -724,6 +720,18 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _parentPathMeta = const VerificationMeta(
+    'parentPath',
+  );
+  @override
+  late final GeneratedColumn<String> parentPath = GeneratedColumn<String>(
+    'parent_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
   );
@@ -748,22 +756,7 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'CHECK ("is_expanded" IN (0, 1))',
     ),
-    defaultValue: Constant(false),
-  );
-  static const VerificationMeta _parentPathMeta = const VerificationMeta(
-    'parentPath',
-  );
-  @override
-  late final GeneratedColumn<String> parentPath = GeneratedColumn<String>(
-    'parent_path',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("parent_path" IS NOT NULL)',
-    ),
-    defaultValue: const Constant(''),
+    defaultValue: const Constant(false),
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -792,6 +785,12 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
     } else if (isInserting) {
       context.missing(_groupNameMeta);
     }
+    if (data.containsKey('parent_path')) {
+      context.handle(
+        _parentPathMeta,
+        parentPath.isAcceptableOrUnknown(data['parent_path']!, _parentPathMeta),
+      );
+    }
     if (data.containsKey('sort_order')) {
       context.handle(
         _sortOrderMeta,
@@ -805,14 +804,6 @@ class $GroupTable extends Group with TableInfo<$GroupTable, GroupData> {
         _isExpandedMeta,
         isExpanded.isAcceptableOrUnknown(data['is_expanded']!, _isExpandedMeta),
       );
-    }
-    if (data.containsKey('parent_path')) {
-      context.handle(
-        _parentPathMeta,
-        parentPath.isAcceptableOrUnknown(data['parent_path']!, _parentPathMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_parentPathMeta);
     }
     return context;
   }
@@ -906,17 +897,18 @@ class GroupData extends DataClass implements Insertable<GroupData> {
     String? parentPath,
     int? sortOrder,
     bool? isExpanded,
-  }) =>
-      GroupData(
-        groupName: groupName ?? this.groupName,
-        parentPath: parentPath ?? this.parentPath,
-        sortOrder: sortOrder ?? this.sortOrder,
-        isExpanded: isExpanded ?? this.isExpanded,
-      );
+  }) => GroupData(
+    groupName: groupName ?? this.groupName,
+    parentPath: parentPath ?? this.parentPath,
+    sortOrder: sortOrder ?? this.sortOrder,
+    isExpanded: isExpanded ?? this.isExpanded,
+  );
   GroupData copyWithCompanion(GroupCompanion data) {
     return GroupData(
       groupName: data.groupName.present ? data.groupName.value : this.groupName,
-      parentPath: data.parentPath.present ? data.parentPath.value : this.parentPath,
+      parentPath: data.parentPath.present
+          ? data.parentPath.value
+          : this.parentPath,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       isExpanded: data.isExpanded.present
           ? data.isExpanded.value
@@ -962,12 +954,11 @@ class GroupCompanion extends UpdateCompanion<GroupData> {
   });
   GroupCompanion.insert({
     required String groupName,
-    required String parentPath,
+    this.parentPath = const Value.absent(),
     required int sortOrder,
     this.isExpanded = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : groupName = Value(groupName),
-       parentPath = Value(parentPath),
        sortOrder = Value(sortOrder);
   static Insertable<GroupData> custom({
     Expression<String>? groupName,
@@ -1075,7 +1066,7 @@ typedef $$MangaTableCreateCompanionBuilder =
       required String id,
       required String parentPath,
       required String title,
-      required String coverPath,
+      Value<String> coverPath,
       Value<String> groupName,
       Value<String?> tags,
       Value<DateTime?> lastReadTime,
@@ -1355,7 +1346,7 @@ class $$MangaTableTableManager
                 required String id,
                 required String parentPath,
                 required String title,
-                required String coverPath,
+                Value<String> coverPath = const Value.absent(),
                 Value<String> groupName = const Value.absent(),
                 Value<String?> tags = const Value.absent(),
                 Value<DateTime?> lastReadTime = const Value.absent(),
@@ -1405,7 +1396,7 @@ typedef $$MangaTableProcessedTableManager =
 typedef $$GroupTableCreateCompanionBuilder =
     GroupCompanion Function({
       required String groupName,
-      required String parentPath,
+      Value<String> parentPath,
       required int sortOrder,
       Value<bool> isExpanded,
       Value<int> rowid,
@@ -1429,6 +1420,11 @@ class $$GroupTableFilterComposer extends Composer<_$AppDatabase, $GroupTable> {
   });
   ColumnFilters<String> get groupName => $composableBuilder(
     column: $table.groupName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parentPath => $composableBuilder(
+    column: $table.parentPath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1457,6 +1453,11 @@ class $$GroupTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get parentPath => $composableBuilder(
+    column: $table.parentPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
@@ -1479,6 +1480,11 @@ class $$GroupTableAnnotationComposer
   });
   GeneratedColumn<String> get groupName =>
       $composableBuilder(column: $table.groupName, builder: (column) => column);
+
+  GeneratedColumn<String> get parentPath => $composableBuilder(
+    column: $table.parentPath,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
@@ -1532,7 +1538,7 @@ class $$GroupTableTableManager
           createCompanionCallback:
               ({
                 required String groupName,
-                required String parentPath,
+                Value<String> parentPath = const Value.absent(),
                 required int sortOrder,
                 Value<bool> isExpanded = const Value.absent(),
                 Value<int> rowid = const Value.absent(),

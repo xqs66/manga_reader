@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:manga_reader/database/database.dart';
 
 class GroupDao {
@@ -10,7 +11,7 @@ class GroupDao {
   static Future<void> insertGroup(String groupName, String parentPath) {
     return appDb.into(appDb.group).insert(
           GroupCompanion.insert(
-              groupName: groupName, parentPath: parentPath, sortOrder: 0),
+              groupName: groupName, parentPath: Value(parentPath), sortOrder: 0),
         );
   }
 

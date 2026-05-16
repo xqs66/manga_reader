@@ -122,9 +122,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
           .whereType<File>()
           .where((f) => f.isImageExtension)
           .toList();
-
       if (imageFiles.isEmpty) return null;
-
       imageFiles.sort(FileUtil.naturalCompareFileOrDir);
 
       final countChanged =
@@ -133,37 +131,18 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
           ? mangaRecord.size
           : await _calculateTotalSize(imageFiles);
 
-      final result = Manga(
-        id: mangaId,
+      return _createAndPersistManga(
+        mangaId: mangaId,
         path: dirOfManga.path,
-        cover: LocalImage(path: imageFiles.first.path),
+        coverPath: imageFiles.first.path,
         title: basename(dirOfManga.path),
-        lastReadPage: mangaRecord?.lastReadPage ?? 0,
-        lastReadTime: mangaRecord?.lastReadTime,
-        groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
         pageCount: imageFiles.length,
         size: totalSize,
+        type: 1,
+        parentPath: dirOfManga.parent.path,
+        mangaRecord: mangaRecord,
+        shouldUpdate: countChanged,
       );
-
-      if (mangaRecord == null) {
-        await MangaDao.insertManga(MangaCompanion.insert(
-          id: result.id.value,
-          title: result.title,
-          coverPath: result.cover.path,
-          parentPath: dirOfManga.parent.path,
-          pageCount: result.pageCount,
-          size: result.size,
-          sortOrder: 0,
-          type: 1,
-        ));
-      } else if (countChanged) {
-        await MangaDao.updateManga(MangaCompanion(
-          id: Value(result.id.value),
-          size: Value(result.size),
-          pageCount: Value(result.pageCount),
-        ));
-      }
-      return result;
     } catch (e) {
       LogUtil.e('Failed to load manga from ${dirOfManga.path}');
       return null;
@@ -194,44 +173,26 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
           await cacheDir.create(recursive: true);
         }
 
-        // Only extract cover image during scan; rest on demand
-        final coverEntry = imageEntries.first;
-        final coverFile = File(join(cacheDir.path, coverEntry.name));
+        final coverFile = File(join(cacheDir.path, imageEntries.first.name));
         coverPath = coverFile.path;
         if (!await coverFile.exists()) {
-          final coverBytes = reader.readEntryContent(coverEntry);
-          await coverFile.writeAsBytes(coverBytes);
+          await coverFile.writeAsBytes(reader.readEntryContent(imageEntries.first));
         }
       } finally {
         reader.close();
       }
 
-      final totalSize = zipFile.lengthSync();
-      final result = Manga(
-        id: mangaId,
+      return _createAndPersistManga(
+        mangaId: mangaId,
         path: zipFile.path,
-        cover: LocalImage(path: coverPath),
+        coverPath: coverPath,
         title: basenameWithoutExtension(zipFile.path),
-        lastReadPage: mangaRecord?.lastReadPage ?? 0,
-        lastReadTime: mangaRecord?.lastReadTime,
-        groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
         pageCount: pageCount,
-        size: totalSize,
+        size: zipFile.lengthSync(),
+        type: 2,
+        parentPath: dirname(zipFile.path),
+        mangaRecord: mangaRecord,
       );
-
-      if (mangaRecord == null) {
-        await MangaDao.insertManga(MangaCompanion.insert(
-          id: result.id.value,
-          title: result.title,
-          coverPath: result.cover.path,
-          parentPath: dirname(zipFile.path),
-          pageCount: result.pageCount,
-          size: result.size,
-          sortOrder: 0,
-          type: 2,
-        ));
-      }
-      return result;
     } catch (e) {
       LogUtil.e('Failed to load ZIP manga from ${zipFile.path}', error: e);
       return null;
@@ -259,43 +220,27 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
           await cacheDir.create(recursive: true);
         }
 
-        final coverEntry = imageEntries.first;
-        final coverName = coverEntry.name.replaceAll('/', '_');
+        final coverName = imageEntries.first.name.replaceAll('/', '_');
         final coverFile = File(join(cacheDir.path, coverName));
         coverPath = coverFile.path;
         if (!await coverFile.exists()) {
-          final coverBytes = reader.readEntryContent(coverEntry);
-          await coverFile.writeAsBytes(coverBytes);
+          await coverFile.writeAsBytes(reader.readEntryContent(imageEntries.first));
         }
       } finally {
         reader.close();
       }
 
-      final result = Manga(
-        id: mangaId,
+      return _createAndPersistManga(
+        mangaId: mangaId,
         path: epubFile.path,
-        cover: LocalImage(path: coverPath),
+        coverPath: coverPath,
         title: basenameWithoutExtension(epubFile.path),
-        lastReadPage: mangaRecord?.lastReadPage ?? 0,
-        lastReadTime: mangaRecord?.lastReadTime,
-        groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
         pageCount: pageCount,
         size: epubFile.lengthSync(),
+        type: 3,
+        parentPath: dirname(epubFile.path),
+        mangaRecord: mangaRecord,
       );
-
-      if (mangaRecord == null) {
-        await MangaDao.insertManga(MangaCompanion.insert(
-          id: result.id.value,
-          title: result.title,
-          coverPath: result.cover.path,
-          parentPath: dirname(epubFile.path),
-          pageCount: result.pageCount,
-          size: result.size,
-          sortOrder: 0,
-          type: 3,
-        ));
-      }
-      return result;
     } catch (e) {
       LogUtil.e('Failed to load EPUB manga from ${epubFile.path}', error: e);
       return null;
@@ -349,6 +294,51 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         .where((e) => _isImageName(e.name))
         .toList()
       ..sort((a, b) => FileUtil.naturalCompare(a.name, b.name));
+  }
+
+  Future<Manga> _createAndPersistManga({
+    required MangaId mangaId,
+    required String path,
+    required String coverPath,
+    required String title,
+    required int pageCount,
+    required int size,
+    required int type,
+    required String parentPath,
+    required MangaData? mangaRecord,
+    bool shouldUpdate = false,
+  }) async {
+    final result = Manga(
+      id: mangaId,
+      path: path,
+      cover: LocalImage(path: coverPath),
+      title: title,
+      lastReadPage: mangaRecord?.lastReadPage ?? 0,
+      lastReadTime: mangaRecord?.lastReadTime,
+      groupName: mangaRecord?.groupName ?? Constants.defaultGroupName,
+      pageCount: pageCount,
+      size: size,
+    );
+
+    if (mangaRecord == null) {
+      await MangaDao.insertManga(MangaCompanion.insert(
+        id: result.id.value,
+        title: result.title,
+        coverPath: Value(result.cover.path),
+        parentPath: parentPath,
+        pageCount: result.pageCount,
+        size: result.size,
+        sortOrder: 0,
+        type: type,
+      ));
+    } else if (shouldUpdate) {
+      await MangaDao.updateManga(MangaCompanion(
+        id: Value(result.id.value),
+        size: Value(result.size),
+        pageCount: Value(result.pageCount),
+      ));
+    }
+    return result;
   }
 
   List<a.ArchiveFile> _parseEpubImages(a.Archive archive) {
