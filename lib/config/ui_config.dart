@@ -12,6 +12,7 @@ class UiConfig {
   static const Color groupHeaderColor = Color(0xB871B0F7);
 
   ///read page
+  static const double readerTapZoneCenterRatio = 0.5;
   static const double topAreaMenuHeight = 60;
   static const double bottomAreaMenuHeight = 56;
   static const double thumbnailStripHeight = 120;
@@ -36,6 +37,8 @@ class UiConfig {
   ///manga card list tile
   static const double mangaListCardHeight = 150;
   static const double mangaListCardPadding = 5;
+  /// cardHeight + Card.margin(8) + SelectedItemDecoration.margin(4)
+  static const double mangaListItemExtent = 162;
   static const TextStyle listTileSubtitleStyle = TextStyle(
     color: Color(0xFF757575),
     fontSize: 12,

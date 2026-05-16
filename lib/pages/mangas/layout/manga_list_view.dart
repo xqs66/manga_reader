@@ -1,8 +1,9 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
+import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/pages/mangas/layout/list_layout.dart';
 import 'package:manga_reader/pages/mangas/mangas_page_controller.dart';
@@ -12,17 +13,17 @@ import 'package:manga_reader/widgets/selected_item_decoration.dart';
 class MangaListView extends ListLayout {
   final List<Manga> mangas;
   final MangasPageController controller;
-  final void Function(ScrollNotification) onScroll;
+  final ScrollState scrollState;
   final void Function(Manga)? onDeleteManga;
 
-  const MangaListView({
+  MangaListView({
     super.key,
     required this.mangas,
     required this.controller,
-    super.scrollController,
-    required this.onScroll,
+    required super.scrollController,
+    required this.scrollState,
     this.onDeleteManga,
-  });
+  }) : super(itemExtent: UiConfig.mangaListItemExtent);
 
   @override
   int get itemCount => mangas.length;
@@ -44,7 +45,7 @@ class MangaListView extends ListLayout {
             children: [
               MangaListTileCard(
                 key: ValueKey(manga.id),
-                buildCover: !(state.isScrolling && state.currentVelocity.abs() > 500),
+                buildCover: !(scrollState.isScrolling && scrollState.currentVelocity.abs() > 500),
                 onTap: () => state.isSelectMode
                     ? controller.handleSelectManga(manga)
                     : controller.handleMangaCardTap(manga),
@@ -73,20 +74,6 @@ class MangaListView extends ListLayout {
           ),
         );
       },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoScrollbar(
-      controller: scrollController,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (notification) {
-          onScroll(notification);
-          return false;
-        },
-        child: super.build(context),
-      ),
     );
   }
 }

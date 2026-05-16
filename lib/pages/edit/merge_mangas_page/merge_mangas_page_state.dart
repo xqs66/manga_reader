@@ -1,10 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 
-class MergeMangasPageState with ScrollState {
+class MergeMangasPageState {
   Directory? selectedDir;
   Directory? outputDir;
 

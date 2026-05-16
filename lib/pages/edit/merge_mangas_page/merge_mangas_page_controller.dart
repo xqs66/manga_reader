@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
-import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/path_setting.dart';
@@ -15,11 +14,10 @@ import 'package:path/path.dart' as p;
 
 import 'merge_mangas_page_state.dart';
 
-class MergeMangasPageController extends GetxController with ScrollHandler {
-  @override
-  ScrollState get scrollState => state;
-
+class MergeMangasPageController extends GetxController {
   final state = MergeMangasPageState();
+
+  final listScrollController = ScrollController();
 
   final String bodyId = 'bodyId';
   final String mangasId = 'mangasId';
@@ -197,18 +195,5 @@ class MergeMangasPageController extends GetxController with ScrollHandler {
         );
       },
     );
-  }
-
-  @override
-  void handleScrollStart(ScrollStartNotification notification) {
-    delayedHandleScrollStart(notification);
-  }
-
-  @override
-  void handleScrollFinish(ScrollEndNotification notification) {
-    handleEndWithDelayedStart(notification);
-    if (!state.isScrolling) {
-      update([mangasId]);
-    }
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:extended_image/extended_image.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -10,6 +11,7 @@ import 'package:manga_reader/core/result.dart';
 import 'package:manga_reader/pages/mangas/mangas_page_controller.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/pages/more/settings/read/read_settings_page.dart';
@@ -31,6 +33,8 @@ class ReaderPageController extends GetxController {
   late Worker _readingModeListener;
   Timer? _saveTimer;
   Timer? _timeTimer;
+  Timer? _pageTurnGuard;
+  late final FocusNode _focusNode;
   String _batteryLevel = '--';
   final _battery = Battery();
 
@@ -50,10 +54,18 @@ class ReaderPageController extends GetxController {
   }
 
   @override
+  void onInit() {
+    super.onInit();
+    _focusNode = FocusNode();
+  }
+
+  @override
   void onReady() {
     super.onReady();
 
     applyEnableImmersive();
+
+    _focusNode.requestFocus();
 
     _updateBattery();
     _timeTimer = Timer.periodic(const Duration(seconds: 10), (_) {
@@ -88,10 +100,99 @@ class ReaderPageController extends GetxController {
     update([loadingImagesId, imageListId, pageListId]);
   }
 
+  void goToNextPage() {
+    if (_pageTurnGuard?.isActive ?? false) return;
+    final next = state.currentIndex + 1;
+    if (next >= state.readInfo.pageCount) return;
+    _pageTurnGuard = Timer(const Duration(milliseconds: 350), () {});
+    _navigateTo(next);
+  }
+
+  void goToPreviousPage() {
+    if (_pageTurnGuard?.isActive ?? false) return;
+    final prev = state.currentIndex - 1;
+    if (prev < 0) return;
+    _pageTurnGuard = Timer(const Duration(milliseconds: 350), () {});
+    _navigateTo(prev);
+  }
+
+  void handleTapLeft() {
+    final isRTL = readSetting.readingMode.value == ReadingMode.singleRTL;
+    isRTL ? goToNextPage() : goToPreviousPage();
+  }
+
+  void handleTapRight() {
+    final isRTL = readSetting.readingMode.value == ReadingMode.singleRTL;
+    isRTL ? goToPreviousPage() : goToNextPage();
+  }
+
+  void _navigateTo(int index) {
+    if (state.isMenuOpen) toggleMenuOpen();
+    if (readSetting.readingMode.value == ReadingMode.strip) {
+      if (!state.itemScrollController.isAttached) return;
+      state.itemScrollController.scrollTo(
+        index: index,
+        duration: const Duration(milliseconds: 300),
+      );
+      state.currentIndex = index;
+      _updateCachesSync(index);
+      scrollThumbnailToCurrent();
+      update([bottomMenuId, bottomRightInfoId]);
+      _debouncedSaveProgress();
+    } else {
+      if (!state.pageController.hasClients) return;
+      state.pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  FocusNode get focusNode => _focusNode;
+
+  KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    try {
+      final handled = switch (event.logicalKey) {
+        LogicalKeyboardKey.arrowLeft => _act(goToPreviousPage),
+        LogicalKeyboardKey.arrowRight => _act(goToNextPage),
+        LogicalKeyboardKey.arrowUp => _act(goToPreviousPage),
+        LogicalKeyboardKey.arrowDown => _act(goToNextPage),
+        LogicalKeyboardKey.audioVolumeUp   => _actVol(goToPreviousPage),
+        LogicalKeyboardKey.audioVolumeDown => _actVol(goToNextPage),
+        _ => false,
+      };
+      return handled ? KeyEventResult.handled : KeyEventResult.ignored;
+    } catch (e) {
+      LogUtil.e('Key event error', error: e);
+      return KeyEventResult.ignored;
+    }
+  }
+
+  bool _act(VoidCallback action) {
+    action();
+    return true;
+  }
+
+  bool _actVol(VoidCallback action) {
+    if (!readSetting.enableVolumeKeyNavigation.value) return false;
+    action();
+    return true;
+  }
+
+  void handleMouseWheel(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      event.scrollDelta.dy > 0 ? goToPreviousPage() : goToNextPage();
+    }
+  }
+
   @override
   void onClose() {
     _saveTimer?.cancel();
     _timeTimer?.cancel();
+    _pageTurnGuard?.cancel();
+    _focusNode.dispose();
     persistToDb();
     _immersiveModeListener.dispose();
     _readingModeListener.dispose();

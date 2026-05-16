@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:manga_reader/core/enums/sort_mode.dart';
-import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga_id.dart';
 
 import '../../models/manga.dart';
 
-class MangasPageState with ScrollState {
+class MangasPageState {
   Set<String> displayGroups = {};
 
   List<Manga> mangas = [];

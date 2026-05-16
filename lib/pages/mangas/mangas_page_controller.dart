@@ -9,7 +9,6 @@ import 'package:manga_reader/core/enums/sort_mode.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
 import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/core/result.dart';
-import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/manga_id.dart';
 import 'package:manga_reader/models/read_info.dart';
@@ -20,15 +19,14 @@ import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 
-class MangasPageController extends GetxController with ScrollHandler {
+class MangasPageController extends GetxController {
   final state = MangasPageState();
   final MangaRepository _repo;
 
   MangasPageController({MangaRepository? repo})
     : _repo = repo ?? Get.find<MangaRepository>();
 
-  @override
-  ScrollState get scrollState => state;
+  final listScrollController = ScrollController();
 
   final appBarId = 'appBarId';
   final bottomBarId = 'bottomBarId';
@@ -523,17 +521,6 @@ class MangasPageController extends GetxController with ScrollHandler {
     toggleSelectMode();
     update([bodyId]);
     Get.back();
-  }
-
-  @override
-  void handleScrollStart(ScrollStartNotification notification) {
-    delayedHandleScrollStart(notification);
-  }
-
-  @override
-  void handleScrollFinish(ScrollEndNotification notification) {
-    handleEndWithDelayedStart(notification);
-    if (!state.isScrolling) update([bodyId]);
   }
 
   @override

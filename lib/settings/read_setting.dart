@@ -17,6 +17,9 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
   late final Rx<ReadingMode> readingMode;
   late final RxBool continueFromLastRead;
   late final Rx<BookshelfLayout> bookshelfLayout;
+  late final RxBool enableVolumeKeyNavigation;
+  late final RxDouble contrast;
+  late final RxDouble saturation;
 
   @override
   List<ServiceLifeCircleBean> get initDependencies => [storageService];
@@ -43,12 +46,22 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
             .obs;
     final modeIndex =
         storageService.read<int>(ReadSettingKeys.readingMode) ?? 0;
-    readingMode = ReadingMode.values[modeIndex.clamp(0, ReadingMode.values.length - 1)].obs;
+    readingMode = ReadingMode
+        .values[modeIndex.clamp(0, ReadingMode.values.length - 1)]
+        .obs;
     continueFromLastRead =
-        (storageService.read<bool>(ReadSettingKeys.continueFromLastRead) ?? true).obs;
+        (storageService.read<bool>(ReadSettingKeys.continueFromLastRead) ??
+                true)
+            .obs;
     final layoutIndex =
         storageService.read<int>(ReadSettingKeys.bookshelfLayout) ?? 0;
     bookshelfLayout = BookshelfLayout.values[layoutIndex.clamp(0, 1)].obs;
+    enableVolumeKeyNavigation =
+        (storageService.read<bool>(ReadSettingKeys.enableVolumeKeyNavigation) ?? false).obs;
+    contrast =
+        (storageService.read<double>(ReadSettingKeys.contrast) ?? 1.0).obs;
+    saturation =
+        (storageService.read<double>(ReadSettingKeys.saturation) ?? 1.0).obs;
   }
 
   Future<void> saveBookshelfLayout(BookshelfLayout value) async {
@@ -80,6 +93,21 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
     readingMode.value = value;
     await saveConfig(ReadSettingKeys.readingMode, value.index);
   }
+
+  Future<void> saveEnableVolumeKeyNavigation(bool value) async {
+    enableVolumeKeyNavigation.value = value;
+    await saveConfig(ReadSettingKeys.enableVolumeKeyNavigation, value);
+  }
+
+  Future<void> saveContrast(double value) async {
+    contrast.value = value;
+    await saveConfig(ReadSettingKeys.contrast, value);
+  }
+
+  Future<void> saveSaturation(double value) async {
+    saturation.value = value;
+    await saveConfig(ReadSettingKeys.saturation, value);
+  }
 }
 
 class ReadSettingKeys {
@@ -89,4 +117,7 @@ class ReadSettingKeys {
   static const String readingMode = 'readingMode';
   static const String continueFromLastRead = 'continueFromLastRead';
   static const String bookshelfLayout = 'bookshelfLayout';
+  static const String enableVolumeKeyNavigation = 'enableVolumeKeyNavigation';
+  static const String contrast = 'contrast';
+  static const String saturation = 'saturation';
 }

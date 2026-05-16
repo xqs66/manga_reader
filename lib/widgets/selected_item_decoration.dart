@@ -11,26 +11,28 @@ class SelectedItemDecoration extends StatelessWidget {
     required this.child,
   });
 
+  static final _borderColor = UiConfig.primaryColor.withValues(alpha: 0.5);
+
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      decoration: isSelected
-          ? BoxDecoration(
-              borderRadius: .circular(12),
-              border: Border.all(
-                color: UiConfig.primaryColor.withValues(alpha: 0.5),
-                width: 2,
-              ),
-              boxShadow: [
+      decoration: BoxDecoration(
+        borderRadius: .circular(12),
+        border: Border.all(
+          color: isSelected ? _borderColor : Colors.transparent,
+          width: 2,
+        ),
+        boxShadow: isSelected
+            ? [
                 BoxShadow(
                   color: UiConfig.primaryColor.withValues(alpha: 0.25),
                   blurRadius: 8,
                   spreadRadius: 1,
                 ),
-              ],
-            )
-          : null,
+              ]
+            : null,
+      ),
       child: child,
     );
   }

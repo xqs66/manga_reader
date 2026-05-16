@@ -14,6 +14,7 @@ import 'package:manga_reader/core/extensions/text_ext.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/widgets/dialogs/common_dialog.dart';
 import 'package:manga_reader/widgets/empty_state.dart';
+import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/pages/mangas/layout/manga_grid_view.dart';
 import 'package:manga_reader/pages/mangas/layout/group_grid_view.dart';
 import 'package:manga_reader/pages/mangas/layout/manga_list_view.dart';
@@ -255,12 +256,17 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
               mangas: _controller.mangasForCurrentGrid,
               controller: _controller,
             )
-          : MangaListView(
-              mangas: _controller.mangasForCurrentGrid,
-              controller: _controller,
-              scrollController: _state.scrollController,
-              onScroll: _controller.handleScrollEvent,
-              onDeleteManga: (m) => Get.dialog(_buildDeleteMangaDialog(m)),
+          : ScrollWrapper.scrollbar(
+              scrollController: _controller.listScrollController,
+              useDelayedStart: true,
+              onStateChanged: () => _controller.update([_controller.bodyId]),
+              builder: (context, handler) => MangaListView(
+                scrollController: _controller.listScrollController,
+                scrollState: handler,
+                mangas: _controller.mangasForCurrentGrid,
+                controller: _controller,
+                onDeleteManga: (m) => Get.dialog(_buildDeleteMangaDialog(m)),
+              ),
             );
     }
     return readSetting.bookshelfLayout.value == BookshelfLayout.grid
@@ -289,12 +295,17 @@ class _MangasPageState extends State<MangasPage> with RouteAware {
         controller: _controller,
       );
     }
-    return MangaListView(
-      mangas: _state.searchedMangas,
-      controller: _controller,
-      scrollController: _state.scrollController,
-      onScroll: _controller.handleScrollEvent,
-      onDeleteManga: (m) => Get.dialog(_buildDeleteMangaDialog(m)),
+    return ScrollWrapper.scrollbar(
+      scrollController: _controller.listScrollController,
+      useDelayedStart: true,
+      onStateChanged: () => _controller.update([_controller.bodyId]),
+      builder: (context, handler) => MangaListView(
+        scrollController: _controller.listScrollController,
+        scrollState: handler,
+        mangas: _state.searchedMangas,
+        controller: _controller,
+        onDeleteManga: (m) => Get.dialog(_buildDeleteMangaDialog(m)),
+      ),
     );
   }
 

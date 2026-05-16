@@ -7,6 +7,7 @@ import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/pages/reader/reader_page_controller.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
+import 'package:manga_reader/widgets/adjusted_image.dart';
 import 'package:manga_reader/widgets/manga_image.dart';
 import 'package:manga_reader/widgets/loading_widget.dart';
 import 'package:manga_reader/widgets/hit_accumulate_stack.dart';
@@ -26,68 +27,113 @@ class _ReaderPageState extends State<ReaderPage> {
   final _controller = Get.put(ReaderPageController());
   final _state = Get.find<ReaderPageController>().state;
 
+  static const _overlayStyle = SystemUiOverlayStyle(
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    statusBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.light,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.light,
+  );
+
   @override
   Widget build(BuildContext context) {
     return GetBuilder<ReaderPageController>(
       id: _controller.pageId,
-      builder: (_) {
-        return LayoutBuilder(
-          builder: (_, constraints) {
-            _state.onLayoutWidthChanged(constraints.maxWidth);
-            final isStrip = readSetting.readingMode.value == ReadingMode.strip;
-            return PopScope(
-              canPop: false,
-              onPopInvokedWithResult: (didPop, _) {
-                if (!didPop) {
-                  _controller.persistToDb();
-                  Get.back();
-                }
-              },
-              child: AnnotatedRegion<SystemUiOverlayStyle>(
-              value: const SystemUiOverlayStyle(
-                systemNavigationBarColor: Colors.transparent,
-                systemNavigationBarDividerColor: Colors.transparent,
-                statusBarColor: Colors.transparent,
-                systemNavigationBarIconBrightness: Brightness.light,
-                statusBarIconBrightness: Brightness.light,
-                statusBarBrightness: Brightness.light,
-              ),
-              child: Container(
-                color: Colors.black,
-                child: Stack(
+      builder: (_) => LayoutBuilder(
+        builder: (_, constraints) {
+          _state.onLayoutWidthChanged(constraints.maxWidth);
+          final isStrip = readSetting.readingMode.value == ReadingMode.strip;
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) {
+                _controller.persistToDb();
+                Get.back();
+              }
+            },
+            child: _buildPageBody(isStrip),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPageBody(bool isStrip) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: _overlayStyle,
+      child: Focus(
+        focusNode: _controller.focusNode,
+        autofocus: true,
+        onKeyEvent: _controller.handleKeyEvent,
+        child: Listener(
+          onPointerSignal: _controller.handleMouseWheel,
+          child: Container(
+            color: Colors.black,
+            child: Stack(
+              children: [
+                HitAccumulateStack(
                   children: [
-                    HitAccumulateStack(
-                      children: [
-                        KeyedSubtree(
-                          key: ValueKey(isStrip ? 'strip' : 'page'),
-                          child: isStrip ? _buildStripMode() : _buildPageMode(),
-                        ),
-                        Positioned.fill(
-                          child: GestureDetector(
-                            onTap: _controller.toggleMenuOpen,
-                            behavior: HitTestBehavior.opaque,
-                          ),
-                        ),
-                      ],
+                    KeyedSubtree(
+                      key: ValueKey(isStrip ? 'strip' : 'page'),
+                      child: isStrip ? _buildStripMode() : _buildPageMode(),
                     ),
-                    _buildPageInfoOverlay(),
-                    _buildTopMenu(),
-                    _buildBottomMenu(),
-                    GetBuilder<ReaderPageController>(
-                      id: _controller.loadingImagesId,
-                      builder: (_) {
-                        if (_state.readInfo.images.isNotEmpty) return const SizedBox.shrink();
-                        return const SizedBox.expand(child: Center(child: LoadingWidget(height: 48, width: 48)));
-                      },
-                    ),
+                    Positioned.fill(child: _buildTapZones()),
                   ],
                 ),
-              ),
+                _buildPageInfoOverlay(),
+                _buildTopMenu(),
+                _buildBottomMenu(),
+                _buildLoadingIndicator(),
+              ],
             ),
-            );
-          },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return GetBuilder<ReaderPageController>(
+      id: _controller.loadingImagesId,
+      builder: (_) {
+        if (_state.readInfo.images.isNotEmpty) return const SizedBox.shrink();
+        return const SizedBox.expand(
+          child: Center(child: LoadingWidget(height: 48, width: 48)),
         );
       },
+    );
+  }
+
+  // ── Tap zones ──
+
+  Widget _buildTapZones() {
+    final sideFlex = ((1.0 - UiConfig.readerTapZoneCenterRatio) / 2 * 100).round();
+    final centerFlex = (UiConfig.readerTapZoneCenterRatio * 100).round();
+    return Row(
+      children: [
+        Expanded(
+          flex: sideFlex,
+          child: GestureDetector(
+            onTap: _controller.handleTapLeft,
+            behavior: HitTestBehavior.opaque,
+          ),
+        ),
+        Expanded(
+          flex: centerFlex,
+          child: GestureDetector(
+            onTap: _controller.toggleMenuOpen,
+            behavior: HitTestBehavior.opaque,
+          ),
+        ),
+        Expanded(
+          flex: sideFlex,
+          child: GestureDetector(
+            onTap: _controller.handleTapRight,
+            behavior: HitTestBehavior.opaque,
+          ),
+        ),
+      ],
     );
   }
 
@@ -134,12 +180,20 @@ class _ReaderPageState extends State<ReaderPage> {
         return LayoutBuilder(
           builder: (_, constraints) {
             return Obx(
-              () => readSetting.enableGrayscaleMode.value
-                  ? ColorFiltered(
-                      colorFilter: ColorFilter.matrix(Constants.grayscaleMatrix),
-                      child: _buildStripImage(constraints, index),
-                    )
-                  : _buildStripImage(constraints, index),
+              () {
+                final image = _buildStripImage(constraints, index);
+                final child = readSetting.enableGrayscaleMode.value
+                    ? ColorFiltered(
+                        colorFilter: ColorFilter.matrix(Constants.grayscaleMatrix),
+                        child: image,
+                      )
+                    : image;
+                return AdjustedImage(
+                  contrast: readSetting.contrast.value,
+                  saturation: readSetting.saturation.value,
+                  child: child,
+                );
+              },
             );
           },
         );
@@ -212,9 +266,10 @@ class _ReaderPageState extends State<ReaderPage> {
           height: UiConfig.topAreaMenuHeight + topPadding,
           width: Get.width,
           curve: Curves.easeOutCubic,
-          duration: const Duration(milliseconds: 150),
+          duration: const Duration(milliseconds: 200),
           child: AnimatedOpacity(
             opacity: _state.isMenuOpen ? 1.0 : 0.0,
+            curve: Curves.ease,
             duration: const Duration(milliseconds: 120),
             child: Container(
               padding: EdgeInsets.only(top: topPadding),
@@ -283,7 +338,7 @@ class _ReaderPageState extends State<ReaderPage> {
           height: totalHeight,
           width: Get.width,
           curve: Curves.easeOutCubic,
-          duration: const Duration(milliseconds: 150),
+          duration: const Duration(milliseconds: 200),
           child: AnimatedOpacity(
             opacity: _state.isMenuOpen ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 120),

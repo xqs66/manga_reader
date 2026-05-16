@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/pages/mangas/mangas_page_controller.dart';
 import 'package:manga_reader/pages/mangas/layout/grid_layout.dart';
@@ -22,8 +23,6 @@ class MangaGridView extends GridLayout {
   Widget buildItem(BuildContext context, int index, double cardWidth) {
     final manga = mangas[index];
 
-    // Non-select mode: skip GetBuilder and AnimatedContainer entirely
-    // for lighter widget tree during scrolling.
     if (!controller.state.isSelectMode) {
       return MangaGridCard(
         manga: manga,
@@ -36,30 +35,47 @@ class MangaGridView extends GridLayout {
     return GetBuilder<MangasPageController>(
       id: '${controller.mangaIdPrefix}::${manga.id}',
       builder: (_) {
-        final selected =
-            controller.state.selectedMangaIds.contains(manga.id);
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: selected
-              ? BoxDecoration(
-                  borderRadius: .circular(12),
-                  border: Border.all(
-                    color: Colors.indigo.withValues(alpha: 0.5), width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.indigo.withValues(alpha: 0.25),
-                      blurRadius: 8, spreadRadius: 1),
-                  ],
-                )
-              : null,
-          child: MangaGridCard(
-            manga: manga,
-            width: cardWidth,
-            onTap: () => controller.handleSelectManga(manga),
-            onLongPress: null,
-          ),
-        );
+        final selected = controller.state.selectedMangaIds.contains(manga.id);
+        return _buildSelectableCard(manga, cardWidth, selected);
       },
+    );
+  }
+
+  Widget _buildSelectableCard(Manga manga, double cardWidth, bool selected) {
+    return Stack(
+      children: [
+        MangaGridCard(
+          manga: manga,
+          width: cardWidth,
+          onTap: () => controller.handleSelectManga(manga),
+          onLongPress: null,
+        ),
+        if (selected)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: .circular(12),
+                  border: Border.all(color: UiConfig.primaryColor, width: 2.5),
+                ),
+              ),
+            ),
+          ),
+        if (selected)
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: const BoxDecoration(
+                color: UiConfig.primaryColor,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check, color: Colors.white, size: 14),
+            ),
+          ),
+      ],
     );
   }
 }

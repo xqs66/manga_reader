@@ -39,6 +39,9 @@ class ReadSettingsPage extends StatelessWidget {
             _buildSectionHeader('显示'),
             _buildDisplayCard(),
             const SizedBox(height: 24),
+            _buildSectionHeader('图像'),
+            _buildImageAdjustmentsCard(),
+            const SizedBox(height: 24),
             _buildSectionHeader('阅读'),
             _buildReadingCard(),
           ],
@@ -109,8 +112,100 @@ class ReadSettingsPage extends StatelessWidget {
       child: Column(
         children: [
           _buildImageSpacingSetting(),
-          const Divider(height: 1, indent: 56),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageAdjustmentsCard() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: .circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
           _buildGrayscleModeSetting(),
+          const Divider(height: 1, indent: 56),
+          _buildSliderSetting(
+            icon: Icons.contrast_rounded,
+            label: '对比度',
+            value: readSetting.contrast.value,
+            min: 0.5,
+            max: 1.5,
+            onChanged: (v) => readSetting.contrast.value = v,
+            onChangeEnd: (v) => readSetting.saveContrast(v),
+            displayValue: readSetting.contrast.value.toStringAsFixed(2),
+            onReset: () => readSetting.saveContrast(1.0),
+          ),
+          const Divider(height: 1, indent: 56),
+          _buildSliderSetting(
+            icon: Icons.colorize_rounded,
+            label: '饱和度',
+            value: readSetting.saturation.value,
+            min: 0,
+            max: 2.0,
+            onChanged: (v) => readSetting.saturation.value = v,
+            onChangeEnd: (v) => readSetting.saveSaturation(v),
+            displayValue: readSetting.saturation.value.toStringAsFixed(1),
+            onReset: () => readSetting.saveSaturation(1.0),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSliderSetting({
+    required IconData icon,
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required ValueChanged<double> onChanged,
+    required ValueChanged<double> onChangeEnd,
+    required String displayValue,
+    VoidCallback? onReset,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 22),
+          const SizedBox(width: 16),
+          Text(label, style: const TextStyle(fontSize: 15)),
+          Expanded(
+            child: SliderTheme(
+              data: SliderThemeData(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+              ),
+              child: Slider(
+                min: min,
+                max: max,
+                value: value,
+                onChanged: onChanged,
+                onChangeEnd: onChangeEnd,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 36,
+            child: Text(
+              displayValue,
+              textAlign: .center,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF616161)),
+            ),
+          ),
+          if (onReset != null)
+            IconButton(
+              icon: const Icon(Icons.restart_alt_rounded, size: 18),
+              padding: .zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              tooltip: '重置为默认值',
+              onPressed: onReset,
+            ),
         ],
       ),
     );
@@ -126,6 +221,8 @@ class ReadSettingsPage extends StatelessWidget {
       child: Column(
         children: [
           _buildContinueFromLastReadSetting(),
+          const Divider(height: 1, indent: 56),
+          _buildVolumeKeyNavigation(),
           const Divider(height: 1, indent: 56),
           _buildImmersiveModeSetting(),
         ],
@@ -166,6 +263,17 @@ class ReadSettingsPage extends StatelessWidget {
         ),
       ),
       shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+    );
+  }
+
+  Widget _buildVolumeKeyNavigation() {
+    return SwitchListTile(
+      secondary: const Icon(Icons.volume_up_rounded),
+      title: const Text('音量键翻页'),
+      subtitle: const Text('使用音量键进行翻页操作', style: TextStyle(fontSize: 13)),
+      value: readSetting.enableVolumeKeyNavigation.value,
+      onChanged: (v) => readSetting.saveEnableVolumeKeyNavigation(v),
+      shape: RoundedRectangleBorder(borderRadius: .zero),
     );
   }
 

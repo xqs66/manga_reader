@@ -1,7 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/widgets/dialogs/common_dialog.dart';
 import 'package:manga_reader/widgets/empty_state.dart';
@@ -108,30 +108,23 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
     if (_state.mangas.isEmpty) {
       return const EmptyState(icon: Icons.auto_stories_rounded, title: '该目录下未发现漫画');
     }
-    return CupertinoScrollbar(
-      controller: _state.scrollController,
-      child: NotificationListener(
-        onNotification: (ScrollNotification notification) =>
-            _controller.handleScrollEvent(notification),
-        child: _buildMangaList(),
+    return ScrollWrapper(
+      useDelayedStart: true,
+      onStateChanged: () => _controller.update([_controller.mangasId]),
+      builder: (context, handler) => GetBuilder<MergeMangasPageController>(
+        id: _controller.mangasId,
+        builder: (_) => ListView.builder(
+          controller: _controller.listScrollController,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: _state.mangas.length,
+          itemBuilder: (context, index) =>
+              _buildMangaListTile(index, _state.mangas[index], isScrolling: handler.isScrolling),
+        ),
       ),
     );
   }
 
-  Widget _buildMangaList() {
-    return GetBuilder<MergeMangasPageController>(
-      id: _controller.mangasId,
-      builder: (_) => ListView.builder(
-        controller: _state.scrollController,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: _state.mangas.length,
-        itemBuilder: (context, index) =>
-            _buildMangaListTile(index, _state.mangas[index]),
-      ),
-    );
-  }
-
-  Widget _buildMangaListTile(int index, Manga manga) {
+  Widget _buildMangaListTile(int index, Manga manga, {required bool isScrolling}) {
     return GetBuilder<MergeMangasPageController>(
       id: '${_controller.mangaListTileIdPrefix}::$index',
       builder: (_) {
@@ -148,7 +141,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
                 child: MangaListTileCard(
                   key: ValueKey(manga.id),
                   manga: manga,
-                  buildCover: !_state.isScrolling,
+                  buildCover: !isScrolling,
                   onTap: () => _controller.toggleMangaSelection(index, manga),
                   onLongPressed: () => _controller.handleLongPressManga(context, manga),
                 ),

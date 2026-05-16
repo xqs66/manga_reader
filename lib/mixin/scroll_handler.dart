@@ -1,90 +1,55 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 
+const _kScrollEdgeThreshold = 10.0;
+const _kDebounceMs = 100;
+
 mixin ScrollState {
-  final scrollController = ScrollController();
-
   bool isScrolling = false;
-
   bool isAtEnd = false;
-
   DateTime? lastScrollEndTime;
-
-  ///单位： 屏幕高度%
   double currentVelocity = 0.0;
-
   double? _lastPosition;
-
   DateTime? _lastTimestamp;
 }
 
 mixin ScrollHandler {
   ScrollState get scrollState;
 
-  Timer? debounceTimer;
+  Timer? _debounceTimer;
 
-  bool handleScrollEvent(ScrollNotification notification) {
-    if (notification is ScrollStartNotification) {
-      handleScrollStart(notification);
-    }
-
-    if (notification is ScrollUpdateNotification) {
-      handleScrollUpdate(notification);
-    }
-
-    if (notification is ScrollEndNotification) {
-      handleScrollFinish(notification);
-
-      final metrics = notification.metrics;
-      if (metrics.pixels >= metrics.maxScrollExtent - 10) {
-        handleScroll2End();
-      }
-      if (metrics.pixels <= 10) {
-        handleScroll2Head();
-      }
+  bool handleScrollNotification(ScrollNotification notification) {
+    switch (notification) {
+      case ScrollStartNotification():
+        handleScrollStart(notification);
+      case ScrollUpdateNotification():
+        handleScrollUpdate(notification);
+      case ScrollEndNotification():
+        handleScrollFinish(notification);
+        final metrics = notification.metrics;
+        if (metrics.pixels >= metrics.maxScrollExtent - _kScrollEdgeThreshold) {
+          handleScroll2End();
+        }
+        if (metrics.pixels <= _kScrollEdgeThreshold) {
+          handleScroll2Head();
+        }
     }
     return false;
   }
 
-  void _calculateScrollVelocity(double currentPosition) {
+  void _calculateVelocity(double currentPosition) {
     final now = DateTime.now();
-
-    if (scrollState._lastPosition != null &&
-        scrollState._lastTimestamp != null) {
-      final positionDelta =
-          (currentPosition - scrollState._lastPosition!) / Get.height * 100;
-      final timeDelta =
-          now.difference(scrollState._lastTimestamp!).inMicroseconds /
-          1000000.0; // 转换为秒
-
+    if (scrollState._lastPosition != null && scrollState._lastTimestamp != null) {
+      final positionDelta = (currentPosition - scrollState._lastPosition!) / Get.height * 100;
+      final timeDelta = now.difference(scrollState._lastTimestamp!).inMicroseconds / 1000000.0;
       if (timeDelta > 0) {
         scrollState.currentVelocity = positionDelta / timeDelta;
       }
     }
     scrollState._lastPosition = currentPosition;
     scrollState._lastTimestamp = now;
-  }
-
-  void delayedHandleScrollStart(ScrollStartNotification notification) {
-    final duration = DateTime.now().difference(
-      scrollState.lastScrollEndTime ?? DateTime.now(),
-    );
-    if (duration.inMilliseconds < 100) {
-      debounceTimer?.cancel();
-      debounceTimer = Timer(Duration(milliseconds: 100), () {
-        scrollState.isScrolling = true;
-      });
-      return;
-    }
-    scrollState.isScrolling = true;
-  }
-
-  void handleEndWithDelayedStart(ScrollEndNotification notification) {
-    debounceTimer?.cancel();
-    scrollState.lastScrollEndTime = DateTime.now();
-    scrollState.isScrolling = false;
   }
 
   void handleScrollStart(ScrollStartNotification notification) {
@@ -96,12 +61,8 @@ mixin ScrollHandler {
 
   void handleScrollUpdate(ScrollUpdateNotification notification) {
     final metrics = notification.metrics;
-    if (metrics.pixels >= metrics.maxScrollExtent - 10) {
-      scrollState.isAtEnd = true;
-    } else {
-      scrollState.isAtEnd = false;
-    }
-    _calculateScrollVelocity(metrics.pixels);
+    scrollState.isAtEnd = metrics.pixels >= metrics.maxScrollExtent - _kScrollEdgeThreshold;
+    _calculateVelocity(metrics.pixels);
   }
 
   void handleScrollFinish(ScrollEndNotification notification) {
@@ -111,7 +72,97 @@ mixin ScrollHandler {
     scrollState.currentVelocity = 0.0;
   }
 
+  void delayedHandleScrollStart(ScrollStartNotification notification) {
+    final now = DateTime.now();
+    final lastEnd = scrollState.lastScrollEndTime ?? now;
+    if (now.difference(lastEnd).inMilliseconds < _kDebounceMs) {
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(milliseconds: _kDebounceMs), () {
+        scrollState.isScrolling = true;
+      });
+      return;
+    }
+    scrollState.isScrolling = true;
+  }
+
+  void handleEndWithDelayedStart(ScrollEndNotification notification) {
+    _debounceTimer?.cancel();
+    scrollState.lastScrollEndTime = DateTime.now();
+    scrollState.isScrolling = false;
+  }
+
   void handleScroll2Head() {}
 
   void handleScroll2End() {}
+}
+
+class ScrollWrapper extends StatefulWidget {
+  final Widget Function(BuildContext context, ScrollWrapperState state) builder;
+  final VoidCallback? onScrollToEnd;
+  final VoidCallback? onScrollToHead;
+  final VoidCallback? onStateChanged;
+  final bool useDelayedStart;
+  final ScrollController? _scrollController;
+
+  const ScrollWrapper({
+    super.key,
+    required this.builder,
+    this.onScrollToEnd,
+    this.onScrollToHead,
+    this.onStateChanged,
+    this.useDelayedStart = false,
+  }) : _scrollController = null;
+
+  ScrollWrapper.scrollbar({
+    super.key,
+    required this.builder,
+    required ScrollController scrollController,
+    this.onScrollToEnd,
+    this.onScrollToHead,
+    this.onStateChanged,
+    this.useDelayedStart = false,
+  }) : _scrollController = scrollController;
+
+  @override
+  ScrollWrapperState createState() => ScrollWrapperState();
+}
+
+class ScrollWrapperState extends State<ScrollWrapper> with ScrollHandler, ScrollState {
+  @override
+  ScrollState get scrollState => this;
+
+  @override
+  void handleScrollStart(ScrollStartNotification notification) {
+    if (widget.useDelayedStart) {
+      delayedHandleScrollStart(notification);
+    } else {
+      super.handleScrollStart(notification);
+    }
+  }
+
+  @override
+  void handleScrollFinish(ScrollEndNotification notification) {
+    if (widget.useDelayedStart) {
+      handleEndWithDelayedStart(notification);
+    } else {
+      super.handleScrollFinish(notification);
+    }
+    widget.onStateChanged?.call();
+  }
+
+  @override
+  void handleScroll2Head() => widget.onScrollToHead?.call();
+
+  @override
+  void handleScroll2End() => widget.onScrollToEnd?.call();
+
+  @override
+  Widget build(BuildContext context) {
+    final child = NotificationListener<ScrollNotification>(
+      onNotification: handleScrollNotification,
+      child: Builder(builder: (context) => widget.builder(context, this)),
+    );
+    if (widget._scrollController == null) return child;
+    return CupertinoScrollbar(controller: widget._scrollController!, child: child);
+  }
 }

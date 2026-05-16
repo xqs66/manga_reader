@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 /// [ListView.builder] scrolling.
 abstract class ListLayout extends StatelessWidget {
   final ScrollController? scrollController;
+  final double? itemExtent;
 
-  const ListLayout({super.key, this.scrollController});
+  const ListLayout({super.key, this.scrollController, this.itemExtent});
 
   int get itemCount;
 
@@ -17,11 +18,10 @@ abstract class ListLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       controller: scrollController,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const .symmetric(vertical: 8),
       itemCount: itemCount,
+      itemExtent: itemExtent,
       itemBuilder: (context, index) => buildItem(context, index),
-      addAutomaticKeepAlives: true,
-      addRepaintBoundaries: true,
     );
   }
 }
