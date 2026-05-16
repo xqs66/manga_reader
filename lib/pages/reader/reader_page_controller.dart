@@ -15,6 +15,7 @@ import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/pages/more/settings/read/read_settings_page.dart';
+import 'package:manga_reader/core/enums/reading_mode.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:manga_reader/widgets/manga_info_sheet.dart';
@@ -44,6 +45,16 @@ class ReaderPageController extends GetxController {
   }
 
   String get batteryLevel => _batteryLevel;
+
+  String get pageIndicator {
+    if (!_isDoublePage) {
+      return '${state.currentIndex + 1}/${state.readInfo.pageCount}';
+    }
+    final left = state.currentIndex;
+    final right = rightOfSpread(currentSpread);
+    if (right == null) return '${left + 1}/${state.readInfo.pageCount}';
+    return '${left + 1}-${right + 1}/${state.readInfo.pageCount}';
+  }
 
   Future<void> _updateBattery() async {
     try {
@@ -100,29 +111,82 @@ class ReaderPageController extends GetxController {
     update([loadingImagesId, imageListId, pageListId]);
   }
 
+  bool get _isDoublePage => readSetting.readingMode.value.isDoublePage;
+
+  int get itemCount => _isDoublePage ? spreadCount : state.readInfo.pageCount;
+
+  int get spreadCount {
+    final n = state.readInfo.pageCount;
+    if (n <= 1) return 1;
+    return 1 + ((n - 1) / 2).ceil();
+  }
+
+  /// Spread index → left page index.
+  int leftOfSpread(int spread) {
+    if (spread == 0) return 0;
+    return 1 + (spread - 1) * 2;
+  }
+
+  /// Spread index → right page index, or null if single.
+  int? rightOfSpread(int spread) {
+    if (spread == 0) return null;
+    final r = 1 + (spread - 1) * 2 + 1;
+    return r < state.readInfo.pageCount ? r : null;
+  }
+
+  /// Current page index → current spread index.
+  int get currentSpread {
+    final idx = state.currentIndex;
+    if (idx == 0) return 0;
+    return 1 + (idx - 1) ~/ 2;
+  }
+
   void goToNextPage() {
     if (_pageTurnGuard?.isActive ?? false) return;
-    final next = state.currentIndex + 1;
-    if (next >= state.readInfo.pageCount) return;
-    _pageTurnGuard = Timer(const Duration(milliseconds: 350), () {});
-    _navigateTo(next);
+    if (_isDoublePage) {
+      final nextSpread = currentSpread + 1;
+      if (nextSpread >= spreadCount) return;
+      _pageTurnGuard = Timer(const Duration(milliseconds: 350), () {});
+      _navigateToSpread(nextSpread);
+    } else {
+      final next = state.currentIndex + 1;
+      if (next >= state.readInfo.pageCount) return;
+      _pageTurnGuard = Timer(const Duration(milliseconds: 350), () {});
+      _navigateTo(next);
+    }
   }
 
   void goToPreviousPage() {
     if (_pageTurnGuard?.isActive ?? false) return;
-    final prev = state.currentIndex - 1;
-    if (prev < 0) return;
-    _pageTurnGuard = Timer(const Duration(milliseconds: 350), () {});
-    _navigateTo(prev);
+    if (_isDoublePage) {
+      final prevSpread = currentSpread - 1;
+      if (prevSpread < 0) return;
+      _pageTurnGuard = Timer(const Duration(milliseconds: 350), () {});
+      _navigateToSpread(prevSpread);
+    } else {
+      final prev = state.currentIndex - 1;
+      if (prev < 0) return;
+      _pageTurnGuard = Timer(const Duration(milliseconds: 350), () {});
+      _navigateTo(prev);
+    }
+  }
+
+  void _navigateToSpread(int spread) {
+    if (state.isMenuOpen) toggleMenuOpen();
+    state.pageController.animateToPage(
+      spread,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   void handleTapLeft() {
-    final isRTL = readSetting.readingMode.value == ReadingMode.singleRTL;
+    final isRTL = readSetting.readingMode.value.isRTL;
     isRTL ? goToNextPage() : goToPreviousPage();
   }
 
   void handleTapRight() {
-    final isRTL = readSetting.readingMode.value == ReadingMode.singleRTL;
+    final isRTL = readSetting.readingMode.value.isRTL;
     isRTL ? goToPreviousPage() : goToNextPage();
   }
 
@@ -257,13 +321,11 @@ class ReaderPageController extends GetxController {
     final targetCenter = state.currentIndex * itemWidth + itemWidth / 2;
     final offset =
         targetCenter - Get.width / 2 + 8; // 8px ListView left padding
-    if (offset > 0) {
-      controller.animateTo(
-        offset.clamp(0.0, controller.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
-    }
+    controller.animateTo(
+      offset.clamp(0.0, controller.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
   }
 
   void toggleMenuOpen() {
@@ -275,16 +337,23 @@ class ReaderPageController extends GetxController {
     if (readSetting.readingMode.value == ReadingMode.strip) {
       handleSlideEnd((index + 1).toDouble());
     } else {
+      final target = _isDoublePage ? currentSpreadByPage(index) : index;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        state.pageController.jumpToPage(index);
+        state.pageController.jumpToPage(target);
       });
     }
     update([bottomMenuId, bottomRightInfoId]);
   }
 
-  void handlePageChanged(int index) {
-    state.currentIndex = index;
-    _updateCachesSync(index);
+  /// Page index → spread index (for thumbnail jumps).
+  int currentSpreadByPage(int pageIndex) {
+    if (pageIndex == 0) return 0;
+    return 1 + (pageIndex - 1) ~/ 2;
+  }
+
+  void handlePageChanged(int spreadIndex) {
+    state.currentIndex = _isDoublePage ? leftOfSpread(spreadIndex) : spreadIndex;
+    _updateCachesSync(state.currentIndex);
     scrollThumbnailToCurrent();
     update([bottomMenuId, bottomRightInfoId]);
     _debouncedSaveProgress();

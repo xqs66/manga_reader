@@ -12,7 +12,7 @@ class UiConfig {
   static const Color groupHeaderColor = Color(0xB871B0F7);
 
   ///read page
-  static const double readerTapZoneCenterRatio = 0.5;
+  static const double readerTapZoneCenterRatio = 0.6;
   static const double topAreaMenuHeight = 60;
   static const double bottomAreaMenuHeight = 56;
   static const double thumbnailStripHeight = 120;

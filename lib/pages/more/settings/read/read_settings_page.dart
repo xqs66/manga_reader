@@ -13,6 +13,9 @@ class ReadSettingsPage extends StatelessWidget {
     ReadingMode.singleVertical: '从上到下',
     ReadingMode.singleLTR: '从左到右',
     ReadingMode.singleRTL: '从右到左',
+    ReadingMode.singleVerticalDouble: '从上到下（双页）',
+    ReadingMode.singleLTRDouble: '从左到右（双页）',
+    ReadingMode.singleRTLDouble: '从右到左（双页）',
   };
 
   @override
@@ -93,7 +96,10 @@ class ReadSettingsPage extends StatelessWidget {
                 style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF616161)),
+              const Icon(
+                Icons.arrow_drop_down_rounded,
+                color: Color(0xFF616161),
+              ),
             ],
           ),
         ),
@@ -111,7 +117,24 @@ class ReadSettingsPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildImageSpacingSetting(),
+          _buildImageSpacingSetting(
+            title: '图片间距（条漫模式）',
+            maxValue: 50,
+            displayValue: readSetting.imageSpacing.value,
+            value: readSetting.imageSpacing.value.toDouble(),
+            onChanged: (value) =>
+                readSetting.imageSpacing.value = value.toInt(),
+            onChangeEnd: (value) => readSetting.saveImageSpacing(value.toInt()),
+          ),
+          const Divider(height: 1, indent: 56),
+          _buildImageSpacingSetting(
+            title: '图片间距（双页）',
+            maxValue: 60,
+            displayValue: readSetting.doublePageSpacing.value,
+            value: readSetting.doublePageSpacing.value.toDouble(),
+            onChanged: (v) => readSetting.doublePageSpacing.value = v.toInt(),
+            onChangeEnd: (v) => readSetting.saveDoublePageSpacing(v.toInt()),
+          ),
         ],
       ),
     );
@@ -195,7 +218,11 @@ class ReadSettingsPage extends StatelessWidget {
             child: Text(
               displayValue,
               textAlign: .center,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF616161)),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF616161),
+              ),
             ),
           ),
           if (onReset != null)
@@ -281,48 +308,75 @@ class ReadSettingsPage extends StatelessWidget {
     return SwitchListTile(
       secondary: const Icon(Icons.fullscreen_rounded),
       title: const Text('沉浸模式'),
-      subtitle: const Text(
-        '隐藏系统状态栏和导航栏',
-        style: TextStyle(fontSize: 13),
-      ),
+      subtitle: const Text('隐藏系统状态栏和导航栏', style: TextStyle(fontSize: 13)),
       value: readSetting.enableImmersiveMode.value,
       onChanged: (value) => readSetting.saveEnableImmersiveMode(value),
       shape: RoundedRectangleBorder(borderRadius: .circular(12)),
     );
   }
 
-  Widget _buildImageSpacingSetting() {
+  Widget _buildImageSpacingSetting({
+    required String title,
+    required double maxValue,
+    required double value,
+    required int displayValue,
+    required void Function(double)? onChanged,
+    void Function(double)? onChangeEnd,
+  }) {
+    Widget valueText(text) => SizedBox(
+      width: 20,
+      child: Text(
+        text,
+        textAlign: .center,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF616161),
+        ),
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
+      child: Column(
+        mainAxisSize: .min,
         children: [
-          const Icon(Icons.space_bar_rounded, size: 22),
-          const SizedBox(width: 16),
-          const Text('图片间距', style: TextStyle(fontSize: 15)),
-          Expanded(
-            child: SliderTheme(
-              data: SliderThemeData(
-                trackHeight: 3,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-              ),
-              child: Slider(
-                min: 0,
-                max: 50,
-                divisions: 50,
-                value: readSetting.imageSpacing.value.toDouble(),
-                onChanged: (value) => readSetting.imageSpacing.value = value.toInt(),
-                onChangeEnd: (value) => readSetting.saveImageSpacing(value.toInt()),
-              ),
+          Flexible(
+            child: Row(
+              mainAxisAlignment: .start,
+              children: [
+                const Icon(Icons.space_bar_rounded, size: 22),
+                const SizedBox(width: 16),
+                Text(title, style: TextStyle(fontSize: 15)),
+              ],
             ),
           ),
-          SizedBox(
-            width: 36,
-            child: Text(
-              '${readSetting.imageSpacing.value}',
-              textAlign: .center,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF616161)),
-            ),
+          Row(
+            children: [
+              valueText('$displayValue'),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 7,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 16,
+                    ),
+                  ),
+                  child: Slider(
+                    min: 0,
+                    max: maxValue,
+                    divisions: maxValue.toInt(),
+                    value: value,
+                    onChanged: onChanged,
+                    onChangeEnd: onChangeEnd,
+                  ),
+                ),
+              ),
+              valueText('${maxValue.toInt()}'),
+            ],
           ),
         ],
       ),
@@ -333,10 +387,7 @@ class ReadSettingsPage extends StatelessWidget {
     return SwitchListTile(
       secondary: const Icon(Icons.palette_rounded),
       title: const Text('黑白模式'),
-      subtitle: const Text(
-        '将彩色图片转换为黑白显示',
-        style: TextStyle(fontSize: 13),
-      ),
+      subtitle: const Text('将彩色图片转换为黑白显示', style: TextStyle(fontSize: 13)),
       value: readSetting.enableGrayscaleMode.value,
       onChanged: (value) => readSetting.saveEnableGrayscaleMode(value),
       shape: RoundedRectangleBorder(

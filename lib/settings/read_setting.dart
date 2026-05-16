@@ -18,6 +18,7 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
   late final RxBool continueFromLastRead;
   late final Rx<BookshelfLayout> bookshelfLayout;
   late final RxBool enableVolumeKeyNavigation;
+  late final RxInt doublePageSpacing;
   late final RxDouble contrast;
   late final RxDouble saturation;
 
@@ -58,6 +59,8 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
     bookshelfLayout = BookshelfLayout.values[layoutIndex.clamp(0, 1)].obs;
     enableVolumeKeyNavigation =
         (storageService.read<bool>(ReadSettingKeys.enableVolumeKeyNavigation) ?? false).obs;
+    doublePageSpacing =
+        (storageService.read<int>(ReadSettingKeys.doublePageSpacing) ?? 8).obs;
     contrast =
         (storageService.read<double>(ReadSettingKeys.contrast) ?? 1.0).obs;
     saturation =
@@ -99,6 +102,11 @@ class ReadSetting extends ConfigBean with ServiceBeanMixin {
     await saveConfig(ReadSettingKeys.enableVolumeKeyNavigation, value);
   }
 
+  Future<void> saveDoublePageSpacing(int value) async {
+    doublePageSpacing.value = value;
+    await saveConfig(ReadSettingKeys.doublePageSpacing, value);
+  }
+
   Future<void> saveContrast(double value) async {
     contrast.value = value;
     await saveConfig(ReadSettingKeys.contrast, value);
@@ -118,6 +126,7 @@ class ReadSettingKeys {
   static const String continueFromLastRead = 'continueFromLastRead';
   static const String bookshelfLayout = 'bookshelfLayout';
   static const String enableVolumeKeyNavigation = 'enableVolumeKeyNavigation';
+  static const String doublePageSpacing = 'doublePageSpacing';
   static const String contrast = 'contrast';
   static const String saturation = 'saturation';
 }

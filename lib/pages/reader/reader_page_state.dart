@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/settings/read_setting.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -32,8 +33,15 @@ class ReaderPageState {
   double? _lastLayoutWidth;
 
   ReaderPageState() {
-    currentIndex = readInfo.lastReadIndex;
-    pageController = PageController(initialPage: readInfo.lastReadIndex);
+    final lastRead = readInfo.lastReadIndex;
+    if (readSetting.readingMode.value.isDoublePage) {
+      final spread = lastRead == 0 ? 0 : 1 + (lastRead - 1) ~/ 2;
+      pageController = PageController(initialPage: spread);
+      currentIndex = spread == 0 ? 0 : 1 + (spread - 1) * 2;
+    } else {
+      currentIndex = readInfo.lastReadIndex;
+      pageController = PageController(initialPage: readInfo.lastReadIndex);
+    }
     imageContainerSizes = List.generate(readInfo.pageCount, (_) => null);
   }
 
