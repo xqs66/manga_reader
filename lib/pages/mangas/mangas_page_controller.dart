@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/enums/sort_mode.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
@@ -152,6 +153,8 @@ class MangasPageController extends GetxController {
           if (g.isExpanded) state.displayGroups.add(g.name);
         }
       }
+    } else {
+      LogUtil.e('Failed to fetch groups for path $path', error: (result as Err).error);
     }
   }
 

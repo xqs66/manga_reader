@@ -102,6 +102,7 @@ class ScrollWrapper extends StatefulWidget {
   final VoidCallback? onScrollToHead;
   final VoidCallback? onStateChanged;
   final bool useDelayedStart;
+  final int scrollEndDelay;
   final ScrollController? _scrollController;
 
   const ScrollWrapper({
@@ -111,9 +112,10 @@ class ScrollWrapper extends StatefulWidget {
     this.onScrollToHead,
     this.onStateChanged,
     this.useDelayedStart = false,
+    this.scrollEndDelay = 0,
   }) : _scrollController = null;
 
-  ScrollWrapper.scrollbar({
+  const ScrollWrapper.scrollbar({
     super.key,
     required this.builder,
     required ScrollController scrollController,
@@ -121,6 +123,7 @@ class ScrollWrapper extends StatefulWidget {
     this.onScrollToHead,
     this.onStateChanged,
     this.useDelayedStart = false,
+    this.scrollEndDelay = 0,
   }) : _scrollController = scrollController;
 
   @override
@@ -128,11 +131,20 @@ class ScrollWrapper extends StatefulWidget {
 }
 
 class ScrollWrapperState extends State<ScrollWrapper> with ScrollHandler, ScrollState {
+  Timer? _endDelayTimer;
+
   @override
   ScrollState get scrollState => this;
 
   @override
+  void dispose() {
+    _endDelayTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   void handleScrollStart(ScrollStartNotification notification) {
+    _endDelayTimer?.cancel();
     if (widget.useDelayedStart) {
       delayedHandleScrollStart(notification);
     } else {
@@ -142,11 +154,17 @@ class ScrollWrapperState extends State<ScrollWrapper> with ScrollHandler, Scroll
 
   @override
   void handleScrollFinish(ScrollEndNotification notification) {
+    _endDelayTimer?.cancel();
     if (widget.useDelayedStart) {
       handleEndWithDelayedStart(notification);
+    } else if (widget.scrollEndDelay > 0) {
+      // keep isScrolling true during the delay window
     } else {
       super.handleScrollFinish(notification);
     }
+    _endDelayTimer = Timer(Duration(milliseconds: widget.scrollEndDelay), () {
+      if (!widget.useDelayedStart) super.handleScrollFinish(notification);
+    });
     widget.onStateChanged?.call();
   }
 

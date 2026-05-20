@@ -15,6 +15,8 @@ import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/core/utils/log_util.dart';
 
+final mangaRepo = MangaRepositoryImpl(localMangaService);
+
 class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, ServiceLifeCircleBean {
   final LocalMangaService _service;
 

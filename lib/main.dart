@@ -1,9 +1,11 @@
 import 'dart:async';
-import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/config/theme_config.dart';
+import 'package:manga_reader/core/error/error_handler.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
@@ -17,60 +19,6 @@ import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/settings/theme_setting.dart';
 
-ThemeData _buildTheme(Brightness brightness) {
-  final isDark = brightness == Brightness.dark;
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF5C6BC0),
-      brightness: brightness,
-    ),
-    scaffoldBackgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
-    appBarTheme: AppBarTheme(
-      surfaceTintColor: Colors.transparent,
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      foregroundColor: isDark ? const Color(0xFFE0E0E0) : const Color(0xFF1A1A1A),
-      scrolledUnderElevation: 2,
-      shadowColor: isDark ? Colors.black38 : Colors.black12,
-      elevation: 1,
-      centerTitle: true,
-      titleTextStyle: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: isDark ? const Color(0xFFE0E0E0) : const Color(0xFF1A1A1A),
-      ),
-    ),
-    bottomAppBarTheme: BottomAppBarThemeData(
-      elevation: 4,
-      shadowColor: Colors.black26,
-      surfaceTintColor: Colors.transparent,
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-    ),
-    navigationBarTheme: NavigationBarThemeData(
-      elevation: 4,
-      shadowColor: Colors.black26,
-      surfaceTintColor: Colors.transparent,
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      indicatorColor: const Color(0xFF5C6BC0).withValues(alpha: isDark ? 0.2 : 0.12),
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFFE0E0E0) : null);
-        }
-        return TextStyle(fontSize: 12, color: isDark ? const Color(0xFFBDBDBD) : null);
-      }),
-    ),
-    cardTheme: CardThemeData(
-      elevation: isDark ? 1 : 2,
-      shadowColor: isDark ? Colors.black38 : Colors.black26,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: .circular(12)),
-      color: isDark ? const Color(0xFF2C2C2C) : null,
-    ),
-  );
-}
-
-final mangaRepo = MangaRepositoryImpl(localMangaService);
-
 List<ServiceLifeCircleBean> serviceBeans = [
   pathSetting,
   pathService,
@@ -80,19 +28,8 @@ List<ServiceLifeCircleBean> serviceBeans = [
   mangaRepo,
 ];
 
-void main() async {
-  FlutterError.onError = (details) {
-    LogUtil.e(
-      'Flutter Error',
-      error: details.exception,
-      stackTrace: details.stack,
-    );
-  };
-
-  PlatformDispatcher.instance.onError = (error, stackTrace) {
-    LogUtil.e('PlatformDispatcher E:', error: error, stackTrace: stackTrace);
-    return true;
-  };
+void main() {
+  setupGlobalErrorHandlers();
 
   runZonedGuarded(
     () async {
@@ -115,7 +52,7 @@ void main() async {
       runApp(const MyApp());
     },
     (Object error, StackTrace stack) {
-      LogUtil.e('捕获到未处理的异常', error: error, stackTrace: stack);
+      LogUtil.e('Unhandled zone error', error: error, stackTrace: stack);
     },
   );
 }
@@ -152,18 +89,55 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: 'Manga Reader',
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+      theme: ThemeConfig.light,
+      darkTheme: ThemeConfig.dark,
       themeMode: themeSetting.mode,
       getPages: Routes.pages,
       defaultTransition: .cupertino,
       navigatorObservers: [routeObserver],
       home: HomePage(),
+      builder: (context, child) {
+        ErrorWidget.builder = (details) => _buildErrorWidget(details);
+        return child!;
+      },
       onReady: () {
         for (final bean in serviceBeans) {
           bean.afterBeanReady();
         }
       },
+    );
+  }
+
+  static Widget _buildErrorWidget(FlutterErrorDetails details) {
+    final isDark = themeSetting.mode == ThemeMode.dark;
+    return Material(
+      child: Container(
+        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5),
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Column(
+            mainAxisSize: .min,
+            children: [
+              Icon(Icons.error_outline_rounded,
+                  size: 48, color: isDark ? Colors.red.shade300 : Colors.red.shade400),
+              const SizedBox(height: 16),
+              Text('页面加载异常',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white70 : Colors.black87)),
+              const SizedBox(height: 8),
+              Text('请尝试返回上一页或重启应用',
+                  style: TextStyle(fontSize: 14, color: isDark ? Colors.white38 : Colors.black45)),
+              if (kDebugMode) ...[
+                const SizedBox(height: 16),
+                SelectableText(
+                  details.exceptionAsString(),
+                  style: TextStyle(fontSize: 11, color: Colors.red.shade300),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

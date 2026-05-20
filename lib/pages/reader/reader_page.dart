@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/models/local_image.dart';
+import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/pages/reader/reader_page_controller.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
@@ -71,16 +72,22 @@ class _ReaderPageState extends State<ReaderPage> {
           child: Container(
             color: Colors.black,
             child: Stack(
-              children: [
-                HitAccumulateStack(
-                  children: [
-                    KeyedSubtree(
-                      key: ValueKey(isStrip ? 'strip' : 'page'),
-                      child: isStrip ? _buildStripMode() : _buildPageMode(),
-                    ),
-                    Positioned.fill(child: _buildTapZones()),
-                  ],
-                ),
+            children: [
+              HitAccumulateStack(
+                children: [
+                  ScrollWrapper(
+                    scrollEndDelay: 250,
+                    builder: (_, handler) {
+                      _controller.scrollState = handler;
+                      return KeyedSubtree(
+                        key: ValueKey(isStrip ? 'strip' : 'page'),
+                        child: isStrip ? _buildStripMode() : _buildPageMode(),
+                      );
+                    },
+                  ),
+                  Positioned.fill(child: _buildTapZones()),
+                ],
+              ),
                 _buildPageInfoOverlay(),
                 _buildTopMenu(),
                 _buildBottomMenu(),
@@ -210,6 +217,9 @@ class _ReaderPageState extends State<ReaderPage> {
     BoxFit fit = BoxFit.fitWidth,
   }) {
     if (index >= _state.readInfo.images.length) return const SizedBox.shrink();
+    final stored = _state.imageContainerSizes[index];
+    final useStored =
+        stored != null && (stored.width - constraints.maxWidth).abs() < 1.0;
     return MangaImage(
       image: _state.readInfo.images[index],
       longPressActions: [
@@ -219,10 +229,10 @@ class _ReaderPageState extends State<ReaderPage> {
           onPressed: () => _controller.handleDeleteImage(index),
         ),
       ],
-      height:
-          _state.imageContainerSizes[index]?.height ??
-          constraints.maxWidth * UiConfig.defaultImageContainerRadio,
-      width: _state.imageContainerSizes[index]?.width ?? constraints.maxWidth,
+      height: useStored
+          ? stored.height
+          : constraints.maxWidth * UiConfig.defaultImageContainerRadio,
+      width: useStored ? stored.width : constraints.maxWidth,
       fit: fit,
       loadCompleteCallBack: (state) => _controller.onLoadCompleteCallBack(
         index,
@@ -274,33 +284,50 @@ class _ReaderPageState extends State<ReaderPage> {
   Widget _buildDoublePageItem(int spreadIndex, bool isRTL) {
     final leftIdx = _controller.leftOfSpread(spreadIndex);
     final rightIdx = _controller.rightOfSpread(spreadIndex);
-    return Obx(() {
-      final sp = readSetting.doublePageSpacing.value.toDouble();
-      return LayoutBuilder(
-        builder: (_, constraints) {
-          final vpW = constraints.maxWidth;
-          final vpH = constraints.maxHeight;
-          // Manga pages are ~0.72 width/height. Size to fill height, cap if too wide.
-          final naturalW = vpH * 0.72;
-          var imgW = naturalW;
-          if (rightIdx != null && 2 * imgW + sp > vpW) {
-            imgW = (vpW - sp) / 2;
-          } else if (rightIdx == null && imgW > vpW) {
-            imgW = vpW;
-          }
-          Widget image(int idx) =>
-              SizedBox(width: imgW, child: _buildImageItem(idx));
-          if (rightIdx == null) return Center(child: image(leftIdx));
-          return Row(
-            mainAxisSize: .min,
-            mainAxisAlignment: .center,
-            children: isRTL
-                ? [image(rightIdx), SizedBox(width: sp), image(leftIdx)]
-                : [image(leftIdx), SizedBox(width: sp), image(rightIdx)],
+    return GetBuilder<ReaderPageController>(
+      id: 'spread_$spreadIndex',
+      builder: (_) {
+        return Obx(() {
+          final sp = readSetting.doublePageSpacing.value.toDouble();
+          return LayoutBuilder(
+            builder: (_, constraints) {
+              final vpW = constraints.maxWidth;
+              final vpH = constraints.maxHeight;
+              double pageAspect(int idx) {
+                final s = _state.imageContainerSizes[idx];
+                // Use loaded size; fallback to safe minimum to avoid overflow
+                if (s != null) return s.width / s.height;
+                return 0.65;
+              }
+
+              final aLeft = pageAspect(leftIdx);
+              final maxHeightAspect = rightIdx != null
+                  ? (aLeft < pageAspect(rightIdx)
+                        ? aLeft
+                        : pageAspect(rightIdx))
+                  : aLeft;
+              final naturalW = vpH * maxHeightAspect;
+              var imgW = naturalW;
+              if (rightIdx != null && 2 * imgW + sp > vpW) {
+                imgW = (vpW - sp) / 2;
+              } else if (rightIdx == null && imgW > vpW) {
+                imgW = vpW;
+              }
+              Widget image(int idx) =>
+                  SizedBox(width: imgW, child: _buildImageItem(idx));
+              if (rightIdx == null) return Center(child: image(leftIdx));
+              return Row(
+                mainAxisSize: .min,
+                mainAxisAlignment: .center,
+                children: isRTL
+                    ? [image(rightIdx), SizedBox(width: sp), image(leftIdx)]
+                    : [image(leftIdx), SizedBox(width: sp), image(rightIdx)],
+              );
+            },
           );
-        },
-      );
-    });
+        });
+      },
+    );
   }
 
   // ── Top menu ──
@@ -382,7 +409,9 @@ class _ReaderPageState extends State<ReaderPage> {
         final isDouble = readSetting.readingMode.value.isDoublePage;
         final pageCount = _state.readInfo.pageCount;
         final currentPage = _state.currentIndex;
-        final atFirst = isDouble ? _controller.currentSpread == 0 : currentPage == 0;
+        final atFirst = isDouble
+            ? _controller.currentSpread == 0
+            : currentPage == 0;
         final atLast = isDouble
             ? _controller.currentSpread >= _controller.spreadCount - 1
             : currentPage >= pageCount - 1;
@@ -426,7 +455,13 @@ class _ReaderPageState extends State<ReaderPage> {
                   const SizedBox(height: topShadowHeight),
                   _buildThumbnailStrip(currentPage, pageCount, isRTL),
                   const SizedBox(height: sliderThumbnailSpacing),
-                  _buildSliderRow(currentPage, pageCount, isRTL, atFirst: atFirst, atLast: atLast),
+                  _buildSliderRow(
+                    currentPage,
+                    pageCount,
+                    isRTL,
+                    atFirst: atFirst,
+                    atLast: atLast,
+                  ),
                 ],
               ),
             ),
@@ -516,7 +551,13 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Widget _buildSliderRow(int currentPage, int pageCount, bool isRTL, {bool atFirst = false, bool atLast = false}) {
+  Widget _buildSliderRow(
+    int currentPage,
+    int pageCount,
+    bool isRTL, {
+    bool atFirst = false,
+    bool atLast = false,
+  }) {
     final displayPage = currentPage + 1;
 
     return Material(
@@ -528,15 +569,21 @@ class _ReaderPageState extends State<ReaderPage> {
             _buildNavButton(
               icon: Icons.skip_previous_rounded,
               onTap: isRTL
-                  ? (!atLast ? () => _controller.handleJumpToPage(pageCount - 1) : null)
+                  ? (!atLast
+                        ? () => _controller.handleJumpToPage(pageCount - 1)
+                        : null)
                   : (!atFirst ? () => _controller.handleJumpToPage(0) : null),
             ),
             const SizedBox(width: 4),
             _buildNavButton(
               icon: Icons.navigate_before_rounded,
               onTap: isRTL
-                  ? (!atLast ? () => _controller.handleJumpToPage(currentPage + 1) : null)
-                  : (!atFirst ? () => _controller.handleJumpToPage(currentPage - 1) : null),
+                  ? (!atLast
+                        ? () => _controller.handleJumpToPage(currentPage + 1)
+                        : null)
+                  : (!atFirst
+                        ? () => _controller.handleJumpToPage(currentPage - 1)
+                        : null),
             ),
             Expanded(
               child: SliderTheme(
@@ -568,15 +615,21 @@ class _ReaderPageState extends State<ReaderPage> {
             _buildNavButton(
               icon: Icons.navigate_next_rounded,
               onTap: isRTL
-                  ? (!atFirst ? () => _controller.handleJumpToPage(currentPage - 1) : null)
-                  : (!atLast ? () => _controller.handleJumpToPage(currentPage + 1) : null),
+                  ? (!atFirst
+                        ? () => _controller.handleJumpToPage(currentPage - 1)
+                        : null)
+                  : (!atLast
+                        ? () => _controller.handleJumpToPage(currentPage + 1)
+                        : null),
             ),
             const SizedBox(width: 4),
             _buildNavButton(
               icon: Icons.skip_next_rounded,
               onTap: isRTL
                   ? (!atFirst ? () => _controller.handleJumpToPage(0) : null)
-                  : (!atLast ? () => _controller.handleJumpToPage(pageCount - 1) : null),
+                  : (!atLast
+                        ? () => _controller.handleJumpToPage(pageCount - 1)
+                        : null),
             ),
           ],
         ),

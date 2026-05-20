@@ -144,7 +144,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         shouldUpdate: countChanged,
       );
     } catch (e) {
-      LogUtil.e('Failed to load manga from ${dirOfManga.path}');
+      LogUtil.e('Failed to load manga from ${dirOfManga.path}', error: e);
       return null;
     }
   }
@@ -284,7 +284,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         }
       }
       if (spineImages.isNotEmpty) return spineImages;
-    } catch (_) {}
+    } catch (e) {
+      LogUtil.d('EPUB OPF spine parse failed, falling back to natural sort', error: e);
+    }
 
     return _fallbackEpubImages(entries);
   }
@@ -381,7 +383,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       }
 
       if (spineImages.isNotEmpty) return spineImages;
-    } catch (_) {}
+    } catch (e) {
+      LogUtil.d('EPUB spine image parse failed, falling back to natural sort', error: e);
+    }
 
     // Fallback: natural sort of all image files in the archive
     return archive.files

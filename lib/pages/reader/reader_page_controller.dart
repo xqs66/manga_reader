@@ -11,6 +11,7 @@ import 'package:manga_reader/core/result.dart';
 import 'package:manga_reader/pages/mangas/mangas_page_controller.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:manga_reader/pages/reader/reader_page_state.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
@@ -35,6 +36,7 @@ class ReaderPageController extends GetxController {
   Timer? _saveTimer;
   Timer? _timeTimer;
   Timer? _pageTurnGuard;
+  ScrollWrapperState? scrollState;
   late final FocusNode _focusNode;
   String _batteryLevel = '--';
   final _battery = Battery();
@@ -105,9 +107,14 @@ class ReaderPageController extends GetxController {
 
   Future<void> _loadImagesIfNeeded() async {
     if (state.readInfo.images.isNotEmpty) return;
-    final manga = state.readInfo.mangaInfo;
-    final images = await localMangaService.getMangaImagesAsync(manga);
-    state.readInfo.images = images;
+    try {
+      final manga = state.readInfo.mangaInfo;
+      final images = await localMangaService.getMangaImagesAsync(manga);
+      state.readInfo.images = images;
+    } catch (e) {
+      LogUtil.e('Failed to load images for reader', error: e);
+      Fluttertoast.showToast(msg: '图片加载失败，请返回重试');
+    }
     update([loadingImagesId, imageListId, pageListId]);
   }
 
@@ -181,11 +188,13 @@ class ReaderPageController extends GetxController {
   }
 
   void handleTapLeft() {
+    if ((scrollState?.isScrolling ?? false)) return;
     final isRTL = readSetting.readingMode.value.isRTL;
     isRTL ? goToNextPage() : goToPreviousPage();
   }
 
   void handleTapRight() {
+    if ((scrollState?.isScrolling ?? false)) return;
     final isRTL = readSetting.readingMode.value.isRTL;
     isRTL ? goToPreviousPage() : goToNextPage();
   }
@@ -329,6 +338,7 @@ class ReaderPageController extends GetxController {
   }
 
   void toggleMenuOpen() {
+    if ((scrollState?.isScrolling ?? false)) return;
     state.isMenuOpen = !state.isMenuOpen;
     update([topMenuId, bottomMenuId, bottomRightInfoId]);
   }
@@ -411,6 +421,9 @@ class ReaderPageController extends GetxController {
       );
       this.state.imageContainerSizes[index] = fittedSize.destination;
       update(['{ReadPageImage::$index}']);
+      if (_isDoublePage) {
+        update(['spread_${currentSpreadByPage(index)}']);
+      }
     });
   }
 
@@ -484,7 +497,10 @@ class ReaderPageController extends GetxController {
 
     final repo = Get.find<MangaRepository>();
     final result = await repo.deleteImage(image);
-    if (result is Err) return;
+    if (result is Err) {
+      Fluttertoast.showToast(msg: '删除失败');
+      return;
+    }
 
     state.readInfo.images.removeAt(index);
     state.readInfo.pageCount--;
