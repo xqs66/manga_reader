@@ -272,6 +272,7 @@ class MangasPageController extends GetxController {
   }
 
   void handleSearch(String keyword) {
+    update([appBarId]);
     searchDebounceTimer?.cancel();
     searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
       state.searchedMangas.assignAll(

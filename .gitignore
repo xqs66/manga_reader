@@ -45,4 +45,6 @@ app.*.map.json
 /android/app/release
 android/.kotlin/sessions/kotlin-compiler-1778995123066346059.salive
 CLAUDE.md
-/tmp
+docs
+tmp
+.gitignore

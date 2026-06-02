@@ -7,7 +7,13 @@
       "Bash(dart pub *)",
       "Bash(ls \"d:\\\\\\\\Projects\\\\\\\\manga_reader\\\\\\\\packages\\\\\\\\photo_view\\\\\\\\pubspec.yaml\")",
       "Bash(ls \"d:\\\\\\\\Projects\\\\\\\\manga_reader\\\\\\\\packages\\\\\\\\photo_view\\\\\\\\lib\\\\\\\\photo_view.dart\")",
-      "Bash(wc -l \"d:\\\\\\\\Projects\\\\\\\\manga_reader\\\\\\\\docs\\\\\\\\interview_guide.md\")"
+      "Bash(wc -l \"d:\\\\\\\\Projects\\\\\\\\manga_reader\\\\\\\\docs\\\\\\\\interview_guide.md\")",
+      "WebSearch",
+      "Bash(flutter pub *)",
+      "Bash(flutter analyze *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Read(//c/Users/xqs/AppData/Local/Pub/Cache/hosted/pub.dev/**)",
+      "Read(//c/Users/xqs/AppData/Local/**)"
     ]
   }
 }

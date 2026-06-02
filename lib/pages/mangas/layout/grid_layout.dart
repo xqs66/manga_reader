@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:keframe/keframe.dart';
 import 'package:manga_reader/config/ui_config.dart';
+import 'package:manga_reader/widgets/loading_widget.dart';
 
 /// Abstract grid layout shared by both manga and group folder grids.
 ///
 /// Subclasses provide [itemCount] and [buildItem]; the base class handles
 /// column calculation, row construction, and [ListView.builder] scrolling.
+///
+/// Cards are wrapped in [FrameSeparateWidget] to stagger image loading
+/// across frames, preventing texture-upload spikes when many new cards
+/// enter the viewport simultaneously.
 abstract class GridLayout extends StatelessWidget {
   const GridLayout({super.key});
 
@@ -39,20 +45,39 @@ abstract class GridLayout extends StatelessWidget {
           final columns = columnsForWidth(availableWidth);
           final cardW = cardWidth(availableWidth);
           final rowCount = (itemCount / columns).ceil();
+          final cardH = coverHeight(cardW);
 
           return ListView.builder(
             padding: .only(top: UiConfig.gridCardPadding),
             itemCount: rowCount,
-            cacheExtent: Get.height * 0.4,
+            cacheExtent: Get.height * 0.8,
             itemBuilder: (_, rowIndex) {
               final start = rowIndex * columns;
               final rowChildren = <Widget>[];
               for (var j = 0; j < columns && start + j < itemCount; j++) {
-                if (j > 0) rowChildren.add(SizedBox(width: UiConfig.gridCardSpacing));
+                if (j > 0) {
+                  rowChildren.add(SizedBox(width: UiConfig.gridCardSpacing));
+                }
+                final idx = start + j;
                 rowChildren.add(
                   SizedBox(
                     width: cardW,
-                    child: buildItem(context, start + j, cardW),
+                    child: FrameSeparateWidget(
+                      index: idx,
+                      placeHolder: SizedBox(
+                        width: cardW,
+                        height: cardH,
+                        child: ClipRRect(
+                          borderRadius: .circular(10),
+                          child: LoadingWidget(
+                            width: cardW,
+                            height: cardH,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      child: buildItem(context, idx, cardW),
+                    ),
                   ),
                 );
               }
