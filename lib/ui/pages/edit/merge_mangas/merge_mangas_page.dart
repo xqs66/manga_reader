@@ -9,7 +9,6 @@ import 'package:manga_reader/ui/widgets/empty_state.dart';
 import 'package:manga_reader/ui/layout/grid/manga_grid_card.dart';
 import 'package:manga_reader/ui/layout/list/manga_list_tile_card.dart';
 import 'package:manga_reader/ui/widgets/path_selector_tile.dart';
-import 'package:manga_reader/ui/widgets/styled_menu.dart';
 
 import 'merge_mangas_page_controller.dart';
 import 'merge_mangas_page_state.dart';

@@ -645,4 +645,46 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       Fluttertoast.showToast(msg: '删除图片失败');
     }
   }
+
+  /// Deletes a single image entry from a ZIP/CBZ file and clears the temp cache.
+  ///
+  /// Reads the entire ZIP into memory, removes the entry, and re-encodes it.
+  Future<void> deleteImageFromZip(File zipFile, String entryName) async {
+    try {
+      final bytes = await zipFile.readAsBytes();
+      final archive = a.ZipDecoder().decodeBytes(bytes);
+
+      // archive.files may be unmodifiable — filter into a new list
+      final toKeep = archive.files.where((f) => f.name != entryName).toList();
+
+      if (toKeep.length == archive.files.length) {
+        Fluttertoast.showToast(msg: '未找到该图片');
+        return;
+      }
+
+      archive.clear();
+      for (final f in toKeep) {
+        archive.addFile(f);
+      }
+
+      final newBytes = a.ZipEncoder().encode(archive);
+      await zipFile.writeAsBytes(newBytes);
+
+      // Clear temp cache so it regenerates with updated entries
+      final cacheDir = Directory(
+        join(
+          Directory.systemTemp.path,
+          'manga_reader',
+          MangaId.fromPath(zipFile.path).value,
+        ),
+      );
+      if (cacheDir.existsSync()) cacheDir.deleteSync(recursive: true);
+
+      Fluttertoast.showToast(msg: '删除成功');
+    } catch (e) {
+      LogUtil.e('删除ZIP图片失败', error: e);
+      Fluttertoast.showToast(msg: '删除失败');
+      rethrow;
+    }
+  }
 }

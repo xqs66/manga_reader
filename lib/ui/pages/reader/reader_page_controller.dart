@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:extended_image/extended_image.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,9 +15,9 @@ import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/core/mixin/scroll_handler.dart';
 import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:manga_reader/ui/pages/reader/reader_page_state.dart';
+import 'package:manga_reader/models/manga_id.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/ui/pages/more/settings/read/read_settings_page.dart';
-import 'package:manga_reader/core/enums/reading_mode.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:manga_reader/ui/widgets/manga_info_sheet.dart';
@@ -462,23 +463,21 @@ class ReaderPageController extends GetxController {
   }
 
   Future<void> handleDeleteImage(int index) async {
-    if (localMangaService.isZipFile(state.readInfo.mangaInfo.path)) {
-      Fluttertoast.showToast(msg: '压缩包内的图片无法单独删除');
-      return;
-    }
     return Get.dialog(
       barrierDismissible: true,
       AlertDialog(
-        title: Text('删除图片'),
-        content: Text('确定要删除图片吗？'),
+        title: const Text('删除图片'),
+        content: Text(localMangaService.isZipFile(state.readInfo.mangaInfo.path)
+            ? '确定要从压缩包中删除该图片吗？'
+            : '确定要删除该图片吗？'),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('取消')),
+          TextButton(onPressed: () => Get.back(), child: const Text('取消')),
           TextButton(
             onPressed: () async {
               await deleteImage(index);
               Get.back();
             },
-            child: Text('确定'),
+            child: const Text('确定'),
           ),
         ],
       ),
@@ -495,11 +494,28 @@ class ReaderPageController extends GetxController {
     );
     if (indexOfReadingManga == -1) return;
 
-    final repo = Get.find<MangaRepository>();
-    final result = await repo.deleteImage(image);
-    if (result is Err) {
-      Fluttertoast.showToast(msg: '删除失败');
-      return;
+    if (localMangaService.isZipFile(readingManga.path)) {
+      try {
+        final cacheDir = p.join(
+          Directory.systemTemp.path,
+          'manga_reader',
+          MangaId.fromPath(readingManga.path).value,
+        );
+        final entryName = p.relative(image.path, from: cacheDir);
+        await localMangaService.deleteImageFromZip(
+          File(readingManga.path),
+          entryName,
+        );
+      } catch (_) {
+        return;
+      }
+    } else {
+      final repo = Get.find<MangaRepository>();
+      final result = await repo.deleteImage(image);
+      if (result is Err) {
+        Fluttertoast.showToast(msg: '删除失败');
+        return;
+      }
     }
 
     state.readInfo.images.removeAt(index);
@@ -507,11 +523,24 @@ class ReaderPageController extends GetxController {
     state.imageContainerSizes.removeAt(index);
     update([imageListId]);
 
-    final loadResult = await repo.tryLoadManga(Directory(readingManga.path));
-    final afterManga = loadResult.okValue;
-    if (afterManga != null) {
-      mangaList[indexOfReadingManga] = afterManga;
-      state.readInfo.mangaInfo = afterManga;
+    if (!localMangaService.isZipFile(readingManga.path)) {
+      final loadResult = await Get.find<MangaRepository>()
+          .tryLoadManga(Directory(readingManga.path));
+      final afterManga = loadResult.okValue;
+      if (afterManga != null) {
+        mangaList[indexOfReadingManga] = afterManga;
+        state.readInfo.mangaInfo = afterManga;
+        booksController.update([
+          '${booksController.mangaIdPrefix}::$indexOfReadingManga',
+        ]);
+      }
+    } else {
+      final updatedManga = readingManga.copyWith(
+        pageCount: state.readInfo.pageCount,
+        size: File(readingManga.path).lengthSync(),
+      );
+      mangaList[indexOfReadingManga] = updatedManga;
+      state.readInfo.mangaInfo = updatedManga;
       booksController.update([
         '${booksController.mangaIdPrefix}::$indexOfReadingManga',
       ]);
