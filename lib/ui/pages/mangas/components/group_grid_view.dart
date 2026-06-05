@@ -4,7 +4,7 @@ import 'package:manga_reader/core/constants/constants.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/ui/pages/mangas/mangas_page_controller.dart';
 import 'package:manga_reader/ui/layout/grid/grid_layout.dart';
-import 'package:manga_reader/ui/pages/mangas/group_grid_card.dart';
+import 'package:manga_reader/ui/pages/mangas/components/group_grid_card.dart';
 import 'package:manga_reader/ui/widgets/styled_menu.dart';
 
 class GroupGridView extends GridLayout {

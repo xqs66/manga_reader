@@ -3,8 +3,8 @@ import 'package:get/get.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/ui/widgets/empty_state.dart';
-import 'package:manga_reader/ui/layout/grid/manga_grid_view.dart';
-import 'package:manga_reader/ui/layout/list/manga_list_view.dart';
+import 'package:manga_reader/ui/layout/grid/components/manga_grid_view.dart';
+import 'package:manga_reader/ui/layout/list/components/manga_list_view.dart';
 import 'manga_list_layout_controller.dart';
 import 'manga_list_layout_state.dart';
 

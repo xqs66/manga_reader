@@ -10,11 +10,11 @@ import 'package:manga_reader/core/extensions/text_ext.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
 import 'package:manga_reader/core/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
-import 'package:manga_reader/ui/pages/mangas/group_grid_view.dart';
-import 'package:manga_reader/ui/pages/mangas/group_list_view.dart';
-import 'package:manga_reader/ui/layout/grid/manga_grid_view.dart';
+import 'package:manga_reader/ui/pages/mangas/components/group_grid_view.dart';
+import 'package:manga_reader/ui/pages/mangas/components/group_list_view.dart';
+import 'package:manga_reader/ui/layout/grid/components/manga_grid_view.dart';
 import 'package:manga_reader/ui/layout/manga_list_layout/manga_list_layout.dart';
-import 'package:manga_reader/ui/layout/list/manga_list_view.dart';
+import 'package:manga_reader/ui/layout/list/components/manga_list_view.dart';
 import 'package:manga_reader/ui/pages/mangas/mangas_page_controller.dart';
 import 'package:manga_reader/ui/pages/mangas/mangas_page_state.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
@@ -23,9 +23,9 @@ import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/ui/widgets/dialogs/common_dialog.dart';
 import 'package:manga_reader/ui/widgets/dialogs/select_dialog.dart';
 import 'package:manga_reader/ui/widgets/empty_state.dart';
-import 'package:manga_reader/ui/layout/grid/manga_grid_card.dart';
-import 'package:manga_reader/ui/layout/list/manga_list_tile_card.dart';
-import 'package:manga_reader/ui/layout/list/selected_item_decoration.dart';
+import 'package:manga_reader/ui/layout/grid/components/manga_grid_card.dart';
+import 'package:manga_reader/ui/layout/list/components/manga_list_tile_card.dart';
+import 'package:manga_reader/ui/layout/list/components/selected_item_decoration.dart';
 import 'package:manga_reader/ui/widgets/selection/selection_app_bar.dart';
 import 'package:manga_reader/ui/widgets/sort_sheet.dart';
 import 'package:manga_reader/ui/widgets/styled_menu.dart';
@@ -236,6 +236,7 @@ class MangasPage extends StatefulWidget
       onStateChanged: () => controller.update([controller.bodyId]),
       builder: (context, handler) => MangaListView(
         mangas: displayMangas,
+        scrollController: controller.listScrollController,
         tileBuilder: (context, index, manga) {
           final buildCover =
               !(handler.isScrolling && handler.currentVelocity.abs() > 500);
@@ -259,6 +260,7 @@ class MangasPage extends StatefulWidget
               onStateChanged: () => controller.update([controller.bodyId]),
               builder: (context, handler) => MangaListView(
                 mangas: mangas,
+                scrollController: controller.listScrollController,
                 tileBuilder: (context, index, manga) {
                   final buildCover =
                       !(handler.isScrolling &&

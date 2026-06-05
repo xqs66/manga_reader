@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/extensions/string_ext.dart';
 import 'package:manga_reader/ui/widgets/empty_state.dart';
-import 'package:manga_reader/ui/layout/list/manga_list_tile_card.dart';
+import 'package:manga_reader/ui/layout/list/components/manga_list_tile_card.dart';
 import 'package:manga_reader/ui/widgets/path_selector_tile.dart';
 import 'package:manga_reader/ui/widgets/progress_view.dart';
-import 'package:manga_reader/ui/layout/list/selected_item_decoration.dart';
+import 'package:manga_reader/ui/layout/list/components/selected_item_decoration.dart';
 import 'package:manga_reader/ui/widgets/selection/selection_bottom_bar.dart';
 
 import 'archive_mangas_controller.dart';

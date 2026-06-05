@@ -6,8 +6,8 @@ import 'package:manga_reader/ui/layout/manga_list_layout/manga_list_layout.dart'
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/ui/widgets/dialogs/common_dialog.dart';
 import 'package:manga_reader/ui/widgets/empty_state.dart';
-import 'package:manga_reader/ui/layout/grid/manga_grid_card.dart';
-import 'package:manga_reader/ui/layout/list/manga_list_tile_card.dart';
+import 'package:manga_reader/ui/layout/grid/components/manga_grid_card.dart';
+import 'package:manga_reader/ui/layout/list/components/manga_list_tile_card.dart';
 import 'package:manga_reader/ui/widgets/path_selector_tile.dart';
 
 import 'merge_mangas_page_controller.dart';

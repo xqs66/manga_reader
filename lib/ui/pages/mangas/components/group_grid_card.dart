@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:manga_reader/models/manga.dart';
-import 'package:manga_reader/ui/layout/grid/grid_cover_image.dart';
+import 'package:manga_reader/ui/layout/grid/components/grid_cover_image.dart';
 import 'package:manga_reader/ui/layout/grid/grid_layout.dart';
 
 class GroupGridCard extends StatelessWidget {
