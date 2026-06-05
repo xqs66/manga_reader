@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -13,6 +12,7 @@ import 'package:manga_reader/core/result.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/manga_id.dart';
 import 'package:manga_reader/models/read_info.dart';
+import 'package:manga_reader/pages/mangas/layout/manga_list_layout_controller.dart';
 import 'package:manga_reader/pages/mangas/mangas_page_state.dart';
 import 'package:manga_reader/pages/home_page_controller.dart';
 import 'package:manga_reader/routes/routes.dart';
@@ -20,25 +20,24 @@ import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/constants/constants.dart';
 
-class MangasPageController extends GetxController {
-  final state = MangasPageState();
+class MangasPageController
+    extends MangaListLayoutController<MangasPageState> {
   final MangaRepository _repo;
 
   MangasPageController({MangaRepository? repo})
     : _repo = repo ?? Get.find<MangaRepository>();
 
+  @override
+  final state = MangasPageState();
+
   final listScrollController = ScrollController();
 
-  final appBarId = 'appBarId';
-  final bottomBarId = 'bottomBarId';
-  final bodyId = 'bodyId';
   final normalAppBarActionsId = 'normalAppBarActionsId';
   final mangaIdPrefix = 'Manga';
   final groupIdPrefix = 'Group';
   final mangasInGroupIdPrefix = 'MangasInGroup';
   final deleteGroupDialogId = 'deleteGroupDialogId';
-
-  Timer? searchDebounceTimer;
+  final refreshProgressId = 'refreshProgressId';
 
   static const _lastPathKey = 'last_source_path';
   static const _lastGroupKey = 'last_group_name';
@@ -111,15 +110,6 @@ class MangasPageController extends GetxController {
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
 
-  void toggleLayoutMode() {
-    final next = readSetting.bookshelfLayout.value == BookshelfLayout.list
-        ? BookshelfLayout.grid
-        : BookshelfLayout.list;
-    readSetting.saveBookshelfLayout(next);
-    state.currentGridGroup = null;
-    update([bodyId, normalAppBarActionsId, appBarId]);
-  }
-
   void enterGridGroup(String groupName) {
     state.currentGridGroup = groupName;
     storageService.write(_lastGroupKey, groupName);
@@ -154,7 +144,8 @@ class MangasPageController extends GetxController {
         }
       }
     } else {
-      LogUtil.e('Failed to fetch groups for path $path', error: (result as Err).error);
+      LogUtil.e('Failed to fetch groups for path $path',
+          error: (result as Err).error);
     }
   }
 
@@ -167,17 +158,12 @@ class MangasPageController extends GetxController {
   }
 
   Future<void> handleRenameGroupInPath(
-    String oldName,
-    String newName,
-    String path,
-  ) async {
+    String oldName, String newName, String path) async {
     await _repo.removeGroup(oldName, path);
     await _repo.addGroup(newName, path);
     final mangas = localMangaService.settingPath2Mangas[path] ?? [];
-    final ids = mangas
-        .where((m) => m.groupName == oldName)
-        .map((m) => m.id)
-        .toSet();
+    final ids =
+        mangas.where((m) => m.groupName == oldName).map((m) => m.id).toSet();
     final result = await _repo.moveMangasToGroup(ids, newName);
     if (result is Ok) {
       for (final m in mangas.where((m) => m.groupName == oldName)) {
@@ -229,7 +215,8 @@ class MangasPageController extends GetxController {
       state.groups[state.groups.indexOf(oldName)] = newName;
       if (state.currentGridGroup == oldName) state.currentGridGroup = newName;
       for (final m in state.mangas.where((m) => m.groupName == oldName)) {
-        state.mangas[state.mangas.indexOf(m)] = m.copyWith(groupName: newName);
+        state.mangas[state.mangas.indexOf(m)] =
+            m.copyWith(groupName: newName);
       }
       update([bodyId, appBarId]);
     }
@@ -243,50 +230,15 @@ class MangasPageController extends GetxController {
       state.displayGroups.add(groupName);
     }
     _repo.updateGroupExpand(
-      groupName,
-      state.currentPath!,
-      state.displayGroups.contains(groupName),
-    );
-    update([
-      '$groupIdPrefix::$groupName',
-      '$mangasInGroupIdPrefix::$groupName',
-    ]);
+      groupName, state.currentPath!, state.displayGroups.contains(groupName));
+    update(['$groupIdPrefix::$groupName', '$mangasInGroupIdPrefix::$groupName']);
   }
 
   void toggleSelectMode() {
     if (state.isSelectMode) state.selectedMangaIds.clear();
     state.isSelectMode = !state.isSelectMode;
     Get.find<HomePageController>().toggleShowBottomBar();
-    update([appBarId, bottomBarId]);
-  }
-
-  void toggleSearchMode() {
-    state.isSearchMode = !state.isSearchMode;
-    if (!state.isSearchMode) {
-      state.searchTextController.clear();
-      state.searchedMangas.clear();
-    } else {
-      state.searchedMangas.assignAll(state.mangas);
-    }
     update([appBarId, bodyId]);
-  }
-
-  void handleSearch(String keyword) {
-    update([appBarId]);
-    searchDebounceTimer?.cancel();
-    searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
-      state.searchedMangas.assignAll(
-        keyword.isEmpty
-            ? state.mangas
-            : state.mangas
-                  .where(
-                    (m) =>
-                        m.title.toLowerCase().contains(keyword.toLowerCase()),
-                  )
-                  .toList(),
-      );
-      update([bodyId]);
-    });
   }
 
   void openRandomManga() {
@@ -338,14 +290,12 @@ class MangasPageController extends GetxController {
     int cmp(Manga a, Manga b) {
       return switch (state.sortMode) {
         SortMode.title => a.title.compareTo(b.title),
-        SortMode.lastRead => (a.lastReadTime ?? DateTime(2000)).compareTo(
-          b.lastReadTime ?? DateTime(2000),
-        ),
+        SortMode.lastRead => (a.lastReadTime ?? DateTime(2000))
+            .compareTo(b.lastReadTime ?? DateTime(2000)),
         SortMode.pageCount => a.pageCount.compareTo(b.pageCount),
         SortMode.random => 0,
       };
     }
-
     if (state.sortAscending) {
       state.mangas.sort(cmp);
     } else {
@@ -380,8 +330,8 @@ class MangasPageController extends GetxController {
     final list = state.isSearchMode
         ? state.searchedMangas
         : state.currentGridGroup != null
-        ? mangasForCurrentGrid
-        : state.mangas;
+            ? mangasForCurrentGrid
+            : state.mangas;
     if (state.isSelectedAll || state.selectedMangaIds.length == list.length) {
       state.selectedMangaIds.clear();
     } else {
@@ -391,17 +341,13 @@ class MangasPageController extends GetxController {
   }
 
   void handleMangaCardTap(Manga manga) {
-    final startIndex = readSetting.continueFromLastRead.value
-        ? manga.lastReadPage
-        : 0;
-    Get.toNamed(
-      Routes.reader,
-      arguments: ReadInfo(
-        mangaInfo: manga,
-        pageCount: manga.pageCount,
-        lastReadIndex: startIndex,
-      ),
-    );
+    final startIndex =
+        readSetting.continueFromLastRead.value ? manga.lastReadPage : 0;
+    Get.toNamed(Routes.reader,
+        arguments: ReadInfo(
+            mangaInfo: manga,
+            pageCount: manga.pageCount,
+            lastReadIndex: startIndex));
   }
 
   Future<void> handleMoveMangasToGroup(String groupName) async {
@@ -413,10 +359,8 @@ class MangasPageController extends GetxController {
       final added = await _repo.addGroup(groupName, state.currentPath!);
       if (added is Ok) state.groups.add(groupName);
     }
-    final result = await _repo.moveMangasToGroup(
-      state.selectedMangaIds,
-      groupName,
-    );
+    final result =
+        await _repo.moveMangasToGroup(state.selectedMangaIds, groupName);
     if (result is Err) {
       Fluttertoast.showToast(msg: result.message);
       return;
@@ -450,9 +394,7 @@ class MangasPageController extends GetxController {
       Fluttertoast.showToast(msg: result.message);
       return;
     }
-    if (!state.groups.contains(groupName)) {
-      state.groups.add(groupName);
-    }
+    if (!state.groups.contains(groupName)) state.groups.add(groupName);
     update([bodyId]);
     Get.back();
   }
@@ -467,9 +409,8 @@ class MangasPageController extends GetxController {
       await _repo.resetMangasToDefaultGroup(groupName, state.currentPath);
       for (var i = 0; i < state.mangas.length; i++) {
         if (state.mangas[i].groupName == groupName) {
-          state.mangas[i] = state.mangas[i].copyWith(
-            groupName: Constants.defaultGroupName,
-          );
+          state.mangas[i] =
+              state.mangas[i].copyWith(groupName: Constants.defaultGroupName);
         }
       }
     } else {
@@ -484,8 +425,6 @@ class MangasPageController extends GetxController {
     update([bodyId]);
     Get.back();
   }
-
-  final String refreshProgressId = 'refreshProgressId';
 
   Future<void> refreshMangas() async {
     if (state.currentPath == null) return;
@@ -525,11 +464,5 @@ class MangasPageController extends GetxController {
     toggleSelectMode();
     update([bodyId]);
     Get.back();
-  }
-
-  @override
-  void onClose() {
-    searchDebounceTimer?.cancel();
-    super.onClose();
   }
 }

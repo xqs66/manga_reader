@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/models/manga.dart';
+import 'package:manga_reader/pages/mangas/layout/manga_list_layout_controller.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
@@ -14,13 +15,13 @@ import 'package:path/path.dart' as p;
 
 import 'merge_mangas_page_state.dart';
 
-class MergeMangasPageController extends GetxController {
+class MergeMangasPageController
+    extends MangaListLayoutController<MergeMangasPageState> {
+  @override
   final state = MergeMangasPageState();
 
   final listScrollController = ScrollController();
 
-  final String bodyId = 'bodyId';
-  final String mangasId = 'mangasId';
   final String selectDirId = 'selectDirId';
   final String selectOutputDirId = 'selectOutputDirId';
   final String mangaListTileIdPrefix = 'mangaListTile';
@@ -68,7 +69,7 @@ class MergeMangasPageController extends GetxController {
       state.selectedMangaIndexes.add(index);
       update(['$mangaListTileIdPrefix::$index']);
     }
-    update([titleId, cancelButtonId]);
+    update([titleId, cancelButtonId, appBarId]);
   }
 
   void handleLongPressManga(BuildContext context, Manga manga) {
@@ -87,7 +88,7 @@ class MergeMangasPageController extends GetxController {
     final idsNeedUpdate = _getSelectedMangaItemIds();
     state.selectedMangas.clear();
     state.selectedMangaIndexes.clear();
-    update([...idsNeedUpdate, titleId, cancelButtonId]);
+    update([...idsNeedUpdate, titleId, cancelButtonId, appBarId]);
   }
 
   List<String> _getSelectedMangaItemIds() {
@@ -166,7 +167,7 @@ class MergeMangasPageController extends GetxController {
     state.targetDirNameController.clear();
     state.selectedMangaIndexes.clear();
     state.selectedMangas.clear();
-    update([mangasId, titleId, cancelButtonId]);
+    update([bodyId, titleId, cancelButtonId, appBarId]);
     Get.back();
   }
 

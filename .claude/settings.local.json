@@ -13,7 +13,21 @@
       "Bash(flutter analyze *)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Read(//c/Users/xqs/AppData/Local/Pub/Cache/hosted/pub.dev/**)",
-      "Read(//c/Users/xqs/AppData/Local/**)"
+      "Read(//c/Users/xqs/AppData/Local/**)",
+      "Bash(cd d:/Projects/manga_runner && find lib -type f -name \"*.dart\" | sort)",
+      "Read(//d/Projects/**)",
+      "Bash(cd d:/Projects/manga_reader && git mv lib/pages/ lib/ui/pages_tmp && mv lib/ui/pages_tmp/* lib/ui/pages/ && rmdir lib/ui/pages_tmp)",
+      "Bash(git reset *)",
+      "Bash(rm -rf lib/ui/pages lib/ui/pages_tmp)",
+      "Bash(mkdir -p lib/ui/pages/home lib/ui/pages/mangas lib/ui/pages/edit/merge_mangas lib/ui/pages/edit/archive_mangas lib/ui/pages/reader lib/ui/pages/more/manage lib/ui/pages/more/settings/read)",
+      "Bash(ls lib/pages/)",
+      "Bash(ls lib/pages/mangas/)",
+      "Bash(git checkout *)",
+      "Bash(ls lib/pages/mangas/layout/manga_list_layout*)",
+      "Bash(ls lib/pages/edit/merge_mangas_page/)"
+    ],
+    "additionalDirectories": [
+      "D:\\Projects\\manga_reader\\lib\\ui\\pages_tmp"
     ]
   }
 }

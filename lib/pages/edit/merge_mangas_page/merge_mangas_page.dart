@@ -1,68 +1,194 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
-import 'package:manga_reader/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/manga.dart';
+import 'package:manga_reader/pages/mangas/layout/manga_list_layout.dart';
+import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/widgets/dialogs/common_dialog.dart';
 import 'package:manga_reader/widgets/empty_state.dart';
+import 'package:manga_reader/widgets/grid/manga_grid_card.dart';
 import 'package:manga_reader/widgets/manga_list_tile_card.dart';
 import 'package:manga_reader/widgets/path_selector_tile.dart';
-import 'package:manga_reader/widgets/selected_item_decoration.dart';
+import 'package:manga_reader/widgets/styled_menu.dart';
 
 import 'merge_mangas_page_controller.dart';
+import 'merge_mangas_page_state.dart';
 
-class MergeMangasPage extends StatefulWidget {
-  const MergeMangasPage({super.key});
-
-  @override
-  State<StatefulWidget> createState() => _MergeMangasPageState();
-}
-
-class _MergeMangasPageState extends State<MergeMangasPage> {
-  final _controller = Get.put(MergeMangasPageController());
-  final _state = Get.find<MergeMangasPageController>().state;
+class MergeMangasPage extends StatelessWidget
+    with MangaListLayout<MergeMangasPageController, MergeMangasPageState> {
+  MergeMangasPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-      bottomNavigationBar: _buildBottomBar(),
+  final controller = Get.put<MergeMangasPageController>(
+    MergeMangasPageController(),
+  );
+
+  @override
+  MergeMangasPageState get state => controller.state;
+
+  @override
+  Widget build(BuildContext context) => buildLayout(context);
+
+  // ── Layout overrides ──
+
+  @override
+  Widget buildLayout(BuildContext context) {
+    return GetBuilder<MergeMangasPageController>(
+      id: controller.appBarId,
+      builder: (_) {
+        return Scaffold(
+          appBar: state.isSearchMode
+              ? buildSearchAppBar()
+              : buildNormalAppBar(context),
+          body: buildBody(context),
+          bottomNavigationBar: _buildBottomBar(),
+        );
+      },
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  @override
+  Widget buildBody(BuildContext context) {
+    return GetBuilder<MergeMangasPageController>(
+      id: controller.bodyId,
+      builder: (_) {
+        if (state.isSearchMode) return buildSearchResults();
+        return buildNormalContent(context);
+      },
+    );
+  }
+
+  // ── Abstract method implementations ──
+
+  @override
+  PreferredSizeWidget buildNormalAppBar(BuildContext context) {
     return AppBar(
       title: GetBuilder<MergeMangasPageController>(
-        id: _controller.titleId,
+        id: controller.titleId,
         builder: (_) => Text(
-          _state.hasSelectedManga ? '已选 ${_state.selectedMangas.length} 部' : '合并漫画为合集',
+          state.hasSelectedManga
+              ? '已选 ${state.selectedMangas.length} 部'
+              : '合并漫画为合集',
         ),
       ),
       centerTitle: true,
       actions: [
         GetBuilder<MergeMangasPageController>(
-          id: _controller.cancelButtonId,
-          builder: (_) => _state.hasSelectedManga
-              ? TextButton(onPressed: _controller.cancelSelected, child: const Text('清空'))
+          id: controller.cancelButtonId,
+          builder: (_) => state.hasSelectedManga
+              ? IconButton(
+                  onPressed: controller.cancelSelected,
+                  icon: const Icon(Icons.clear),
+                )
               : const SizedBox.shrink(),
+        ),
+        IconButton(
+          onPressed: controller.toggleSearchMode,
+          icon: const Icon(Icons.search_rounded),
+        ),
+        IconButton(
+          onPressed: controller.toggleLayoutMode,
+          icon: Icon(
+            readSetting.bookshelfLayout.value == BookshelfLayout.grid
+                ? Icons.view_list_rounded
+                : Icons.grid_view_rounded,
+          ),
+          tooltip: readSetting.bookshelfLayout.value == BookshelfLayout.grid
+              ? '切换为列表'
+              : '切换为网格',
         ),
       ],
     );
   }
 
-  Widget _buildBody() {
-    return GetBuilder<MergeMangasPageController>(
-      id: _controller.bodyId,
-      builder: (_) => Column(
-        children: [
-          _buildSelectPathsArea(),
-          const Divider(height: 1),
-          Expanded(child: _buildContentArea()),
-        ],
-      ),
+  @override
+  Widget buildNormalContent(BuildContext context) {
+    return Column(
+      children: [
+        _buildSelectPathsArea(),
+        const Divider(height: 1),
+        Expanded(child: _buildContentArea()),
+      ],
     );
   }
+
+  @override
+  Widget buildGridCard(
+    BuildContext context,
+    int index,
+    Manga manga,
+    double cardWidth,
+  ) {
+    return GetBuilder<MergeMangasPageController>(
+      id: '${controller.mangaListTileIdPrefix}::${displayMangas.indexOf(manga)}',
+      builder: (_) {
+        final isSelected = state.selectedMangas.contains(manga);
+        final order = state.selectedMangas.indexOf(manga) + 1;
+        return Stack(
+          children: [
+            MangaGridCard(
+              manga: manga,
+              width: cardWidth,
+              onTap: () => controller.toggleMangaSelection(index, manga),
+              onLongPress: () =>
+                  controller.handleLongPressManga(context, manga),
+            ),
+            if (isSelected)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: UiConfig.primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$order',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget buildListTile(BuildContext context, int index, Manga manga) {
+    return GetBuilder<MergeMangasPageController>(
+      id: '${controller.mangaListTileIdPrefix}::$index',
+      builder: (_) {
+        final isSelected = state.selectedMangas.contains(manga);
+        final order = state.selectedMangas.indexOf(manga) + 1;
+        return Row(
+          children: [
+            _buildSelectionIndicator(isSelected, order),
+            const SizedBox(width: 8),
+            Expanded(
+              child: MangaListTileCard(
+                key: ValueKey(manga.id),
+                manga: manga,
+                onTap: () => controller.toggleMangaSelection(index, manga),
+                onLongPressed: () =>
+                    controller.handleLongPressManga(context, manga),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ── Private: path selectors ──
 
   Widget _buildSelectPathsArea() {
     return Padding(
@@ -71,26 +197,26 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
         mainAxisSize: .min,
         children: [
           GetBuilder<MergeMangasPageController>(
-            id: _controller.selectDirId,
+            id: controller.selectDirId,
             builder: (_) => PathSelectorTile(
               icon: Icons.folder_open_rounded,
               label: '源目录',
-              path: _state.selectedDir?.path,
+              path: state.selectedDir?.path,
               hint: '选择包含漫画的目录',
-              isSelected: _state.isDirSelected,
-              onTap: () => _controller.selectDir(),
+              isSelected: state.isDirSelected,
+              onTap: () => controller.selectDir(),
             ),
           ),
           const SizedBox(height: 8),
           GetBuilder<MergeMangasPageController>(
-            id: _controller.selectOutputDirId,
+            id: controller.selectOutputDirId,
             builder: (_) => PathSelectorTile(
               icon: Icons.folder_rounded,
               label: '输出目录',
-              path: _state.outputDir?.path,
+              path: state.outputDir?.path,
               hint: '选择合集保存的目录',
-              isSelected: _state.isOutputDirSelected,
-              onTap: () => _controller.selectOutputDir(),
+              isSelected: state.isOutputDirSelected,
+              onTap: () => controller.selectOutputDir(),
             ),
           ),
         ],
@@ -98,60 +224,28 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
     );
   }
 
+  // ── Private: content area ──
+
   Widget _buildContentArea() {
-    if (!_state.isDirSelected) {
+    if (!state.isDirSelected) {
       return const EmptyState(icon: Icons.folder_rounded, title: '请先选择源目录');
     }
-    if (_state.isLoadingMangas) {
+    if (state.isLoadingMangas) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_state.mangas.isEmpty) {
-      return const EmptyState(icon: Icons.auto_stories_rounded, title: '该目录下未发现漫画');
+    if (state.mangas.isEmpty) {
+      return const EmptyState(
+        icon: Icons.auto_stories_rounded,
+        title: '该目录下未发现漫画',
+      );
     }
-    return ScrollWrapper(
-      useDelayedStart: true,
-      onStateChanged: () => _controller.update([_controller.mangasId]),
-      builder: (context, handler) => GetBuilder<MergeMangasPageController>(
-        id: _controller.mangasId,
-        builder: (_) => ListView.builder(
-          controller: _controller.listScrollController,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: _state.mangas.length,
-          itemBuilder: (context, index) =>
-              _buildMangaListTile(index, _state.mangas[index], isScrolling: handler.isScrolling),
-        ),
-      ),
-    );
+    if (readSetting.bookshelfLayout.value == BookshelfLayout.grid) {
+      return buildMangaGridView();
+    }
+    return buildMangaListView();
   }
 
-  Widget _buildMangaListTile(int index, Manga manga, {required bool isScrolling}) {
-    return GetBuilder<MergeMangasPageController>(
-      id: '${_controller.mangaListTileIdPrefix}::$index',
-      builder: (_) {
-        final isSelected = _state.selectedMangas.contains(manga);
-        final order = _state.selectedMangas.indexOf(manga) + 1;
-
-        return SelectedItemDecoration(
-          isSelected: isSelected,
-          child: Row(
-            children: [
-              _buildSelectionIndicator(isSelected, order),
-              const SizedBox(width: 8),
-              Expanded(
-                child: MangaListTileCard(
-                  key: ValueKey(manga.id),
-                  manga: manga,
-                  buildCover: !isScrolling,
-                  onTap: () => _controller.toggleMangaSelection(index, manga),
-                  onLongPressed: () => _controller.handleLongPressManga(context, manga),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  // ── Private: selection indicator for list mode ──
 
   Widget _buildSelectionIndicator(bool isSelected, int order) {
     return SizedBox(
@@ -161,10 +255,19 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
             ? Container(
                 width: 28,
                 height: 28,
-                decoration: const BoxDecoration(color: UiConfig.primaryColor, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: UiConfig.primaryColor,
+                  shape: BoxShape.circle,
+                ),
                 child: Center(
-                  child: Text('$order',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    '$order',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               )
             : Container(
@@ -179,11 +282,13 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
     );
   }
 
+  // ── Private: bottom bar ──
+
   Widget _buildBottomBar() {
     return GetBuilder<MergeMangasPageController>(
-      id: _controller.titleId,
+      id: controller.titleId,
       builder: (_) {
-        if (!_state.hasSelectedManga) return const SizedBox.shrink();
+        if (!state.hasSelectedManga) return const SizedBox.shrink();
         return BottomAppBar(
           height: UiConfig.bottomHeightInMergePasge,
           child: Padding(
@@ -191,11 +296,16 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('已选 ${_state.selectedMangas.length} 部漫画',
-                      style: const TextStyle(fontSize: 14)),
+                  child: Text(
+                    '已选 ${state.selectedMangas.length} 部漫画',
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ),
                 FilledButton.icon(
-                  onPressed: () => Get.dialog(_buildMergeDialog(), barrierDismissible: false),
+                  onPressed: () => Get.dialog(
+                    _buildMergeDialog(),
+                    barrierDismissible: false,
+                  ),
                   icon: const Icon(Icons.merge_rounded, size: 20),
                   label: const Text('开始合并'),
                 ),
@@ -207,9 +317,11 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
     );
   }
 
+  // ── Private: merge dialog ──
+
   Widget _buildMergeDialog() {
     return GetBuilder<MergeMangasPageController>(
-      id: _controller.mergeStartDialogId,
+      id: controller.mergeStartDialogId,
       builder: (_) {
         return CommonDialog(
           title: '新建合集',
@@ -219,13 +331,16 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
             children: [
               TextField(
                 autofocus: true,
-                controller: _state.targetDirNameController,
-                decoration: const InputDecoration(hintText: '请输入合集名称', border: OutlineInputBorder()),
+                controller: state.targetDirNameController,
+                decoration: const InputDecoration(
+                  hintText: '请输入合集名称',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 8),
               CheckboxListTile(
-                value: _state.outputAsZip,
-                onChanged: _controller.handleToggleOutputAsZip,
+                value: state.outputAsZip,
+                onChanged: controller.handleToggleOutputAsZip,
                 title: const Text('输出为 ZIP 压缩包'),
                 contentPadding: .zero,
                 horizontalTitleGap: 0,
@@ -233,8 +348,8 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
                 dense: true,
               ),
               CheckboxListTile(
-                value: _state.deleteSourceMangas,
-                onChanged: _controller.handleToggleDeleteSource,
+                value: state.deleteSourceMangas,
+                onChanged: controller.handleToggleDeleteSource,
                 title: const Text('合并后删除原漫画'),
                 subtitle: const Text('此操作不可恢复'),
                 contentPadding: .zero,
@@ -244,7 +359,7 @@ class _MergeMangasPageState extends State<MergeMangasPage> {
               ),
             ],
           ),
-          onConfirm: _controller.handleTapStartMerge,
+          onConfirm: controller.handleTapStartMerge,
         );
       },
     );

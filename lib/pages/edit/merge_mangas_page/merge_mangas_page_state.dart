@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:manga_reader/models/manga.dart';
+import 'package:manga_reader/pages/mangas/layout/manga_list_layout_state.dart';
 
-class MergeMangasPageState {
+class MergeMangasPageState extends MangaListLayoutState {
   Directory? selectedDir;
   Directory? outputDir;
 
-  List<Manga> mangas = [];
   bool isLoadingMangas = false;
 
   bool get isDirSelected => selectedDir != null;
@@ -17,10 +17,10 @@ class MergeMangasPageState {
   List<Manga> selectedMangas = [];
   Set<int> selectedMangaIndexes = {};
 
-  final TextEditingController targetDirNameController = TextEditingController();
+  final TextEditingController targetDirNameController =
+      TextEditingController();
 
   bool isMerging = false;
-
   bool hasMerged = false;
 
   bool deleteSourceMangas = false;

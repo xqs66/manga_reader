@@ -44,11 +44,11 @@ class _HomePageState extends State<HomePage> {
       case 0:
         return const EditPage(key: ValueKey('edit'));
       case 1:
-        return const MangasPage(key: ValueKey('mangas'));
+        return MangasPage(key: ValueKey('mangas'));
       case 2:
         return const MorePage(key: ValueKey('more'));
       default:
-        return const MangasPage(key: ValueKey('mangas'));
+        return MangasPage(key: ValueKey('mangas'));
     }
   }
 
