@@ -124,25 +124,19 @@ class MangasPage extends StatefulWidget
     Manga manga,
     double cardWidth,
   ) {
-    if (!state.isSelectMode) {
-      return MangaGridCard(
-        manga: manga,
-        width: cardWidth,
-        onTap: () => controller.handleMangaCardTap(manga),
-        onLongPress: () => controller.handleLongPressManga(manga),
-      );
-    }
     return GetBuilder<MangasPageController>(
       id: '${controller.mangaIdPrefix}::${manga.id}',
       builder: (_) {
-        final selected = state.selectedMangaIds.contains(manga.id);
+        final selected =
+            state.isSelectMode && state.selectedMangaIds.contains(manga.id);
         return _buildSelectableGridCard(manga, cardWidth, selected);
       },
     );
   }
 
   @override
-  Widget buildListTile(BuildContext context, int index, Manga manga) {
+  Widget buildListTile(BuildContext context, int index, Manga manga,
+      {bool buildCover = true}) {
     return GetBuilder<MangasPageController>(
       id: '${controller.mangaIdPrefix}::${manga.id}',
       builder: (_) {
@@ -150,7 +144,7 @@ class MangasPage extends StatefulWidget
             state.isSelectMode && state.selectedMangaIds.contains(manga.id);
         return SelectedItemDecoration(
           isSelected: isSelected,
-          child: _buildListTileCard(manga, index),
+          child: _buildListTileCard(manga, index, buildCover: buildCover),
         );
       },
     );
@@ -245,7 +239,8 @@ class MangasPage extends StatefulWidget
         tileBuilder: (context, index, manga) {
           final buildCover =
               !(handler.isScrolling && handler.currentVelocity.abs() > 500);
-          return _buildListTileCard(manga, index, buildCover: buildCover);
+          return buildListTile(context, index, manga,
+              buildCover: buildCover);
         },
       ),
     );
@@ -268,11 +263,8 @@ class MangasPage extends StatefulWidget
                   final buildCover =
                       !(handler.isScrolling &&
                           handler.currentVelocity.abs() > 500);
-                  return _buildListTileCard(
-                    manga,
-                    index,
-                    buildCover: buildCover,
-                  );
+                  return buildListTile(context, index, manga,
+                      buildCover: buildCover);
                 },
               ),
             );
@@ -329,13 +321,17 @@ class MangasPage extends StatefulWidget
     double cardWidth,
     bool selected,
   ) {
+    final isSelect = state.isSelectMode;
     return Stack(
       children: [
         MangaGridCard(
           manga: manga,
           width: cardWidth,
-          onTap: () => controller.handleSelectManga(manga),
-          onLongPress: null,
+          onTap: () => isSelect
+              ? controller.handleSelectManga(manga)
+              : controller.handleMangaCardTap(manga),
+          onLongPress:
+              isSelect ? null : () => controller.handleLongPressManga(manga),
         ),
         if (selected)
           Positioned.fill(

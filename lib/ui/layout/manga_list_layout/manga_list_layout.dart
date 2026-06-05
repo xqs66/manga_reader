@@ -112,5 +112,6 @@ mixin MangaListLayout<C extends MangaListLayoutController,
     double cardWidth,
   );
 
-  Widget buildListTile(BuildContext context, int index, Manga manga);
+  Widget buildListTile(BuildContext context, int index, Manga manga,
+      {bool buildCover = true});
 }

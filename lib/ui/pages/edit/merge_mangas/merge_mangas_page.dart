@@ -162,7 +162,8 @@ class MergeMangasPage extends StatelessWidget
   }
 
   @override
-  Widget buildListTile(BuildContext context, int index, Manga manga) {
+  Widget buildListTile(BuildContext context, int index, Manga manga,
+      {bool buildCover = true}) {
     return GetBuilder<MergeMangasPageController>(
       id: '${controller.mangaListTileIdPrefix}::$index',
       builder: (_) {

@@ -238,6 +238,11 @@ class MangasPageController
     if (state.isSelectMode) state.selectedMangaIds.clear();
     state.isSelectMode = !state.isSelectMode;
     Get.find<HomePageController>().toggleShowBottomBar();
+    // Fire every individual GetBuilder so each item recomputes isSelected.
+    // GetX batches the IDs into a single microtask — no per-call overhead.
+    for (final m in mangasForCurrentGrid) {
+      update(['$mangaIdPrefix::${m.id}']);
+    }
     update([appBarId, bodyId]);
   }
 
@@ -322,7 +327,10 @@ class MangasPageController
     } else {
       state.selectedMangaIds.add(manga.id);
     }
-    if (state.selectedMangaIds.isEmpty) toggleSelectMode();
+    if (state.selectedMangaIds.isEmpty) {
+      toggleSelectMode();
+      return;
+    }
     update([appBarId, '$mangaIdPrefix::${manga.id}']);
   }
 
