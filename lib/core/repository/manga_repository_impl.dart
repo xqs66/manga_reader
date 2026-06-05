@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:get/get.dart' hide Value;
-import 'package:manga_reader/core/result.dart';
+import 'package:manga_reader/models/result.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
 import 'package:manga_reader/database/dao/group_dao.dart';
 import 'package:manga_reader/database/dao/manga_dao.dart';

@@ -14,7 +14,7 @@ import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:manga_reader/core/repository/manga_repository_impl.dart';
-import 'package:manga_reader/pages/home_page.dart';
+import 'package:manga_reader/ui/pages/home/home_page.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/settings/theme_setting.dart';

@@ -1,12 +1,12 @@
 import 'package:get/get.dart';
-import 'package:manga_reader/pages/edit/archive_mangas/archive_mangas_page.dart';
-import 'package:manga_reader/pages/edit/merge_mangas_page/merge_mangas_page.dart';
-import 'package:manga_reader/pages/home_page.dart';
-import 'package:manga_reader/pages/more/manage/group_manage_page.dart';
-import 'package:manga_reader/pages/reader/reader_page.dart';
-import 'package:manga_reader/pages/more/manage/path_manage_page.dart';
-import 'package:manga_reader/pages/more/settings/read/read_settings_page.dart';
-import 'package:manga_reader/pages/more/settings/settings_page.dart';
+import 'package:manga_reader/ui/pages/edit/archive_mangas/archive_mangas_page.dart';
+import 'package:manga_reader/ui/pages/edit/merge_mangas/merge_mangas_page.dart';
+import 'package:manga_reader/ui/pages/home/home_page.dart';
+import 'package:manga_reader/ui/pages/more/manage/group_manage_page.dart';
+import 'package:manga_reader/ui/pages/reader/reader_page.dart';
+import 'package:manga_reader/ui/pages/more/manage/path_manage_page.dart';
+import 'package:manga_reader/ui/pages/more/settings/read/read_settings_page.dart';
+import 'package:manga_reader/ui/pages/more/settings/settings_page.dart';
 
 class Routes {
   static const String root = '/';

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:manga_reader/core/result.dart';
+import 'package:manga_reader/models/result.dart';
 import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/manga_id.dart';

@@ -24,7 +24,13 @@
       "Bash(ls lib/pages/mangas/)",
       "Bash(git checkout *)",
       "Bash(ls lib/pages/mangas/layout/manga_list_layout*)",
-      "Bash(ls lib/pages/edit/merge_mangas_page/)"
+      "Bash(ls lib/pages/edit/merge_mangas_page/)",
+      "Bash(rm -f lib/core/mixin/scroll_handler.dart)",
+      "Bash(sed -i 's|import '\\\\''../models/local_image.dart'\\\\'';|import '\\\\''package:manga_reader/models/local_image.dart'\\\\'';|g' lib/ui/layout/list/manga_list_tile_card.dart lib/ui/widgets/manga_image.dart)",
+      "Bash(sed -i 's|import '\\\\''../models/manga.dart'\\\\'';|import '\\\\''package:manga_reader/models/manga.dart'\\\\'';|g' lib/ui/layout/list/manga_list_tile_card.dart)",
+      "Bash(sed -i 's|import '\\\\''../core/utils/file_util.dart'\\\\'';|import '\\\\''package:manga_reader/core/utils/file_util.dart'\\\\'';|g' lib/ui/layout/list/manga_list_tile_card.dart)",
+      "Bash(sed -i 's|import '\\\\''../../models/manga.dart'\\\\'';|import '\\\\''package:manga_reader/models/manga.dart'\\\\'';|g' lib/ui/pages/mangas/mangas_page_state.dart)",
+      "Bash(sed -i 's|import '\\\\''../../models/read_info.dart'\\\\'';|import '\\\\''package:manga_reader/models/read_info.dart'\\\\'';|g' lib/ui/pages/reader/reader_page_state.dart)"
     ],
     "additionalDirectories": [
       "D:\\Projects\\manga_reader\\lib\\ui\\pages_tmp"
