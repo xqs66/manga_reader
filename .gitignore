@@ -30,6 +30,8 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+.agents/
+.claude/
 /build/
 /coverage/
 
@@ -45,6 +47,7 @@ app.*.map.json
 /android/app/release
 android/.kotlin/sessions/kotlin-compiler-1778995123066346059.salive
 CLAUDE.md
-docs
+docs/
 tmp
 .gitignore
+skills-lock.json

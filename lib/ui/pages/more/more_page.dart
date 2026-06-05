@@ -33,6 +33,19 @@ class MorePage extends ListPage {
       ),
       const SizedBox(height: 24),
       section(
+        '局域网',
+        card([
+          tile(
+            icon: Icons.wifi_rounded,
+            title: '局域网服务',
+            subtitle: '启动服务器共享漫画给其他设备',
+            color: Colors.green,
+            onTap: () => Get.toNamed(Routes.lanServer),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 24),
+      section(
         '设置',
         card([
           tile(

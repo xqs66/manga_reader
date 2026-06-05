@@ -7,15 +7,22 @@ import 'package:manga_reader/ui/widgets/loading_widget.dart';
 
 /// Shared cover-image widget used by both [MangaGridCard] and
 /// [GroupGridCard] preview cells.
+///
+/// When [url] is non-null, loads via [ExtendedImage.network];
+/// otherwise loads from local [path] via [ExtendedImage.file].
 class GridCoverImage extends StatelessWidget {
-  final String path;
+  final String? path;
+  final String? url;
+  final Map<String, String>? headers;
   final double width;
   final double height;
   final Widget? placeholder;
 
   const GridCoverImage({
     super.key,
-    required this.path,
+    this.path,
+    this.url,
+    this.headers,
     required this.width,
     required this.height,
     this.placeholder,
@@ -23,11 +30,33 @@ class GridCoverImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (path.isEmpty) {
+    if (url != null) {
+      return ExtendedImage.network(
+        url!,
+        headers: headers,
+        fit: BoxFit.cover,
+        width: width,
+        height: height,
+        cacheWidth: (width * 2.8).ceil(),
+        clearMemoryCacheIfFailed: true,
+        loadStateChanged: (state) {
+          return switch (state.extendedImageLoadState) {
+            LoadState.loading =>
+              LoadingWidget(width: width, height: height, size: 20),
+            LoadState.completed =>
+              ExtendedRawImage(image: state.extendedImageInfo?.image, fit: BoxFit.cover).fadeIn(),
+            LoadState.failed =>
+              const Icon(Icons.broken_image_rounded, color: Colors.grey),
+          };
+        },
+      );
+    }
+
+    if (path == null || path!.isEmpty) {
       return placeholder ?? Container(color: Colors.grey.shade800);
     }
     return ExtendedImage.file(
-      File(path),
+      File(path!),
       fit: BoxFit.cover,
       width: width,
       height: height,

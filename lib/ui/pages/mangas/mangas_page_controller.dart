@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:manga_reader/core/enums/sort_mode.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
 import 'package:manga_reader/service/storage_service.dart';
+import 'package:manga_reader/models/discovered_server.dart';
 import 'package:manga_reader/models/result.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/manga_id.dart';
@@ -22,7 +23,7 @@ import 'package:manga_reader/core/constants/constants.dart';
 
 class MangasPageController
     extends MangaListLayoutController<MangasPageState> {
-  final MangaRepository _repo;
+  MangaRepository _repo;
 
   MangasPageController({MangaRepository? repo})
     : _repo = repo ?? Get.find<MangaRepository>();
@@ -86,26 +87,72 @@ class MangasPageController
   }
 
   void handlePopNext() {
-    state.mangas =
-        localMangaService.settingPath2Mangas[state.currentPath] ?? [];
-    _syncGroupsFromPath();
-    _applySort();
+    if (state.isRemotePath) {
+      _reloadRemoteMangas();
+    } else {
+      state.mangas =
+          localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+      _syncGroupsFromPath();
+      _applySort();
+    }
     update([bodyId]);
   }
 
-  Future<void> enterMangaDir(String path) async {
+  Future<void> enterMangaDir(String path, {MangaRepository? repo}) async {
     state.isAtRoot = false;
     state.currentPath = path;
     state.currentGridGroup = null;
-    state.mangas = localMangaService.settingPath2Mangas[path] ?? [];
-    await _syncGroupsFromPath();
+
+    if (repo != null) {
+      _repo = repo;
+      state.isRemotePath = true;
+      final result = await repo.loadMangasInDir(Directory(path));
+      if (result is Ok<List<Manga>>) {
+        state.mangas = result.value;
+      } else {
+        state.mangas = [];
+        Fluttertoast.showToast(msg: '加载远程漫画失败');
+      }
+      // Extract groups from manga data for remote paths
+      _extractGroupsFromMangas();
+    } else {
+      _repo = Get.find<MangaRepository>();
+      state.isRemotePath = false;
+      state.mangas = localMangaService.settingPath2Mangas[path] ?? [];
+      await _syncGroupsFromPath();
+    }
+
     _applySort();
     storageService.write(_lastPathKey, path);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
 
+  void _extractGroupsFromMangas() {
+    final groupNames = state.mangas.map((m) => m.groupName).toSet().toList();
+    if (groupNames.isEmpty) {
+      state.groups = [Constants.defaultGroupName];
+    } else {
+      state.groups = groupNames;
+      state.displayGroups.clear();
+      state.displayGroups.addAll(groupNames);
+    }
+  }
+
+  Future<void> _reloadRemoteMangas() async {
+    final path = state.currentPath;
+    if (path == null) return;
+    final result = await _repo.loadMangasInDir(Directory(path));
+    if (result is Ok<List<Manga>>) {
+      state.mangas = result.value;
+      _extractGroupsFromMangas();
+      _applySort();
+    }
+  }
+
   void backToRoot() {
     state.isAtRoot = true;
+    state.isRemotePath = false;
+    _repo = Get.find<MangaRepository>();
     storageService.remove(_lastPathKey);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
@@ -306,7 +353,7 @@ class MangasPageController
     } else {
       state.mangas.sort((a, b) => cmp(b, a));
     }
-    if (state.currentPath != null) {
+    if (state.currentPath != null && !state.isRemotePath) {
       localMangaService.settingPath2Mangas[state.currentPath!] = state.mangas;
     }
     update([bodyId]);
@@ -355,7 +402,8 @@ class MangasPageController
         arguments: ReadInfo(
             mangaInfo: manga,
             pageCount: manga.pageCount,
-            lastReadIndex: startIndex));
+            lastReadIndex: startIndex,
+            repo: state.isRemotePath ? _repo : null));
   }
 
   Future<void> handleMoveMangasToGroup(String groupName) async {
@@ -438,11 +486,20 @@ class MangasPageController
     if (state.currentPath == null) return;
     state.isRefreshing = true;
     update([refreshProgressId]);
-    await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
-    state.mangas =
-        localMangaService.settingPath2Mangas[state.currentPath] ?? [];
-    _syncGroupsFromPath();
-    _applySort();
+
+    if (state.isRemotePath) {
+      final result = await _repo.refreshMangasInDir(Directory(state.currentPath!));
+      if (result is Ok) {
+        _reloadRemoteMangas();
+      }
+    } else {
+      await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
+      state.mangas =
+          localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+      _syncGroupsFromPath();
+      _applySort();
+    }
+
     state.isRefreshing = false;
     update([bodyId, refreshProgressId]);
   }
@@ -457,6 +514,24 @@ class MangasPageController
     update([bodyId]);
     Get.back();
   }
+
+  // ── LAN server methods ──
+
+  void addConnectedServer(DiscoveredServer server) {
+    if (!state.connectedServers.contains(server)) {
+      state.connectedServers.add(server);
+      update([bodyId]);
+    }
+  }
+
+  void removeConnectedServer(DiscoveredServer server) {
+    state.connectedServers.remove(server);
+    update([bodyId]);
+  }
+
+  bool get isRemoteRepo => _repo.isReadOnly;
+
+  // ── Delete methods ──
 
   Future<void> handleDeleteMangas() async {
     final mangasToDelete = state.mangas

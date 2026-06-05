@@ -33,6 +33,9 @@ dependencies:
   xml: ^6.5.0
   battery_plus: ^6.2.1
   keframe: ^3.0.0
+  shelf: ^1.4.0
+  shelf_router: ^1.1.0
+  multicast_dns: ^0.3.2
 
 dev_dependencies:
   flutter_test:

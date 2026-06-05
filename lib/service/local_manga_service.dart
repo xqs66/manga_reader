@@ -326,7 +326,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       await MangaDao.insertManga(MangaCompanion.insert(
         id: result.id.value,
         title: result.title,
-        coverPath: Value(result.cover.path),
+        coverPath: Value(result.cover.path!),
         parentPath: parentPath,
         pageCount: result.pageCount,
         size: result.size,
@@ -426,9 +426,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         final archive = a.Archive();
         final images = await getMangaImagesAsync(manga);
         for (final image in images) {
-          final file = File(image.path);
+          final file = File(image.path!);
           final bytes = await file.readAsBytes();
-          archive.addFile(a.ArchiveFile(basename(image.path), bytes.length, bytes));
+          archive.addFile(a.ArchiveFile(basename(image.path!), bytes.length, bytes));
         }
         final zipData = a.ZipEncoder().encode(archive);
         final zipPath = '${manga.path}.zip';
@@ -586,9 +586,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
       final imageFiles = await getMangaImagesAsync(manga);
       for (final image in imageFiles) {
         final newName =
-            '${imageNameStartFrom.toString().padLeft(digits, '0')}${extension(image.path)}';
+            '${imageNameStartFrom.toString().padLeft(digits, '0')}${extension(image.path!)}';
         final target = File(join(output.path, newName));
-        await File(image.path).copy(target.path);
+        await File(image.path!).copy(target.path);
         imageNameStartFrom++;
         onProgress?.call(imageNameStartFrom, totalCount);
       }
@@ -638,7 +638,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
   Future<void> deleteImage(LocalImage image) async {
     try {
-      await FileUtil.deleteFile(File(image.path));
+      await FileUtil.deleteFile(File(image.path!));
       Fluttertoast.showToast(msg: '删除成功');
     } catch (e) {
       LogUtil.e('删除图片失败', error: e);

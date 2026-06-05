@@ -23,6 +23,9 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
   MangaRepositoryImpl(this._service);
 
   @override
+  bool get isReadOnly => false;
+
+  @override
   List<ServiceLifeCircleBean> get initDependencies => [localMangaService];
 
   @override

@@ -7,9 +7,12 @@ import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/core/extensions/string_ext.dart';
 import 'package:manga_reader/core/extensions/text_ext.dart';
+import 'package:manga_reader/core/repository/remote_manga_repository.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
 import 'package:manga_reader/core/mixin/scroll_handler.dart';
+import 'package:manga_reader/models/discovered_server.dart';
 import 'package:manga_reader/models/manga.dart';
+import 'package:manga_reader/service/lan_client_service.dart';
 import 'package:manga_reader/ui/pages/mangas/components/group_grid_view.dart';
 import 'package:manga_reader/ui/pages/mangas/components/group_list_view.dart';
 import 'package:manga_reader/ui/layout/grid/components/manga_grid_view.dart';
@@ -18,6 +21,7 @@ import 'package:manga_reader/ui/layout/list/components/manga_list_view.dart';
 import 'package:manga_reader/ui/pages/mangas/mangas_page_controller.dart';
 import 'package:manga_reader/ui/pages/mangas/mangas_page_state.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
+import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/ui/widgets/dialogs/common_dialog.dart';
@@ -112,7 +116,7 @@ class MangasPage extends StatefulWidget
 
   @override
   Widget buildNormalContent(BuildContext context) {
-    if (state.isAtRoot) return _buildLocalPaths();
+    if (state.isAtRoot) return _buildRootContent();
     if (state.mangas.isEmpty) return _buildEmptyContent();
     return _buildMangas();
   }
@@ -189,37 +193,147 @@ class MangasPage extends StatefulWidget
     );
   }
 
-  Widget _buildLocalPaths() {
-    if (pathSetting.paths.isEmpty) return _buildEmptyContent();
-    return ListView.builder(
+  Widget _buildRootContent() {
+    if (pathSetting.paths.isEmpty && state.connectedServers.isEmpty) {
+      return _buildEmptyContent();
+    }
+    final localPaths = pathSetting.paths;
+    final servers = state.connectedServers;
+    final hasLocal = localPaths.isNotEmpty;
+    final hasLan = servers.isNotEmpty;
+
+    return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: pathSetting.paths.length,
-      itemBuilder: (context, index) {
-        final path = pathSetting.paths[index];
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: .circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
-          ),
-          child: ListTile(
-            leading: const Icon(
-              Icons.folder_rounded,
-              color: UiConfig.primaryColor,
-            ),
-            title: Text(
-              path.displayPath(),
-              maxLines: 2,
-              overflow: .ellipsis,
-              style: const TextStyle(fontSize: 14),
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            shape: RoundedRectangleBorder(borderRadius: .circular(12)),
-            onTap: () => controller.enterMangaDir(path),
-          ),
-        );
-      },
+      children: [
+        // Local paths section
+        if (hasLocal) ...[
+          _buildSectionHeader('本机'),
+          ...localPaths.map((path) => _buildLocalPathCard(path)),
+        ],
+        // LAN servers section
+        if (hasLan) ...[
+          const SizedBox(height: 12),
+          _buildSectionHeader('局域网'),
+          ...servers.map((s) => _buildServerCard(s)),
+        ],
+        const SizedBox(height: 8),
+        _buildAddServerButton(),
+      ],
     );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 8, bottom: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey.shade500,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocalPathCard(String path) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: .circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: const Icon(
+          Icons.folder_rounded,
+          color: UiConfig.primaryColor,
+        ),
+        title: Text(
+          path.displayPath(),
+          maxLines: 2,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 14),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+        onTap: () => controller.enterMangaDir(path),
+      ),
+    );
+  }
+
+  Widget _buildServerCard(DiscoveredServer server) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: .circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: UiConfig.primaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.computer_rounded,
+            color: UiConfig.primaryColor,
+            size: 22,
+          ),
+        ),
+        title: Text(
+          server.displayName,
+          style: const TextStyle(fontSize: 14),
+        ),
+        subtitle: Text(
+          '${server.host}:${server.port}',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+        ),
+        trailing: IconButton(
+          onPressed: () => controller.removeConnectedServer(server),
+          icon: const Icon(Icons.close_rounded, size: 18),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+        onTap: () => _onServerTap(server),
+      ),
+    );
+  }
+
+  Widget _buildAddServerButton() {
+    return TextButton.icon(
+      onPressed: () => _onAddServer(),
+      icon: const Icon(Icons.add_rounded, size: 20),
+      label: const Text('添加服务器'),
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.grey.shade600,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  Future<void> _onAddServer() async {
+    final result = await Get.toNamed(Routes.lanDiscovery);
+    if (result is DiscoveredServer) {
+      controller.addConnectedServer(result);
+    }
+  }
+
+  Future<void> _onServerTap(DiscoveredServer server) async {
+    final path = await Get.toNamed(
+      Routes.lanServerPaths,
+      arguments: server,
+    );
+    if (path is String) {
+      final clientService = LanClientService(
+        host: server.host,
+        port: server.port,
+        token: server.token,
+      );
+      final remoteRepo = RemoteMangaRepository(clientService);
+      await controller.enterMangaDir(path, repo: remoteRepo);
+    }
   }
 
   @override

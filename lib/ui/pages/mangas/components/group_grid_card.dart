@@ -101,7 +101,14 @@ class GroupGridCard extends StatelessWidget {
         width: w,
         height: h,
         child: manga != null
-            ? GridCoverImage(path: manga.cover.path, width: w, height: h, placeholder: Container(color: bg))
+            ? GridCoverImage(
+                path: manga.cover.path,
+                url: manga.cover.url,
+                headers: manga.cover.headers,
+                width: w,
+                height: h,
+                placeholder: Container(color: bg),
+              )
             : Container(color: bg),
       ),
     );

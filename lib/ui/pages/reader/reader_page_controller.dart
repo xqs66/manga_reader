@@ -110,7 +110,8 @@ class ReaderPageController extends GetxController {
     if (state.readInfo.images.isNotEmpty) return;
     try {
       final manga = state.readInfo.mangaInfo;
-      final images = await localMangaService.getMangaImagesAsync(manga);
+      final repo = state.readInfo.repo ?? Get.find<MangaRepository>();
+      final images = await repo.getMangaImagesAsync(manga);
       state.readInfo.images = images;
     } catch (e) {
       LogUtil.e('Failed to load images for reader', error: e);
@@ -281,6 +282,10 @@ class ReaderPageController extends GetxController {
       lastReadTime: DateTime.now(),
     );
     state.readInfo.mangaInfo = updated;
+
+    // Skip local cache update for remote mangas
+    if (state.readInfo.repo != null) return;
+
     final parentPath = Directory(updated.path).parent.path;
     final list = localMangaService.settingPath2Mangas[parentPath];
     if (list != null) {
@@ -501,7 +506,7 @@ class ReaderPageController extends GetxController {
           'manga_reader',
           MangaId.fromPath(readingManga.path).value,
         );
-        final entryName = p.relative(image.path, from: cacheDir);
+        final entryName = p.relative(image.path!, from: cacheDir);
         await localMangaService.deleteImageFromZip(
           File(readingManga.path),
           entryName,
