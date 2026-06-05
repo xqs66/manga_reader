@@ -70,7 +70,7 @@ class MergeMangasPage extends StatelessWidget
               : '合并漫画为合集',
         ),
       ),
-      centerTitle: true,
+      centerTitle: false,
       actions: [
         GetBuilder<MergeMangasPageController>(
           id: controller.cancelButtonId,
