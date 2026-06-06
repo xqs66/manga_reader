@@ -23,7 +23,6 @@ class Routes {
   static const String lanServer = '/lan/server';
   static const String lanDiscovery = '/lan/discovery';
   static const String lanServerPaths = '/lan/serverPaths';
-  static const String tapDemo = '/tapdemo';
 
   static final pages = [
     GetPage(name: root, page: () => HomePage()),

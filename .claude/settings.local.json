@@ -38,7 +38,8 @@
       "Bash(git commit -m 'fix\\(ui\\): 修正网格卡片页码重复，恢复封面叠加标题设计 *)",
       "Bash(git branch *)",
       "Bash(flutter test *)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git commit *)"
     ],
     "additionalDirectories": [
       "D:\\Projects\\manga_reader\\lib\\ui\\pages_tmp"

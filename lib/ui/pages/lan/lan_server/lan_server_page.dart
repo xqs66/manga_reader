@@ -22,23 +22,25 @@ class LanServerPage extends StatelessWidget {
             title: const Text('局域网服务'),
             centerTitle: false,
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                const Spacer(flex: 1),
-                // Status indicator
-                _buildStatusIndicator(state),
-                const SizedBox(height: 32),
-                // Server info card
-                _buildInfoCard(controller, state),
-                const SizedBox(height: 24),
-                // Start/Stop button
-                _buildControlButton(controller, state),
-                const Spacer(flex: 2),
-                // Security notice
-                _buildSecurityNotice(),
-              ],
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  const Spacer(flex: 1),
+                  // Status indicator
+                  _buildStatusIndicator(state),
+                  const SizedBox(height: 32),
+                  // Server info card
+                  _buildInfoCard(controller, state),
+                  const SizedBox(height: 24),
+                  // Start/Stop button
+                  _buildControlButton(controller, state),
+                  const Spacer(flex: 2),
+                  // Security notice
+                  _buildSecurityNotice(controller, state),
+                ],
+              ),
             ),
           ),
         );
@@ -186,25 +188,79 @@ class LanServerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSecurityNotice() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline_rounded, size: 18, color: Colors.blue.shade600),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              '此服务仅在当前 WiFi 网络下可访问',
-              style: TextStyle(fontSize: 13, color: Colors.blueGrey),
+  Widget _buildSecurityNotice(LanServerPageController controller, LanServerPageState state) {
+    if (state.wifiNoticeDismissed && state.batteryNoticeDismissed) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      children: [
+        if (!state.wifiNoticeDismissed)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 18, color: Colors.blue.shade600),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    '此服务仅在当前 WiFi 网络下可访问',
+                    style: TextStyle(fontSize: 13, color: Colors.blueGrey),
+                  ),
+                ),
+                TextButton(
+                  onPressed: controller.dismissWifiNotice,
+                  child: Text(
+                    '不再提示',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blueGrey,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.blueGrey,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        if (!state.wifiNoticeDismissed || !state.batteryNoticeDismissed)
+          const SizedBox(height: 8),
+        if (!state.batteryNoticeDismissed)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.battery_alert_rounded, size: 18, color: Colors.orange.shade700),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    '请关闭本应用的电池优化，否则锁屏或切到后台后服务可能被系统终止',
+                    style: TextStyle(fontSize: 13, color: Colors.brown),
+                  ),
+                ),
+                TextButton(
+                  onPressed: controller.dismissBatteryNotice,
+                  child: Text(
+                    '不再提示',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.brown,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.brown,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

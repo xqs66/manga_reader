@@ -25,9 +25,6 @@ class LanDiscoveryPage extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Saved servers
-              _buildSavedServers(controller),
-              const SizedBox(height: 20),
               // Scan button
               _buildScanSection(controller, state),
               const SizedBox(height: 20),
@@ -66,25 +63,6 @@ class LanDiscoveryPage extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-
-  // ── Saved Servers ──
-
-  Widget _buildSavedServers(LanDiscoveryPageController controller) {
-    final saved = controller.savedServers;
-    if (saved.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('已保存的服务器'),
-        ...saved.map((s) => _buildServerCard(
-              controller: controller,
-              server: s,
-              isSaved: true,
-            )),
-      ],
     );
   }
 
@@ -138,7 +116,6 @@ class LanDiscoveryPage extends StatelessWidget {
         ...state.discoveredServers.map((s) => _buildServerCard(
               controller: controller,
               server: s,
-              isSaved: false,
             )),
       ],
     );
@@ -147,7 +124,6 @@ class LanDiscoveryPage extends StatelessWidget {
   Widget _buildServerCard({
     required LanDiscoveryPageController controller,
     required DiscoveredServer server,
-    required bool isSaved,
   }) {
     return Card(
       elevation: 0,
@@ -190,25 +166,9 @@ class LanDiscoveryPage extends StatelessWidget {
                     '${server.host}:${server.port}',
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
                   ),
-                  if (server.lastConnectedAt != null)
-                    Text(
-                      '上次连接: ${_formatTime(server.lastConnectedAt!)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
                 ],
               ),
             ),
-            if (isSaved)
-              IconButton(
-                onPressed: () => controller.removeSavedServer(server),
-                icon: const Icon(Icons.close_rounded, size: 18),
-                style: IconButton.styleFrom(
-                  foregroundColor: Colors.grey.shade400,
-                ),
-              ),
             const SizedBox(width: 4),
             FilledButton(
               onPressed: () async {
@@ -311,12 +271,4 @@ class LanDiscoveryPage extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final diff = now.difference(time);
-    if (diff.inMinutes < 1) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
-    if (diff.inHours < 24) return '${diff.inHours}小时前';
-    return '${diff.inDays}天前';
-  }
 }

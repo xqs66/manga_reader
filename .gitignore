@@ -33,6 +33,7 @@ migrate_working_dir/
 .agents/
 .claude/
 /build/
+build_output/
 /coverage/
 
 # Symbolication related

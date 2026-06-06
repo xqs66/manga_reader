@@ -1,18 +1,18 @@
 name: manga_reader
-description: "A new Flutter project."
+description: "一个支持本地阅读和局域网跨设备访问的漫画阅读器"
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0+2026060612
 
 environment:
   sdk: ^3.11.1
 
 dependencies:
+  flutter:
+    sdk: flutter
   animate_do: ^4.2.0
   drift: 2.30.0
   extended_image: ^10.0.1
   file_picker: ^10.3.10
-  flutter:
-    sdk: flutter
   fluttertoast: ^9.0.0
   get: ^4.7.3
   get_storage: ^2.1.1
@@ -37,7 +37,7 @@ dependencies:
   shelf_router: ^1.1.0
   multicast_dns: ^0.3.2
   flutter_foreground_task: ^9.2.2
-  sqlite3_flutter_libs: ^0.5.32
+  sqlite3_flutter_libs: 0.5.32
 
 dev_dependencies:
   flutter_test:
@@ -46,7 +46,7 @@ dev_dependencies:
   drift_dev: 2.30.0
   build_runner: ^2.4.0
 
-depandencies_overrides:
+dependency_overrides:
   sqlite3: 2.9.4  #sqlite3.x 之后采用hook方式，运行时无法无法正常下载原生库，所以降级为2.9.4
 
 flutter:

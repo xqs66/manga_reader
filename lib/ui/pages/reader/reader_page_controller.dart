@@ -76,6 +76,7 @@ class ReaderPageController extends GetxController {
   @override
   void onReady() {
     super.onReady();
+    LogUtil.i('Reader opened: ${state.readInfo.mangaInfo.title}', tag: 'READER');
 
     applyEnableImmersive();
 
@@ -264,6 +265,7 @@ class ReaderPageController extends GetxController {
 
   @override
   void onClose() {
+    LogUtil.i('Reader closed: ${state.readInfo.mangaInfo.title}', tag: 'READER');
     _saveTimer?.cancel();
     _timeTimer?.cancel();
     _pageTurnGuard?.cancel();

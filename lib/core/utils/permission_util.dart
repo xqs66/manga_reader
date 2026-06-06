@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class PermissionUtil {
@@ -22,7 +23,14 @@ class PermissionUtil {
   static Future<PermissionStatus> _requestPermission(Permission permission) async {
     var status = await permission.status;
     if (status.isDenied) {
+      LogUtil.i('Requesting permission: $permission', tag: 'PERM');
       status = await permission.request();
+      LogUtil.i(
+        status.isGranted
+            ? 'Permission granted: $permission'
+            : 'Permission denied: $permission',
+        tag: 'PERM',
+      );
     }
     return status;
   }

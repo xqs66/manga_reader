@@ -38,4 +38,7 @@ class MangasPageState extends MangaListLayoutState {
 
   /// Currently connected LAN servers.
   List<DiscoveredServer> connectedServers = [];
+
+  /// The server currently being browsed (for disconnect on error).
+  DiscoveredServer? currentServer;
 }

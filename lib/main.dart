@@ -9,6 +9,7 @@ import 'package:manga_reader/core/error/error_handler.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
+import 'package:manga_reader/service/log_service.dart';
 import 'package:manga_reader/service/path_service.dart';
 import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/settings/read_setting.dart';
@@ -20,6 +21,7 @@ import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/settings/theme_setting.dart';
 
 List<ServiceLifeCircleBean> serviceBeans = [
+  logService,
   pathSetting,
   pathService,
   storageService,
@@ -46,8 +48,10 @@ void main() {
 
       serviceBeans = topologicSort(serviceBeans);
       for (final bean in serviceBeans) {
+        LogUtil.i('Init service: ${bean.runtimeType}');
         await bean.initBean();
       }
+      LogUtil.i('All services initialized, running app');
 
       runApp(const MyApp());
     },

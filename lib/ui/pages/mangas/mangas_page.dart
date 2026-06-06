@@ -7,12 +7,10 @@ import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
 import 'package:manga_reader/core/extensions/string_ext.dart';
 import 'package:manga_reader/core/extensions/text_ext.dart';
-import 'package:manga_reader/core/repository/remote_manga_repository.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
 import 'package:manga_reader/core/mixin/scroll_handler.dart';
 import 'package:manga_reader/models/discovered_server.dart';
 import 'package:manga_reader/models/manga.dart';
-import 'package:manga_reader/service/lan_client_service.dart';
 import 'package:manga_reader/ui/pages/mangas/components/group_grid_view.dart';
 import 'package:manga_reader/ui/pages/mangas/components/group_list_view.dart';
 import 'package:manga_reader/ui/layout/grid/components/manga_grid_view.dart';
@@ -21,7 +19,6 @@ import 'package:manga_reader/ui/layout/list/components/manga_list_view.dart';
 import 'package:manga_reader/ui/pages/mangas/mangas_page_controller.dart';
 import 'package:manga_reader/ui/pages/mangas/mangas_page_state.dart';
 import 'package:manga_reader/routes/app_route_observer.dart';
-import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/settings/path_setting.dart';
 import 'package:manga_reader/settings/read_setting.dart';
 import 'package:manga_reader/ui/widgets/dialogs/common_dialog.dart';
@@ -285,6 +282,7 @@ class MangasPage extends StatefulWidget
   }
 
   Widget _buildServerCard(DiscoveredServer server) {
+    final connected = server.isConnected;
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -296,12 +294,12 @@ class MangasPage extends StatefulWidget
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: UiConfig.primaryColor.withValues(alpha: 0.1),
+            color: (connected ? Colors.green : Colors.grey).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.computer_rounded,
-            color: UiConfig.primaryColor,
+            color: connected ? Colors.green : Colors.grey,
             size: 22,
           ),
         ),
@@ -310,22 +308,49 @@ class MangasPage extends StatefulWidget
           style: const TextStyle(fontSize: 14),
         ),
         subtitle: Text(
-          '${server.host}:${server.port}',
+          connected
+              ? '${server.host}:${server.port}'
+              : '${server.host}:${server.port} · 未连接',
           style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
         ),
-        trailing: IconButton(
-          onPressed: () => controller.removeConnectedServer(server),
-          icon: const Icon(Icons.close_rounded, size: 18),
-        ),
+        trailing: !connected
+            ? TextButton(
+                onPressed: () => controller.tryConnectServer(server),
+                child: const Text('连接'),
+              )
+            : null,
         shape: RoundedRectangleBorder(borderRadius: .circular(12)),
-        onTap: () => _onServerTap(server),
+        onTap: connected ? () => controller.onServerTap(server) : null,
+        onLongPress: () => _showServerActions(server),
       ),
     );
   }
 
+  void _showServerActions(DiscoveredServer server) {
+    StyledActionSheet.show(
+      context: Get.context!,
+      title: server.displayName,
+      actions: [
+        StyledAction(
+          label: '删除服务器',
+          isDestructive: true,
+          onPressed: () => _confirmDeleteServer(server),
+        ),
+      ],
+    );
+  }
+
+  void _confirmDeleteServer(DiscoveredServer server) {
+    Get.dialog(CommonDialog(
+      title: '删除服务器',
+      content: Text('确定要删除"${server.displayName}"吗？'),
+      onConfirm: () => controller.removeConnectedServer(server),
+    ));
+  }
+
   Widget _buildAddServerButton() {
     return TextButton.icon(
-      onPressed: () => _onAddServer(),
+      onPressed: () => controller.openAddServer(),
       icon: const Icon(Icons.add_rounded, size: 20),
       label: const Text('添加服务器'),
       style: TextButton.styleFrom(
@@ -333,29 +358,6 @@ class MangasPage extends StatefulWidget
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
-  }
-
-  Future<void> _onAddServer() async {
-    final result = await Get.toNamed(Routes.lanDiscovery);
-    if (result is DiscoveredServer) {
-      controller.addConnectedServer(result);
-    }
-  }
-
-  Future<void> _onServerTap(DiscoveredServer server) async {
-    final path = await Get.toNamed(
-      Routes.lanServerPaths,
-      arguments: server,
-    );
-    if (path is String) {
-      final clientService = LanClientService(
-        host: server.host,
-        port: server.port,
-        token: server.token,
-      );
-      final remoteRepo = RemoteMangaRepository(clientService);
-      await controller.enterMangaDir(path, repo: remoteRepo);
-    }
   }
 
   @override
