@@ -9,6 +9,7 @@ import 'package:manga_reader/core/utils/zip_reader.dart';
 import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
+import 'package:manga_reader/service/foreground_task_handler.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/settings/path_setting.dart';
 import 'package:shelf/shelf.dart' as shelf;
@@ -75,11 +76,16 @@ class LanServerService with ServiceBeanMixin implements ServiceLifeCircleBean {
     _isRunning = true;
     _address = '${await _getLocalIp()}:$port';
     LogUtil.i('LAN server started at $_address');
+
+    // Keep process alive on Android when app goes to background.
+    startForegroundNotification(_address);
+
     return _address;
   }
 
   Future<void> stop() async {
     if (!_isRunning) return;
+    stopForegroundNotification();
     await _server?.close(force: true);
     _server = null;
     _isRunning = false;
@@ -168,7 +174,7 @@ class LanServerService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
     final allMangas = localMangaService.settingPath2Mangas[path] ?? [];
     final offset = int.tryParse(request.url.queryParameters['offset'] ?? '0') ?? 0;
-    final limit = int.tryParse(request.url.queryParameters['limit'] ?? '50') ?? 50;
+    final limit = int.tryParse(request.url.queryParameters['limit'] ?? '100000') ?? 100000;
 
     final page = allMangas.skip(offset).take(limit).toList();
     return shelf.Response.ok(

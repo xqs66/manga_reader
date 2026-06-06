@@ -37,7 +37,8 @@
       "Bash(git commit -m 'refactor\\(ui\\): 全面 UI 优化 — 简约优雅的现代阅读器风格 *)",
       "Bash(git commit -m 'fix\\(ui\\): 修正网格卡片页码重复，恢复封面叠加标题设计 *)",
       "Bash(git branch *)",
-      "Bash(flutter test *)"
+      "Bash(flutter test *)",
+      "WebFetch(domain:github.com)"
     ],
     "additionalDirectories": [
       "D:\\Projects\\manga_reader\\lib\\ui\\pages_tmp"

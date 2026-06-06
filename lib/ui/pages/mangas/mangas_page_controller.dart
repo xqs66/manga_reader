@@ -146,6 +146,8 @@ class MangasPageController
       state.mangas = result.value;
       _extractGroupsFromMangas();
       _applySort();
+    } else {
+      Fluttertoast.showToast(msg: '连接失败，请检查服务器是否在线');
     }
   }
 
@@ -360,6 +362,7 @@ class MangasPageController
   }
 
   void handleLongPressManga(Manga manga) {
+    if (state.isRemotePath) return;
     if (state.selectedMangaIds.contains(manga.id)) {
       state.selectedMangaIds.remove(manga.id);
     } else {

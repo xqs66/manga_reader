@@ -80,12 +80,24 @@ class MangasPage extends StatefulWidget
               onPressed: controller.backToRoot,
               icon: const Icon(Icons.arrow_back_rounded),
             ),
-      title: Text(
-        isInGroup
-            ? state.currentGridGroup!
-            : state.isAtRoot
-            ? '书架'
-            : state.currentPath?.displayPath() ?? '书架',
+      title: Row(
+        mainAxisSize: .min,
+        children: [
+          if (state.isRemotePath) ...[
+            const Icon(Icons.language_rounded, size: 18),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              isInGroup
+                  ? state.currentGridGroup!
+                  : state.isAtRoot
+                  ? '书架'
+                  : state.currentPath?.displayPath() ?? '书架',
+              overflow: .ellipsis,
+            ),
+          ),
+        ],
       ),
       centerTitle: false,
       actions: [
@@ -194,23 +206,33 @@ class MangasPage extends StatefulWidget
   }
 
   Widget _buildRootContent() {
-    if (pathSetting.paths.isEmpty && state.connectedServers.isEmpty) {
-      return _buildEmptyContent();
-    }
     final localPaths = pathSetting.paths;
     final servers = state.connectedServers;
     final hasLocal = localPaths.isNotEmpty;
     final hasLan = servers.isNotEmpty;
+    final isEmpty = !hasLocal && !hasLan;
+
+    if (isEmpty) {
+      return Column(
+        children: [
+          const Expanded(child: EmptyState(
+            icon: Icons.wifi_find_rounded,
+            title: '书架为空',
+            subtitle: '添加本地漫画源路径或连接局域网服务器',
+          )),
+          _buildAddServerButton(),
+          const SizedBox(height: 40),
+        ],
+      );
+    }
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       children: [
-        // Local paths section
         if (hasLocal) ...[
           _buildSectionHeader('本机'),
           ...localPaths.map((path) => _buildLocalPathCard(path)),
         ],
-        // LAN servers section
         if (hasLan) ...[
           const SizedBox(height: 12),
           _buildSectionHeader('局域网'),
@@ -421,12 +443,13 @@ class MangasPage extends StatefulWidget
             icon: Icons.copy_rounded,
             label: '复制',
           ),
-          SlidableAction(
-            onPressed: (_) => Get.dialog(_buildDeleteMangaDialog(manga)),
-            foregroundColor: Colors.red,
-            icon: Icons.delete_rounded,
-            label: '删除',
-          ),
+          if (!state.isRemotePath)
+            SlidableAction(
+              onPressed: (_) => Get.dialog(_buildDeleteMangaDialog(manga)),
+              foregroundColor: Colors.red,
+              icon: Icons.delete_rounded,
+              label: '删除',
+            ),
         ],
       ),
     );
@@ -481,9 +504,10 @@ class MangasPage extends StatefulWidget
   // ── App bar ──
 
   StyledPopupMenu<String> _buildPopMenu() {
+    final isRemote = state.isRemotePath;
     return StyledPopupMenu<String>(
       items: [
-        if (!state.isAtRoot && state.currentGridGroup == null)
+        if (!state.isAtRoot && state.currentGridGroup == null && !isRemote)
           StyledPopupItem(
             value: 'new_group',
             label: '新建分组',
@@ -514,12 +538,13 @@ class MangasPage extends StatefulWidget
             icon: Icons.shuffle_rounded,
             onSelected: (_) => controller.openRandomManga(),
           ),
-        StyledPopupItem(
-          value: 'refresh',
-          label: '刷新',
-          icon: Icons.refresh_rounded,
-          onSelected: (_) => controller.refreshMangas(),
-        ),
+        if (!isRemote)
+          StyledPopupItem(
+            value: 'refresh',
+            label: '刷新',
+            icon: Icons.refresh_rounded,
+            onSelected: (_) => controller.refreshMangas(),
+          ),
       ],
       child: const Padding(
         padding: EdgeInsets.only(left: 6, right: 16),
@@ -552,33 +577,36 @@ class MangasPage extends StatefulWidget
         if (!state.isSelectMode) return const SizedBox.shrink();
         final view = PlatformDispatcher.instance.views.first;
         final bottomInset = view.padding.bottom / view.devicePixelRatio;
+        final isRemote = state.isRemotePath;
         return BottomAppBar(
           height: UiConfig.bottomBarHeight + bottomInset,
           padding: EdgeInsets.only(bottom: bottomInset),
           child: Row(
             mainAxisAlignment: .spaceEvenly,
             children: [
-              _buildBottomAction(
-                icon: Icons.drive_file_move_rounded,
-                label: '移动',
-                onPressed: () {
-                  if (state.selectedMangaIds.isEmpty) {
-                    Fluttertoast.showToast(msg: '请先选择漫画');
-                    return;
-                  }
-                  Get.dialog(_buildMoveGroupDialog());
-                },
-              ),
-              _buildBottomAction(
-                icon: Icons.delete_rounded,
-                label: '删除',
-                color: Colors.red,
-                onPressed: () {
-                  if (state.selectedMangaIds.isEmpty) {
-                    Fluttertoast.showToast(msg: '请先选择漫画');
-                    return;
-                  }
-                  Get.dialog(_buildDeleteMangasDialog());
+              if (!isRemote)
+                _buildBottomAction(
+                  icon: Icons.drive_file_move_rounded,
+                  label: '移动',
+                  onPressed: () {
+                    if (state.selectedMangaIds.isEmpty) {
+                      Fluttertoast.showToast(msg: '请先选择漫画');
+                      return;
+                    }
+                    Get.dialog(_buildMoveGroupDialog());
+                  },
+                ),
+              if (!isRemote)
+                _buildBottomAction(
+                  icon: Icons.delete_rounded,
+                  label: '删除',
+                  color: Colors.red,
+                  onPressed: () {
+                    if (state.selectedMangaIds.isEmpty) {
+                      Fluttertoast.showToast(msg: '请先选择漫画');
+                      return;
+                    }
+                    Get.dialog(_buildDeleteMangasDialog());
                 },
               ),
             ],

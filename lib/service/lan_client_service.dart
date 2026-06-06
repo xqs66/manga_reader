@@ -49,7 +49,7 @@ class LanClientService {
   Future<({List<Manga> mangas, int total})> fetchMangas(
     String path, {
     int offset = 0,
-    int limit = 50,
+    int limit = 100000,
   }) async {
     final encoded = Uri.encodeComponent(path);
     final (status, body) = await _get(

@@ -36,6 +36,8 @@ dependencies:
   shelf: ^1.4.0
   shelf_router: ^1.1.0
   multicast_dns: ^0.3.2
+  flutter_foreground_task: ^9.2.2
+  sqlite3_flutter_libs: ^0.5.32
 
 dev_dependencies:
   flutter_test:

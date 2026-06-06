@@ -416,6 +416,7 @@ class ReaderPageController extends GetxController {
         this.state.imageContainerSizes[index] != null) {
       return;
     }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final fittedSize = applyBoxFit(
         .fitWidth,
