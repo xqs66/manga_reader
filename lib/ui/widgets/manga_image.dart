@@ -4,10 +4,9 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/extensions/widget_ext.dart';
+import 'package:manga_reader/models/local_image.dart';
 import 'package:manga_reader/ui/widgets/loading_widget.dart';
 import 'package:manga_reader/ui/widgets/styled_menu.dart';
-
-import 'package:manga_reader/models/local_image.dart';
 
 typedef LoadingWidgetBuilder = Widget Function(ExtendedImageState state);
 typedef LoadFailedWidgetBuilder = Widget Function(ExtendedImageState state);
@@ -54,31 +53,44 @@ class MangaImage extends StatelessWidget {
         height: height,
         width: width,
         color: backgroundColor,
-        child: ExtendedImage.file(
-          File(image.path),
-          width: width,
-          height: height,
-          fit: fit,
-          maxBytes: maxBytes,
-          clearMemoryCacheWhenDispose: true,
-          loadStateChanged: (state) {
-            switch (state.extendedImageLoadState) {
-              case .loading:
-                return LoadingWidget(
-                  height: height ?? Get.width * 1.78,
-                  width: width ?? Get.width,
-                  size: 28,
-                );
-              case .completed:
-                loadCompleteCallBack?.call(state);
-                return _buildExtendedRawImage(state).fadeIn();
-              case .failed:
-                return Icon(Icons.broken_image);
-            }
-          },
-        ),
+        child: image.isRemote
+            ? ExtendedImage.network(
+                image.url!,
+                headers: image.headers,
+                cache: true,
+                timeLimit: const Duration(seconds: 60),
+                width: width,
+                height: height,
+                fit: fit,
+                maxBytes: maxBytes,
+                loadStateChanged: _loadStateChanged,
+              )
+            : ExtendedImage.file(
+                File(image.path!),
+                width: width,
+                height: height,
+                fit: fit,
+                maxBytes: maxBytes,
+                loadStateChanged: _loadStateChanged,
+              ),
       ),
     );
+  }
+
+  Widget? _loadStateChanged(ExtendedImageState state) {
+    switch (state.extendedImageLoadState) {
+      case .loading:
+        return LoadingWidget(
+          height: height ?? Get.width * 1.78,
+          width: width ?? Get.width,
+          size: 28,
+        );
+      case .completed:
+        loadCompleteCallBack?.call(state);
+        return _buildExtendedRawImage(state).fadeIn();
+      case .failed:
+        return const Icon(Icons.broken_image);
+    }
   }
 
   Widget _buildExtendedRawImage(ExtendedImageState state) {
@@ -93,12 +105,12 @@ class MangaImage extends StatelessWidget {
 
     return ExtendedRawImage(
       image: state.extendedImageInfo?.image,
-      height: fittedSizes.destination.height == 0
-          ? null
-          : fittedSizes.destination.height,
       width: fittedSizes.destination.width == 0
           ? null
           : fittedSizes.destination.width,
+      height: fittedSizes.destination.height == 0
+          ? null
+          : fittedSizes.destination.height,
       scale: state.extendedImageInfo?.scale ?? 1.0,
       fit: fit,
     ).fadeIn();

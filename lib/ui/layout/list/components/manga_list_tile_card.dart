@@ -58,40 +58,56 @@ class MangaListTileCard extends StatelessWidget {
   Widget _buildCoverImage(LocalImage cover) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        return ClipRRect(
-          borderRadius: .circular(8),
-          child: buildCover
-              ? ExtendedImage.file(
-                  File(cover.path),
-                  fit: .cover,
-                  width: constraints.maxHeight * 0.72,
-                  height: constraints.maxHeight,
-                  cacheWidth: (constraints.maxHeight * 2.16).ceil(),
-                  clearMemoryCacheIfFailed: true,
-                  loadStateChanged: (state) {
-                    switch (state.extendedImageLoadState) {
-                      case .loading:
-                        return LoadingWidget(
-                          width: constraints.maxHeight * 0.72,
-                          height: constraints.maxHeight,
-                        );
-                      case .completed:
-                        return ExtendedRawImage(
-                          image: state.extendedImageInfo?.image,
-                          fit: .cover,
-                        ).fadeIn();
-                      case .failed:
-                        return const Icon(Icons.broken_image_rounded);
-                    }
-                  },
-                )
-              : const SizedBox(
-                  width:
-                      (UiConfig.mangaListCardHeight -
-                          2 * UiConfig.mangaListCardPadding) *
-                      0.72,
-                ),
-        );
+        final w = constraints.maxHeight * 0.72;
+        final h = constraints.maxHeight;
+        if (!buildCover) {
+          return SizedBox(width: w);
+        }
+        final child = cover.isRemote
+            ? ExtendedImage.network(
+                cover.url!,
+                headers: cover.headers,
+                fit: .cover,
+                width: w,
+                height: h,
+                cacheWidth: (constraints.maxHeight * 2.16).ceil(),
+                clearMemoryCacheIfFailed: true,
+                loadStateChanged: (state) {
+                  switch (state.extendedImageLoadState) {
+                    case .loading:
+                      return LoadingWidget(width: w, height: h);
+                    case .completed:
+                      return ExtendedRawImage(
+                        image: state.extendedImageInfo?.image,
+                        fit: .cover,
+                      ).fadeIn();
+                    case .failed:
+                      return const Icon(Icons.broken_image_rounded);
+                  }
+                },
+              )
+            : ExtendedImage.file(
+                File(cover.path!),
+                fit: .cover,
+                width: w,
+                height: h,
+                cacheWidth: (constraints.maxHeight * 2.16).ceil(),
+                clearMemoryCacheIfFailed: true,
+                loadStateChanged: (state) {
+                  switch (state.extendedImageLoadState) {
+                    case .loading:
+                      return LoadingWidget(width: w, height: h);
+                    case .completed:
+                      return ExtendedRawImage(
+                        image: state.extendedImageInfo?.image,
+                        fit: .cover,
+                      ).fadeIn();
+                    case .failed:
+                      return const Icon(Icons.broken_image_rounded);
+                  }
+                },
+              );
+        return ClipRRect(borderRadius: .circular(8), child: child);
       },
     );
   }

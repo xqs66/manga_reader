@@ -7,7 +7,10 @@ import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/enums/sort_mode.dart';
 import 'package:manga_reader/core/repository/manga_repository.dart';
+import 'package:manga_reader/core/repository/remote_manga_repository.dart';
+import 'package:manga_reader/service/lan_client_service.dart';
 import 'package:manga_reader/service/storage_service.dart';
+import 'package:manga_reader/models/discovered_server.dart';
 import 'package:manga_reader/models/result.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/models/manga_id.dart';
@@ -22,7 +25,7 @@ import 'package:manga_reader/core/constants/constants.dart';
 
 class MangasPageController
     extends MangaListLayoutController<MangasPageState> {
-  final MangaRepository _repo;
+  MangaRepository _repo;
 
   MangasPageController({MangaRepository? repo})
     : _repo = repo ?? Get.find<MangaRepository>();
@@ -49,6 +52,7 @@ class MangasPageController
   void onInit() {
     super.onInit();
     _restoreSort();
+    state.connectedServers = _loadSavedServers();
     ever(readSetting.bookshelfLayout, (_) {
       state.currentGridGroup = null;
       update([bodyId, appBarId]);
@@ -86,26 +90,76 @@ class MangasPageController
   }
 
   void handlePopNext() {
-    state.mangas =
-        localMangaService.settingPath2Mangas[state.currentPath] ?? [];
-    _syncGroupsFromPath();
-    _applySort();
+    if (state.isRemotePath) {
+      _reloadRemoteMangas();
+    } else {
+      state.mangas =
+          localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+      _syncGroupsFromPath();
+      _applySort();
+    }
     update([bodyId]);
   }
 
-  Future<void> enterMangaDir(String path) async {
+  Future<void> enterMangaDir(String path, {MangaRepository? repo}) async {
     state.isAtRoot = false;
     state.currentPath = path;
     state.currentGridGroup = null;
-    state.mangas = localMangaService.settingPath2Mangas[path] ?? [];
-    await _syncGroupsFromPath();
+
+    if (repo != null) {
+      _repo = repo;
+      state.isRemotePath = true;
+      final result = await repo.loadMangasInDir(Directory(path));
+      if (result is Ok<List<Manga>>) {
+        state.mangas = result.value;
+      } else {
+        state.mangas = [];
+        Fluttertoast.showToast(msg: '加载远程漫画失败');
+      }
+      // Extract groups from manga data for remote paths
+      _extractGroupsFromMangas();
+    } else {
+      _repo = Get.find<MangaRepository>();
+      state.isRemotePath = false;
+      state.mangas = localMangaService.settingPath2Mangas[path] ?? [];
+      await _syncGroupsFromPath();
+    }
+
     _applySort();
     storageService.write(_lastPathKey, path);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
 
+  void _extractGroupsFromMangas() {
+    final groupNames = state.mangas.map((m) => m.groupName).toSet().toList();
+    if (groupNames.isEmpty) {
+      state.groups = [Constants.defaultGroupName];
+    } else {
+      state.groups = groupNames;
+      state.displayGroups.clear();
+      state.displayGroups.addAll(groupNames);
+    }
+  }
+
+  Future<void> _reloadRemoteMangas() async {
+    final path = state.currentPath;
+    if (path == null) return;
+    final result = await _repo.loadMangasInDir(Directory(path));
+    if (result is Ok<List<Manga>>) {
+      state.mangas = result.value;
+      _extractGroupsFromMangas();
+      _applySort();
+    } else {
+      Fluttertoast.showToast(msg: '连接失败，请检查服务器是否在线');
+      if (state.currentServer != null) disconnectServer(state.currentServer!);
+    }
+  }
+
   void backToRoot() {
     state.isAtRoot = true;
+    state.isRemotePath = false;
+    state.currentServer = null;
+    _repo = Get.find<MangaRepository>();
     storageService.remove(_lastPathKey);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
@@ -306,13 +360,14 @@ class MangasPageController
     } else {
       state.mangas.sort((a, b) => cmp(b, a));
     }
-    if (state.currentPath != null) {
+    if (state.currentPath != null && !state.isRemotePath) {
       localMangaService.settingPath2Mangas[state.currentPath!] = state.mangas;
     }
     update([bodyId]);
   }
 
   void handleLongPressManga(Manga manga) {
+    if (state.isRemotePath) return;
     if (state.selectedMangaIds.contains(manga.id)) {
       state.selectedMangaIds.remove(manga.id);
     } else {
@@ -355,7 +410,8 @@ class MangasPageController
         arguments: ReadInfo(
             mangaInfo: manga,
             pageCount: manga.pageCount,
-            lastReadIndex: startIndex));
+            lastReadIndex: startIndex,
+            repo: state.isRemotePath ? _repo : null));
   }
 
   Future<void> handleMoveMangasToGroup(String groupName) async {
@@ -438,11 +494,20 @@ class MangasPageController
     if (state.currentPath == null) return;
     state.isRefreshing = true;
     update([refreshProgressId]);
-    await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
-    state.mangas =
-        localMangaService.settingPath2Mangas[state.currentPath] ?? [];
-    _syncGroupsFromPath();
-    _applySort();
+
+    if (state.isRemotePath) {
+      final result = await _repo.refreshMangasInDir(Directory(state.currentPath!));
+      if (result is Ok) {
+        _reloadRemoteMangas();
+      }
+    } else {
+      await localMangaService.refreshMangasInDir(Directory(state.currentPath!));
+      state.mangas =
+          localMangaService.settingPath2Mangas[state.currentPath] ?? [];
+      _syncGroupsFromPath();
+      _applySort();
+    }
+
     state.isRefreshing = false;
     update([bodyId, refreshProgressId]);
   }
@@ -457,6 +522,113 @@ class MangasPageController
     update([bodyId]);
     Get.back();
   }
+
+  // ── LAN server methods ──
+
+  static const _savedServersKey = 'lan_saved_servers';
+
+  List<DiscoveredServer> _loadSavedServers() {
+    final raw = storageService.read<List<dynamic>>(_savedServersKey);
+    if (raw == null) return [];
+    return raw
+        .cast<Map<String, dynamic>>()
+        .map((m) => DiscoveredServer.fromJson(m))
+        .toList();
+  }
+
+  Future<void> _saveServers() async {
+    await storageService.write(
+      _savedServersKey,
+      state.connectedServers.map((s) => s.toJson()).toList(),
+    );
+  }
+
+  void addConnectedServer(DiscoveredServer server) {
+    if (!state.connectedServers.contains(server)) {
+      state.connectedServers.add(server);
+      _saveServers();
+      update([bodyId]);
+    }
+  }
+
+  void removeConnectedServer(DiscoveredServer server) {
+    state.connectedServers.remove(server);
+    _saveServers();
+    update([bodyId]);
+  }
+
+  Future<bool> tryConnectServer(DiscoveredServer server) async {
+    final clientService = LanClientService(
+      host: server.host,
+      port: server.port,
+      token: server.token,
+    );
+    final ok = await clientService.healthCheck();
+    clientService.dispose();
+
+    if (ok) {
+      final i = state.connectedServers.indexOf(server);
+      if (i != -1) {
+        state.connectedServers[i] = server.copyWith(isConnected: true);
+        _saveServers();
+        update([bodyId]);
+      }
+    } else {
+      Fluttertoast.showToast(msg: '无法连接到 ${server.displayName}');
+    }
+    return ok;
+  }
+
+  void disconnectServer(DiscoveredServer server) {
+    final i = state.connectedServers.indexOf(server);
+    if (i != -1 && state.connectedServers[i].isConnected) {
+      state.connectedServers[i] = server.copyWith(isConnected: false);
+      _saveServers();
+      update([bodyId]);
+    }
+  }
+
+  bool get isRemoteRepo => _repo.isReadOnly;
+
+  // ── LAN navigation ──
+
+  Future<void> openAddServer() async {
+    final result = await Get.toNamed(Routes.lanDiscovery);
+    if (result is DiscoveredServer) {
+      addConnectedServer(result);
+    }
+  }
+
+  Future<void> onServerTap(DiscoveredServer server) async {
+    // Health check before navigating, so we don't open the paths page
+    // if the server is offline.
+    final clientService = LanClientService(
+      host: server.host,
+      port: server.port,
+      token: server.token,
+    );
+    final ok = await clientService.healthCheck();
+    if (!ok) {
+      clientService.dispose();
+      disconnectServer(server);
+      Fluttertoast.showToast(msg: '服务器已离线');
+      return;
+    }
+
+    final path = await Get.toNamed(
+      Routes.lanServerPaths,
+      arguments: server,
+    );
+    if (path is String) {
+      state.currentServer = server;
+      final remoteRepo = RemoteMangaRepository(clientService);
+      await enterMangaDir(path, repo: remoteRepo);
+    } else {
+      clientService.dispose();
+    }
+  }
+
+  // ── Delete methods ──
 
   Future<void> handleDeleteMangas() async {
     final mangasToDelete = state.mangas

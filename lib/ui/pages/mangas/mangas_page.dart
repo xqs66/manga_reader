@@ -9,6 +9,7 @@ import 'package:manga_reader/core/extensions/string_ext.dart';
 import 'package:manga_reader/core/extensions/text_ext.dart';
 import 'package:manga_reader/core/utils/file_util.dart';
 import 'package:manga_reader/core/mixin/scroll_handler.dart';
+import 'package:manga_reader/models/discovered_server.dart';
 import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/ui/pages/mangas/components/group_grid_view.dart';
 import 'package:manga_reader/ui/pages/mangas/components/group_list_view.dart';
@@ -76,12 +77,24 @@ class MangasPage extends StatefulWidget
               onPressed: controller.backToRoot,
               icon: const Icon(Icons.arrow_back_rounded),
             ),
-      title: Text(
-        isInGroup
-            ? state.currentGridGroup!
-            : state.isAtRoot
-            ? '书架'
-            : state.currentPath?.displayPath() ?? '书架',
+      title: Row(
+        mainAxisSize: .min,
+        children: [
+          if (state.isRemotePath) ...[
+            const Icon(Icons.language_rounded, size: 18),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              isInGroup
+                  ? state.currentGridGroup!
+                  : state.isAtRoot
+                  ? '书架'
+                  : state.currentPath?.displayPath() ?? '书架',
+              overflow: .ellipsis,
+            ),
+          ),
+        ],
       ),
       centerTitle: false,
       actions: [
@@ -112,7 +125,7 @@ class MangasPage extends StatefulWidget
 
   @override
   Widget buildNormalContent(BuildContext context) {
-    if (state.isAtRoot) return _buildLocalPaths();
+    if (state.isAtRoot) return _buildRootContent();
     if (state.mangas.isEmpty) return _buildEmptyContent();
     return _buildMangas();
   }
@@ -189,36 +202,161 @@ class MangasPage extends StatefulWidget
     );
   }
 
-  Widget _buildLocalPaths() {
-    if (pathSetting.paths.isEmpty) return _buildEmptyContent();
-    return ListView.builder(
+  Widget _buildRootContent() {
+    final localPaths = pathSetting.paths;
+    final servers = state.connectedServers;
+    final hasLocal = localPaths.isNotEmpty;
+    final hasLan = servers.isNotEmpty;
+    final isEmpty = !hasLocal && !hasLan;
+
+    if (isEmpty) {
+      return Column(
+        children: [
+          const Expanded(child: EmptyState(
+            icon: Icons.wifi_find_rounded,
+            title: '书架为空',
+            subtitle: '添加本地漫画源路径或连接局域网服务器',
+          )),
+          _buildAddServerButton(),
+          const SizedBox(height: 40),
+        ],
+      );
+    }
+
+    return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: pathSetting.paths.length,
-      itemBuilder: (context, index) {
-        final path = pathSetting.paths[index];
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: .circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
+      children: [
+        if (hasLocal) ...[
+          _buildSectionHeader('本机'),
+          ...localPaths.map((path) => _buildLocalPathCard(path)),
+        ],
+        if (hasLan) ...[
+          const SizedBox(height: 12),
+          _buildSectionHeader('局域网'),
+          ...servers.map((s) => _buildServerCard(s)),
+        ],
+        const SizedBox(height: 8),
+        _buildAddServerButton(),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 8, bottom: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey.shade500,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocalPathCard(String path) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: .circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: const Icon(
+          Icons.folder_rounded,
+          color: UiConfig.primaryColor,
+        ),
+        title: Text(
+          path.displayPath(),
+          maxLines: 2,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 14),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+        onTap: () => controller.enterMangaDir(path),
+      ),
+    );
+  }
+
+  Widget _buildServerCard(DiscoveredServer server) {
+    final connected = server.isConnected;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: .circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: (connected ? Colors.green : Colors.grey).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: ListTile(
-            leading: const Icon(
-              Icons.folder_rounded,
-              color: UiConfig.primaryColor,
-            ),
-            title: Text(
-              path.displayPath(),
-              maxLines: 2,
-              overflow: .ellipsis,
-              style: const TextStyle(fontSize: 14),
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            shape: RoundedRectangleBorder(borderRadius: .circular(12)),
-            onTap: () => controller.enterMangaDir(path),
+          child: Icon(
+            Icons.computer_rounded,
+            color: connected ? Colors.green : Colors.grey,
+            size: 22,
           ),
-        );
-      },
+        ),
+        title: Text(
+          server.displayName,
+          style: const TextStyle(fontSize: 14),
+        ),
+        subtitle: Text(
+          connected
+              ? '${server.host}:${server.port}'
+              : '${server.host}:${server.port} · 未连接',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+        ),
+        trailing: !connected
+            ? TextButton(
+                onPressed: () => controller.tryConnectServer(server),
+                child: const Text('连接'),
+              )
+            : null,
+        shape: RoundedRectangleBorder(borderRadius: .circular(12)),
+        onTap: connected ? () => controller.onServerTap(server) : null,
+        onLongPress: () => _showServerActions(server),
+      ),
+    );
+  }
+
+  void _showServerActions(DiscoveredServer server) {
+    StyledActionSheet.show(
+      context: Get.context!,
+      title: server.displayName,
+      actions: [
+        StyledAction(
+          label: '删除服务器',
+          isDestructive: true,
+          onPressed: () => _confirmDeleteServer(server),
+        ),
+      ],
+    );
+  }
+
+  void _confirmDeleteServer(DiscoveredServer server) {
+    Get.dialog(CommonDialog(
+      title: '删除服务器',
+      content: Text('确定要删除"${server.displayName}"吗？'),
+      onConfirm: () => controller.removeConnectedServer(server),
+    ));
+  }
+
+  Widget _buildAddServerButton() {
+    return TextButton.icon(
+      onPressed: () => controller.openAddServer(),
+      icon: const Icon(Icons.add_rounded, size: 20),
+      label: const Text('添加服务器'),
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.grey.shade600,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
     );
   }
 
@@ -307,12 +445,13 @@ class MangasPage extends StatefulWidget
             icon: Icons.copy_rounded,
             label: '复制',
           ),
-          SlidableAction(
-            onPressed: (_) => Get.dialog(_buildDeleteMangaDialog(manga)),
-            foregroundColor: Colors.red,
-            icon: Icons.delete_rounded,
-            label: '删除',
-          ),
+          if (!state.isRemotePath)
+            SlidableAction(
+              onPressed: (_) => Get.dialog(_buildDeleteMangaDialog(manga)),
+              foregroundColor: Colors.red,
+              icon: Icons.delete_rounded,
+              label: '删除',
+            ),
         ],
       ),
     );
@@ -367,9 +506,10 @@ class MangasPage extends StatefulWidget
   // ── App bar ──
 
   StyledPopupMenu<String> _buildPopMenu() {
+    final isRemote = state.isRemotePath;
     return StyledPopupMenu<String>(
       items: [
-        if (!state.isAtRoot && state.currentGridGroup == null)
+        if (!state.isAtRoot && state.currentGridGroup == null && !isRemote)
           StyledPopupItem(
             value: 'new_group',
             label: '新建分组',
@@ -400,12 +540,13 @@ class MangasPage extends StatefulWidget
             icon: Icons.shuffle_rounded,
             onSelected: (_) => controller.openRandomManga(),
           ),
-        StyledPopupItem(
-          value: 'refresh',
-          label: '刷新',
-          icon: Icons.refresh_rounded,
-          onSelected: (_) => controller.refreshMangas(),
-        ),
+        if (!isRemote)
+          StyledPopupItem(
+            value: 'refresh',
+            label: '刷新',
+            icon: Icons.refresh_rounded,
+            onSelected: (_) => controller.refreshMangas(),
+          ),
       ],
       child: const Padding(
         padding: EdgeInsets.only(left: 6, right: 16),
@@ -438,33 +579,36 @@ class MangasPage extends StatefulWidget
         if (!state.isSelectMode) return const SizedBox.shrink();
         final view = PlatformDispatcher.instance.views.first;
         final bottomInset = view.padding.bottom / view.devicePixelRatio;
+        final isRemote = state.isRemotePath;
         return BottomAppBar(
           height: UiConfig.bottomBarHeight + bottomInset,
           padding: EdgeInsets.only(bottom: bottomInset),
           child: Row(
             mainAxisAlignment: .spaceEvenly,
             children: [
-              _buildBottomAction(
-                icon: Icons.drive_file_move_rounded,
-                label: '移动',
-                onPressed: () {
-                  if (state.selectedMangaIds.isEmpty) {
-                    Fluttertoast.showToast(msg: '请先选择漫画');
-                    return;
-                  }
-                  Get.dialog(_buildMoveGroupDialog());
-                },
-              ),
-              _buildBottomAction(
-                icon: Icons.delete_rounded,
-                label: '删除',
-                color: Colors.red,
-                onPressed: () {
-                  if (state.selectedMangaIds.isEmpty) {
-                    Fluttertoast.showToast(msg: '请先选择漫画');
-                    return;
-                  }
-                  Get.dialog(_buildDeleteMangasDialog());
+              if (!isRemote)
+                _buildBottomAction(
+                  icon: Icons.drive_file_move_rounded,
+                  label: '移动',
+                  onPressed: () {
+                    if (state.selectedMangaIds.isEmpty) {
+                      Fluttertoast.showToast(msg: '请先选择漫画');
+                      return;
+                    }
+                    Get.dialog(_buildMoveGroupDialog());
+                  },
+                ),
+              if (!isRemote)
+                _buildBottomAction(
+                  icon: Icons.delete_rounded,
+                  label: '删除',
+                  color: Colors.red,
+                  onPressed: () {
+                    if (state.selectedMangaIds.isEmpty) {
+                      Fluttertoast.showToast(msg: '请先选择漫画');
+                      return;
+                    }
+                    Get.dialog(_buildDeleteMangasDialog());
                 },
               ),
             ],

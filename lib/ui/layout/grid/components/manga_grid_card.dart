@@ -38,7 +38,13 @@ class MangaGridCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    GridCoverImage(path: manga.cover.path, width: width, height: h),
+                    GridCoverImage(
+                      path: manga.cover.path,
+                      url: manga.cover.url,
+                      headers: manga.cover.headers,
+                      width: width,
+                      height: h,
+                    ),
                     _pageBadge(),
                     _titleOverlay(h),
                   ],

@@ -30,7 +30,16 @@
       "Bash(sed -i 's|import '\\\\''../models/manga.dart'\\\\'';|import '\\\\''package:manga_reader/models/manga.dart'\\\\'';|g' lib/ui/layout/list/manga_list_tile_card.dart)",
       "Bash(sed -i 's|import '\\\\''../core/utils/file_util.dart'\\\\'';|import '\\\\''package:manga_reader/core/utils/file_util.dart'\\\\'';|g' lib/ui/layout/list/manga_list_tile_card.dart)",
       "Bash(sed -i 's|import '\\\\''../../models/manga.dart'\\\\'';|import '\\\\''package:manga_reader/models/manga.dart'\\\\'';|g' lib/ui/pages/mangas/mangas_page_state.dart)",
-      "Bash(sed -i 's|import '\\\\''../../models/read_info.dart'\\\\'';|import '\\\\''package:manga_reader/models/read_info.dart'\\\\'';|g' lib/ui/pages/reader/reader_page_state.dart)"
+      "Bash(sed -i 's|import '\\\\''../../models/read_info.dart'\\\\'';|import '\\\\''package:manga_reader/models/read_info.dart'\\\\'';|g' lib/ui/pages/reader/reader_page_state.dart)",
+      "Bash(mkdir -p d:/Projects/manga_reader/.claude/skills/frontend-design)",
+      "Bash(cp d:/Projects/manga_reader/.agents/skills/frontend-design/SKILL.md d:/Projects/manga_reader/.claude/skills/frontend-design/SKILL.md)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'refactor\\(ui\\): 全面 UI 优化 — 简约优雅的现代阅读器风格 *)",
+      "Bash(git commit -m 'fix\\(ui\\): 修正网格卡片页码重复，恢复封面叠加标题设计 *)",
+      "Bash(git branch *)",
+      "Bash(flutter test *)",
+      "WebFetch(domain:github.com)",
+      "Bash(git commit *)"
     ],
     "additionalDirectories": [
       "D:\\Projects\\manga_reader\\lib\\ui\\pages_tmp"

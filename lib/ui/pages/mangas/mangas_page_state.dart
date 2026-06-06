@@ -1,4 +1,5 @@
 import 'package:manga_reader/core/enums/sort_mode.dart';
+import 'package:manga_reader/models/discovered_server.dart';
 import 'package:manga_reader/models/manga_id.dart';
 import 'package:manga_reader/ui/layout/manga_list_layout/manga_list_layout_state.dart';
 import 'package:manga_reader/models/manga.dart';
@@ -31,4 +32,13 @@ class MangasPageState extends MangaListLayoutState {
 
   SortMode sortMode = SortMode.title;
   bool sortAscending = true;
+
+  /// Whether the current manga list is from a remote LAN server.
+  bool isRemotePath = false;
+
+  /// Currently connected LAN servers.
+  List<DiscoveredServer> connectedServers = [];
+
+  /// The server currently being browsed (for disconnect on error).
+  DiscoveredServer? currentServer;
 }

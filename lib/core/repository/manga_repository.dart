@@ -17,6 +17,10 @@ class GroupInfo {
 /// or on [LocalMangaService] directly. Every method that can fail returns
 /// a [Result] so callers cannot ignore the error case.
 abstract class MangaRepository {
+  /// Whether this repository is read-only (e.g. remote LAN access).
+  /// UI uses this to hide or disable write operations.
+  bool get isReadOnly => false;
+
   Future<Result<List<Manga>>> loadMangasInDir(Directory dir);
 
   Future<Result<Manga>> loadManga(Directory dirOfManga);

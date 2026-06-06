@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:get/get.dart';
 import 'package:manga_reader/config/ui_config.dart';
-import 'package:manga_reader/models/local_image.dart';
+
 import 'package:manga_reader/core/mixin/scroll_handler.dart';
 import 'package:manga_reader/ui/pages/reader/reader_page_controller.dart';
 import 'package:manga_reader/settings/read_setting.dart';
@@ -72,22 +72,22 @@ class _ReaderPageState extends State<ReaderPage> {
           child: Container(
             color: Colors.black,
             child: Stack(
-            children: [
-              HitAccumulateStack(
-                children: [
-                  ScrollWrapper(
-                    scrollEndDelay: 250,
-                    builder: (_, handler) {
-                      _controller.scrollState = handler;
-                      return KeyedSubtree(
-                        key: ValueKey(isStrip ? 'strip' : 'page'),
-                        child: isStrip ? _buildStripMode() : _buildPageMode(),
-                      );
-                    },
-                  ),
-                  Positioned.fill(child: _buildTapZones()),
-                ],
-              ),
+              children: [
+                HitAccumulateStack(
+                  children: [
+                    ScrollWrapper(
+                      scrollEndDelay: 250,
+                      builder: (_, handler) {
+                        _controller.scrollState = handler;
+                        return KeyedSubtree(
+                          key: ValueKey(isStrip ? 'strip' : 'page'),
+                          child: isStrip ? _buildStripMode() : _buildPageMode(),
+                        );
+                      },
+                    ),
+                    Positioned.fill(child: _buildTapZones()),
+                  ],
+                ),
                 _buildPageInfoOverlay(),
                 _buildTopMenu(),
                 _buildBottomMenu(),
@@ -333,9 +333,9 @@ class _ReaderPageState extends State<ReaderPage> {
   // ── Top menu ──
 
   Widget _buildTopMenu() {
-    final topPadding = readSetting.enableImmersiveMode.value
-        ? 0.0
-        : context.mediaQuery.padding.top;
+    // Use viewPadding instead of padding so the camera cutout is
+    // always respected, even in immersive mode where padding.top is 0.
+    final topPadding = MediaQuery.of(context).viewPadding.top;
 
     return GetBuilder<ReaderPageController>(
       id: _controller.topMenuId,
@@ -360,12 +360,20 @@ class _ReaderPageState extends State<ReaderPage> {
                   end: Alignment.bottomCenter,
                   colors: [
                     Color(0xE6000000),
-                    Color(0x66000000),
+                    Color(0xDB000000),
+                    Color(0xC6000000),
+                    Color(0xB3000000),
+                    Color(0x96000000),
+                    Color(0x7E000000),
+                    Color(0x5B000000),
+                    Color(0x3A000000),
+                    Color(0x14000000),
                     Colors.transparent,
                   ],
                 ),
               ),
               child: AppBar(
+                primary: false,
                 title: Text(
                   _state.readInfo.mangaInfo.title,
                   style: UiConfig.readPageTitleStyle,
@@ -524,7 +532,7 @@ class _ReaderPageState extends State<ReaderPage> {
           borderRadius: .circular(6),
           child: index < _state.readInfo.images.length
               ? MangaImage(
-                  image: LocalImage(path: _state.readInfo.images[index].path),
+                  image: _state.readInfo.images[index],
                   fit: .fitWidth,
                   maxBytes: 1024 * 50,
                   width: UiConfig.thumbnailStripWidth,
