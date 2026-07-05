@@ -338,27 +338,30 @@ class MangasPageController
   }
 
   void _shuffleMangas() {
-    state.mangas.shuffle(Random());
     state.sortMode = SortMode.random;
     state.sortAscending = false;
     _saveSort();
-    update([bodyId]);
+    _applySort();
   }
 
   void _applySort() {
-    int cmp(Manga a, Manga b) {
-      return switch (state.sortMode) {
-        SortMode.title => a.title.compareTo(b.title),
-        SortMode.lastRead => (a.lastReadTime ?? DateTime(2000))
-            .compareTo(b.lastReadTime ?? DateTime(2000)),
-        SortMode.pageCount => a.pageCount.compareTo(b.pageCount),
-        SortMode.random => 0,
-      };
-    }
-    if (state.sortAscending) {
-      state.mangas.sort(cmp);
+    if (state.sortMode == SortMode.random) {
+      state.mangas.shuffle(Random());
     } else {
-      state.mangas.sort((a, b) => cmp(b, a));
+      int cmp(Manga a, Manga b) {
+        return switch (state.sortMode) {
+          SortMode.title => a.title.compareTo(b.title),
+          SortMode.lastRead => (a.lastReadTime ?? DateTime(2000))
+              .compareTo(b.lastReadTime ?? DateTime(2000)),
+          SortMode.pageCount => a.pageCount.compareTo(b.pageCount),
+          SortMode.random => 0,
+        };
+      }
+      if (state.sortAscending) {
+        state.mangas.sort(cmp);
+      } else {
+        state.mangas.sort((a, b) => cmp(b, a));
+      }
     }
     if (state.currentPath != null && !state.isRemotePath) {
       localMangaService.settingPath2Mangas[state.currentPath!] = state.mangas;
