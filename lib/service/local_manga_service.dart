@@ -194,7 +194,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         type: 2,
         parentPath: dirname(zipFile.path),
         mangaRecord: mangaRecord,
-        shouldUpdate: mangaRecord != null && mangaRecord.coverPath != coverPath,
+        shouldUpdate: mangaRecord != null &&
+            (mangaRecord.pageCount != pageCount ||
+                mangaRecord.coverPath != coverPath),
       );
     } catch (e) {
       LogUtil.e('Failed to load ZIP manga from ${zipFile.path}', error: e);
@@ -243,7 +245,9 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         type: 3,
         parentPath: dirname(epubFile.path),
         mangaRecord: mangaRecord,
-        shouldUpdate: mangaRecord != null && mangaRecord.coverPath != coverPath,
+        shouldUpdate: mangaRecord != null &&
+            (mangaRecord.pageCount != pageCount ||
+                mangaRecord.coverPath != coverPath),
       );
     } catch (e) {
       LogUtil.e('Failed to load EPUB manga from ${epubFile.path}', error: e);
@@ -587,44 +591,62 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
     onProgress?.call(0, totalCount);
 
-    for (final manga in mangas) {
-      final imageFiles = await getMangaImagesAsync(manga);
-      for (final image in imageFiles) {
-        final newName =
-            '${imageNameStartFrom.toString().padLeft(digits, '0')}${extension(image.path!)}';
-        final target = File(join(output.path, newName));
-        await File(image.path!).copy(target.path);
-        imageNameStartFrom++;
-        onProgress?.call(imageNameStartFrom, totalCount);
+    try {
+      for (final manga in mangas) {
+        final imageFiles = await getMangaImagesAsync(manga);
+        for (final image in imageFiles) {
+          final newName =
+              '${imageNameStartFrom.toString().padLeft(digits, '0')}${extension(image.path!)}';
+          final target = File(join(output.path, newName));
+          await File(image.path!).copy(target.path);
+          imageNameStartFrom++;
+          onProgress?.call(imageNameStartFrom, totalCount);
+        }
       }
-    }
 
-    if (outputAsZip) {
-      final archive = a.Archive();
-      final files = output.listSync().whereType<File>().where((f) => f.isImageExtension).toList()
-        ..sort(FileUtil.naturalCompareFileOrDir);
-      for (final f in files) {
-        final bytes = await f.readAsBytes();
-        archive.addFile(a.ArchiveFile(basename(f.path), bytes.length, bytes));
+      if (outputAsZip) {
+        final archive = a.Archive();
+        final files = output.listSync().whereType<File>().where((f) => f.isImageExtension).toList()
+          ..sort(FileUtil.naturalCompareFileOrDir);
+        for (final f in files) {
+          final bytes = await f.readAsBytes();
+          archive.addFile(a.ArchiveFile(basename(f.path), bytes.length, bytes));
+        }
+        final zipData = a.ZipEncoder().encode(archive);
+        final zipPath = '${output.path}.zip';
+        await File(zipPath).writeAsBytes(zipData);
+        await output.delete(recursive: true);
+        final manga = await _loadZipManga(File(zipPath));
+        if (manga != null) return manga;
+        return loadManga(Directory(zipPath));
       }
-      final zipData = a.ZipEncoder().encode(archive);
-      final zipPath = '${output.path}.zip';
-      await File(zipPath).writeAsBytes(zipData);
-      await output.delete(recursive: true);
-      final manga = await _loadZipManga(File(zipPath));
-      if (manga != null) return manga;
-      return loadManga(Directory(zipPath));
-    }
 
-    return loadManga(output);
+      return loadManga(output);
+    } catch (_) {
+      // Don't leave a half-written output directory behind on failure.
+      if (output.existsSync()) {
+        try {
+          await output.delete(recursive: true);
+        } catch (_) {}
+      }
+      rethrow;
+    }
   }
 
   Future<void> deleteManga(Manga manga, {bool showToast = true}) async {
     try {
+      final dir = Directory(manga.path);
+      // Delete files first; only remove the DB row once the files are gone.
+      // Otherwise a failed file delete would leave a stale DB row that loses
+      // lastRead/pageCount on the next rescan.
+      if (dir.existsSync()) {
+        await dir.delete(recursive: true);
+      }
       final deleted = await MangaDao.deleteManga(manga.id.value);
-      if (deleted != 1) return;
-
-      await FileUtil.deleteDir(Directory(manga.path));
+      if (deleted != 1) {
+        if (showToast) Fluttertoast.showToast(msg: '删除漫画：${manga.title}失败');
+        return;
+      }
       if (showToast) {
         Fluttertoast.showToast(msg: '已删除漫画：${manga.title}');
       }

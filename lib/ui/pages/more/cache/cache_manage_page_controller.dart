@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:manga_reader/service/local_manga_service.dart';
 import 'package:manga_reader/service/log_service.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:manga_reader/ui/pages/mangas/mangas_page_controller.dart';
 
 import 'cache_manage_page_state.dart';
 
@@ -66,6 +67,18 @@ class CacheManagePageController extends GetxController {
       }
     }
     await loadCacheInfo();
+    await _refreshBookshelfCovers();
+  }
+
+  /// ZIP/CBZ covers live in the temp cache we just wiped, so re-scan the
+  /// current bookshelf directory to regenerate valid cover paths.
+  Future<void> _refreshBookshelfCovers() async {
+    if (!Get.isRegistered<MangasPageController>()) return;
+    final ctrl = Get.find<MangasPageController>();
+    final path = ctrl.state.currentPath;
+    if (ctrl.state.isRemotePath || path == null) return;
+    await localMangaService.refreshMangasInDir(Directory(path));
+    ctrl.handlePopNext();
   }
 
   Future<void> clearLogCache() async {
@@ -82,29 +95,5 @@ class CacheManagePageController extends GetxController {
       Fluttertoast.showToast(msg: '清除失败');
     }
     await loadCacheInfo();
-  }
-
-  Future<void> exportLogs() async {
-    final dirPath = logService.logDirectoryPath;
-    if (dirPath == null) {
-      Fluttertoast.showToast(msg: '日志目录不可用');
-      return;
-    }
-    final dir = Directory(dirPath);
-    if (!dir.existsSync()) {
-      Fluttertoast.showToast(msg: '没有日志文件可导出');
-      return;
-    }
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.log'))
-        .toList();
-    if (files.isEmpty) {
-      Fluttertoast.showToast(msg: '没有日志文件可导出');
-      return;
-    }
-    final xFiles = files.map((f) => XFile(f.path)).toList();
-    await SharePlus.instance.share(ShareParams(files: xFiles));
   }
 }

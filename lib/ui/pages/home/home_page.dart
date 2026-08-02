@@ -29,27 +29,18 @@ class _HomePageState extends State<HomePage> {
     return GetBuilder<HomePageController>(
       id: _controller.homePageId,
       builder: (_) {
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: _buildCurrentPage(),
+        // IndexedStack keeps every tab's State alive, so switching away and
+        // back preserves scroll position and selection instead of rebuilding.
+        return IndexedStack(
+          index: _state.pageIndex,
+          children: [
+            const EditPage(key: ValueKey('edit')),
+            MangasPage(key: ValueKey('mangas')),
+            const MorePage(key: ValueKey('more')),
+          ],
         );
       },
     );
-  }
-
-  Widget _buildCurrentPage() {
-    switch (_state.pageIndex) {
-      case 0:
-        return const EditPage(key: ValueKey('edit'));
-      case 1:
-        return MangasPage(key: ValueKey('mangas'));
-      case 2:
-        return const MorePage(key: ValueKey('more'));
-      default:
-        return MangasPage(key: ValueKey('mangas'));
-    }
   }
 
   Widget _buildBottomNavigationBar() {

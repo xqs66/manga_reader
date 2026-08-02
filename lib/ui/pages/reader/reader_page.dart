@@ -24,9 +24,31 @@ class ReaderPage extends StatefulWidget {
   State<ReaderPage> createState() => _ReaderPageState();
 }
 
-class _ReaderPageState extends State<ReaderPage> {
+class _ReaderPageState extends State<ReaderPage> with WidgetsBindingObserver {
   final _controller = Get.put(ReaderPageController());
   final _state = Get.find<ReaderPageController>().state;
+
+  @override
+  void initState() {
+    super.initState();
+    // Save reading progress when the app goes to background so a killed
+    // process doesn't lose the last pages read.
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _controller.persistToDb();
+    }
+  }
 
   static const _overlayStyle = SystemUiOverlayStyle(
     systemNavigationBarColor: Colors.transparent,
@@ -211,6 +233,18 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
+  List<StyledAction> _imageActions(int index) {
+    // Remote mangas don't support deleting pages on the client.
+    if (_state.readInfo.repo != null) return const [];
+    return [
+      StyledAction(
+        label: '删除图片',
+        isDestructive: true,
+        onPressed: () => _controller.handleDeleteImage(index),
+      ),
+    ];
+  }
+
   Widget _buildStripImage(
     BoxConstraints constraints,
     int index, {
@@ -222,13 +256,8 @@ class _ReaderPageState extends State<ReaderPage> {
         stored != null && (stored.width - constraints.maxWidth).abs() < 1.0;
     return MangaImage(
       image: _state.readInfo.images[index],
-      longPressActions: [
-        StyledAction(
-          label: '删除图片',
-          isDestructive: true,
-          onPressed: () => _controller.handleDeleteImage(index),
-        ),
-      ],
+      onLongPress: _state.readInfo.repo != null ? () {} : null,
+      longPressActions: _imageActions(index),
       height: useStored
           ? stored.height
           : constraints.maxWidth * UiConfig.defaultImageContainerRadio,

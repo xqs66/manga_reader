@@ -24,21 +24,29 @@ class ReadingHistoryPageController extends GetxController {
     update([bodyId]);
     final result = await Get.find<MangaRepository>().getReadingHistory();
     if (result is Ok<List<Manga>>) {
-      state.historyItems = result.value;
+      // Prefer the in-memory manga when available: it has the real filesystem
+      // path and a fresh cover path (DB covers go stale when the temp cache
+      // or the cover image is deleted).
+      state.historyItems =
+          result.value.map((m) => _findReal(m) ?? m).toList();
     }
     state.isLoading = false;
     update([bodyId]);
+  }
+
+  Manga? _findReal(Manga manga) {
+    for (final list in localMangaService.settingPath2Mangas.values) {
+      final real = list.where((m) => m.id == manga.id).firstOrNull;
+      if (real != null) return real;
+    }
+    return null;
   }
 
   Future<void> openManga(Manga manga) async {
     // The manga from DB query has a fake path (the MD5 id). Look up the real
     // manga from the in-memory cache to get the actual filesystem path so the
     // reader can load images from disk.
-    Manga? real;
-    for (final list in localMangaService.settingPath2Mangas.values) {
-      real = list.where((m) => m.id == manga.id).firstOrNull;
-      if (real != null) break;
-    }
+    final real = _findReal(manga);
     if (real == null) {
       Fluttertoast.showToast(msg: '漫画文件不存在，可能已被移动或删除');
       return;

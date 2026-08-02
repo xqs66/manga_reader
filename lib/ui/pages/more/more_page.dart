@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/routes/routes.dart';
 import 'package:manga_reader/service/log_service.dart';
@@ -112,17 +113,30 @@ class MorePage extends ListPage {
             color: Colors.brown,
             onTap: () async {
               final dirPath = logService.logDirectoryPath;
-              if (dirPath == null) return;
+              if (dirPath == null) {
+                Fluttertoast.showToast(msg: '日志目录不可用');
+                return;
+              }
               final dir = Directory(dirPath);
-              if (!dir.existsSync()) return;
+              if (!dir.existsSync()) {
+                Fluttertoast.showToast(msg: '没有日志文件可导出');
+                return;
+              }
               final files = dir
                   .listSync()
                   .whereType<File>()
                   .where((f) => f.path.endsWith('.log'))
                   .toList();
-              if (files.isEmpty) return;
-              final xFiles = files.map((f) => XFile(f.path)).toList();
-              await SharePlus.instance.share(ShareParams(files: xFiles));
+              if (files.isEmpty) {
+                Fluttertoast.showToast(msg: '没有日志文件可导出');
+                return;
+              }
+              try {
+                final xFiles = files.map((f) => XFile(f.path)).toList();
+                await SharePlus.instance.share(ShareParams(files: xFiles));
+              } catch (_) {
+                Fluttertoast.showToast(msg: '导出失败');
+              }
             },
           ),
         ]),

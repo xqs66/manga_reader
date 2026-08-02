@@ -51,7 +51,8 @@ class LanServerPageController extends GetxController {
     state.address = addr;
     state.token = lanServerService.token;
     final host = addr.split(':')[0];
-    state.connectionUrl = 'mangareader://connect?host=$host&port=9090&token=${lanServerService.token}';
+    state.connectionUrl =
+        'mangareader://connect?host=$host&port=${lanServerService.port}&token=${lanServerService.token}';
     update([bodyId]);
   }
 

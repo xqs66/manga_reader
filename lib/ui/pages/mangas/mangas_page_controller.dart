@@ -483,8 +483,11 @@ class MangasPageController
   }
 
   Future<void> handleDeleteGroup(String groupName) async {
+    final path = state.currentPath;
+    if (path == null) return;
+
     if (state.toDefaultGroupOnceDelete) {
-      await _repo.resetMangasToDefaultGroup(groupName, state.currentPath);
+      await _repo.resetMangasToDefaultGroup(groupName, path);
       for (var i = 0; i < state.mangas.length; i++) {
         if (state.mangas[i].groupName == groupName) {
           state.mangas[i] =
@@ -492,15 +495,20 @@ class MangasPageController
         }
       }
     } else {
-      return;
+      final mangas = localMangaService.settingPath2Mangas[path] ?? [];
+      final toDelete = mangas.where((m) => m.groupName == groupName).toList();
+      await localMangaService.deleteMangas(toDelete);
+      state.mangas.removeWhere((m) => m.groupName == groupName);
     }
-    final result = await _repo.removeGroup(groupName, state.currentPath!);
+    final result = await _repo.removeGroup(groupName, path);
     if (result is Err) {
       Fluttertoast.showToast(msg: result.message);
       return;
     }
     state.groups.remove(groupName);
-    update([bodyId]);
+    if (state.currentGridGroup == groupName) state.currentGridGroup = null;
+    _syncCacheAndUpdate();
+    update([bodyId, appBarId]);
     Get.back();
   }
 

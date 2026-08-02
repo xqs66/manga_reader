@@ -68,7 +68,7 @@ class MangaDao {
       weekCount: results[1].read<int>('cnt'),
       totalReadCount: results[2].read<int>('cnt'),
       totalMangaCount: results[3].read<int>('cnt'),
-      mostRecentReadTime: results[4].read<DateTime>('recent'),
+      mostRecentReadTime: results[4].read<DateTime?>('recent'),
     );
   }
 
@@ -86,7 +86,7 @@ class MangaDao {
 
   static Future<void> updateMangas(List<MangaCompanion> mangas) {
     return appDb.transaction(() async {
-       appDb.batch((batch) {
+      await appDb.batch((batch) {
         for (MangaCompanion manga in mangas) {
           batch.update(
             appDb.manga,

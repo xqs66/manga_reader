@@ -11,6 +11,7 @@ import 'package:manga_reader/models/manga.dart';
 import 'package:manga_reader/service/base/service_lifecircle_bean.dart';
 import 'package:manga_reader/service/foreground_task_handler.dart';
 import 'package:manga_reader/service/local_manga_service.dart';
+import 'package:manga_reader/service/storage_service.dart';
 import 'package:manga_reader/settings/path_setting.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as io;
@@ -19,6 +20,8 @@ import 'package:shelf_router/shelf_router.dart';
 LanServerService lanServerService = LanServerService();
 
 class LanServerService with ServiceBeanMixin implements ServiceLifeCircleBean {
+  static const _tokenKey = 'lan_server_token';
+
   HttpServer? _server;
   final int port = 9090;
   String _token = '';
@@ -55,7 +58,10 @@ class LanServerService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
   Future<String> start() async {
     if (_isRunning) return '${await _getLocalIp()}:$port';
-    _token = _generateToken();
+    // Reuse the persisted token so clients that already paired (QR scan or
+    // saved connection) keep working across server restarts.
+    _token = storageService.read<String>(_tokenKey) ?? _generateToken();
+    await storageService.write(_tokenKey, _token);
 
     final router = Router()
       ..get('/api/v1/health', _handleHealth)
@@ -118,17 +124,15 @@ class LanServerService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
   shelf.Middleware _authMiddleware() {
     return (handler) => (request) async {
-          // Health check and OPTIONS don't need auth
-          if (request.url.path == 'api/v1/health' || request.method == 'OPTIONS') {
+          // OPTIONS is CORS preflight and carries no auth header.
+          if (request.method == 'OPTIONS') {
             return handler(request);
           }
+          // Every data endpoint requires the pairing token. Omission is a
+          // rejection too — otherwise any browser on the LAN (CORS *) could
+          // read the whole library without authenticating.
           final clientToken = request.headers['X-Auth-Token'];
-          // Only reject if client sends a non-empty token that doesn't match.
-          // Clients without a token are allowed through (Phase 1 simplicity).
-          if (clientToken != null &&
-              clientToken.isNotEmpty &&
-              _token.isNotEmpty &&
-              clientToken != _token) {
+          if (_token.isEmpty || clientToken != _token) {
             return shelf.Response.forbidden(
               jsonEncode({'error': '无效的访问令牌'}),
               headers: {'Content-Type': 'application/json'},

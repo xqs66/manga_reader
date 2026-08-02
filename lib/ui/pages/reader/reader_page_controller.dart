@@ -42,6 +42,10 @@ class ReaderPageController extends GetxController {
   String _batteryLevel = '--';
   final _battery = Battery();
 
+  /// True while the bottom slider is being dragged, so [_positionListener]
+  /// does not override the slider-set index mid-drag.
+  bool _isSliderDragging = false;
+
   String get currentTime {
     final now = DateTime.now();
     return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
@@ -270,6 +274,10 @@ class ReaderPageController extends GetxController {
     _timeTimer?.cancel();
     _pageTurnGuard?.cancel();
     _focusNode.dispose();
+    state.itemPositionsListener.itemPositions.removeListener(_positionListener);
+    state.thumbnailScrollController.dispose();
+    state.pageController.dispose();
+    state.photoViewController.dispose();
     persistToDb();
     _immersiveModeListener.dispose();
     _readingModeListener.dispose();
@@ -299,7 +307,9 @@ class ReaderPageController extends GetxController {
   void persistToDb() {
     _updateCachesSync(state.currentIndex);
     final manga = state.readInfo.mangaInfo;
-    Get.find<MangaRepository>().updateMangaReadProgress(
+    // For remote mangas push progress to the server via the active repo;
+    // otherwise fall back to the locally-registered repository.
+    (state.readInfo.repo ?? Get.find<MangaRepository>()).updateMangaReadProgress(
       manga.id,
       manga.lastReadPage,
     );
@@ -317,6 +327,7 @@ class ReaderPageController extends GetxController {
   }
 
   void _positionListener() {
+    if (_isSliderDragging) return;
     final index = getCurrentIndex();
 
     if (index == null) return;
@@ -437,6 +448,7 @@ class ReaderPageController extends GetxController {
   }
 
   void handleSlide(double value) {
+    _isSliderDragging = true;
     state.currentIndex = value.toInt() - 1;
     update([bottomMenuId]);
   }
@@ -445,6 +457,7 @@ class ReaderPageController extends GetxController {
     final index = value.toInt() - 1;
     state.itemScrollController.jumpTo(index: index);
     state.currentIndex = index;
+    _isSliderDragging = false;
     _updateCachesSync(index);
     scrollThumbnailToCurrent();
     update([bottomMenuId, bottomRightInfoId]);
@@ -529,7 +542,6 @@ class ReaderPageController extends GetxController {
     state.readInfo.images.removeAt(index);
     state.readInfo.pageCount--;
     state.imageContainerSizes.removeAt(index);
-    update([imageListId]);
 
     // Re-scan the manga so cover/pageCount reflect the deletion. For ZIP/CBZ,
     // deleteImageFromZip clears the extracted temp cache, so a fresh scan
@@ -544,11 +556,28 @@ class ReaderPageController extends GetxController {
         );
     mangaList[indexOfReadingManga] = updatedManga;
     state.readInfo.mangaInfo = updatedManga;
+
+    // For ZIP/CBZ the extracted temp cache was wiped, so the remaining page
+    // images would point to deleted files. Re-extract them from the updated
+    // archive so the reader keeps working instead of showing broken pages.
+    if (localMangaService.isZipFile(updatedManga.path)) {
+      final images = await Get.find<MangaRepository>()
+          .getMangaImagesAsync(updatedManga);
+      state.readInfo.images
+        ..clear()
+        ..addAll(images);
+      state.imageContainerSizes
+        ..clear()
+        ..addAll(List.generate(images.length, (_) => null));
+    }
+
     // Notify by manga id (cards subscribe with 'Manga::<mangaId>') and by bodyId
-    // so the grid/list rebuilds with the refreshed cover.
+    // so the grid/list rebuilds with the refreshed cover; pageListId so the
+    // gallery itemCount reflects the new page count.
     booksController.update([
       '${booksController.mangaIdPrefix}::${updatedManga.id}',
       booksController.bodyId,
     ]);
+    update([imageListId, pageListId]);
   }
 }
