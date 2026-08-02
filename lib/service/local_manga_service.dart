@@ -127,6 +127,8 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
 
       final countChanged =
           mangaRecord != null && mangaRecord.pageCount != imageFiles.length;
+      final coverChanged =
+          mangaRecord != null && mangaRecord.coverPath != imageFiles.first.path;
       final totalSize = mangaRecord != null && !countChanged
           ? mangaRecord.size
           : await _calculateTotalSize(imageFiles);
@@ -141,7 +143,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         type: 1,
         parentPath: dirOfManga.parent.path,
         mangaRecord: mangaRecord,
-        shouldUpdate: countChanged,
+        shouldUpdate: countChanged || coverChanged,
       );
     } catch (e) {
       LogUtil.e('Failed to load manga from ${dirOfManga.path}', error: e);
@@ -192,6 +194,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         type: 2,
         parentPath: dirname(zipFile.path),
         mangaRecord: mangaRecord,
+        shouldUpdate: mangaRecord != null && mangaRecord.coverPath != coverPath,
       );
     } catch (e) {
       LogUtil.e('Failed to load ZIP manga from ${zipFile.path}', error: e);
@@ -240,6 +243,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
         type: 3,
         parentPath: dirname(epubFile.path),
         mangaRecord: mangaRecord,
+        shouldUpdate: mangaRecord != null && mangaRecord.coverPath != coverPath,
       );
     } catch (e) {
       LogUtil.e('Failed to load EPUB manga from ${epubFile.path}', error: e);
@@ -336,6 +340,7 @@ class LocalMangaService with ServiceBeanMixin implements ServiceLifeCircleBean {
     } else if (shouldUpdate) {
       await MangaDao.updateManga(MangaCompanion(
         id: Value(result.id.value),
+        coverPath: Value(result.cover.path!),
         size: Value(result.size),
         pageCount: Value(result.pageCount),
       ));

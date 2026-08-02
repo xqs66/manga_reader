@@ -159,4 +159,29 @@ class MangaRepositoryImpl with ServiceBeanMixin implements MangaRepository, Serv
       LogUtil.e('保存阅读进度失败', error: e);
     }
   }
+
+  @override
+  Future<Result<List<Manga>>> getReadingHistory({int limit = 100}) =>
+      _guard(() async {
+        final records = await MangaDao.getRecentlyReadMangas(limit: limit);
+        return records.map(_toManga).toList();
+      }, '获取阅读历史失败');
+
+  @override
+  Future<Result<ReadingStats>> getReadingStats() =>
+      _guard(() => MangaDao.getReadingStats(), '获取阅读统计失败');
+
+  Manga _toManga(MangaData r) {
+    return Manga(
+      id: MangaId(r.id),
+      path: r.id, // fallback; history entries don't need path for navigation
+      title: r.title,
+      pageCount: r.pageCount,
+      size: r.size,
+      lastReadPage: r.lastReadPage,
+      lastReadTime: r.lastReadTime,
+      groupName: r.groupName,
+      cover: LocalImage(path: r.coverPath.isNotEmpty ? r.coverPath : null),
+    );
+  }
 }

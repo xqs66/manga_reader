@@ -125,7 +125,10 @@ class MangasPageController
       await _syncGroupsFromPath();
     }
 
-    _applySort();
+    if (state.sortMode == SortMode.random) {
+      state.mangas.shuffle(Random());
+    }
+    _syncCacheAndUpdate();
     storageService.write(_lastPathKey, path);
     update([bodyId, normalAppBarActionsId, appBarId]);
   }
@@ -341,28 +344,36 @@ class MangasPageController
     state.sortMode = SortMode.random;
     state.sortAscending = false;
     _saveSort();
-    _applySort();
+    state.mangas.shuffle(Random());
+    _syncCacheAndUpdate();
   }
 
   void _applySort() {
     if (state.sortMode == SortMode.random) {
-      state.mangas.shuffle(Random());
-    } else {
-      int cmp(Manga a, Manga b) {
-        return switch (state.sortMode) {
-          SortMode.title => a.title.compareTo(b.title),
-          SortMode.lastRead => (a.lastReadTime ?? DateTime(2000))
-              .compareTo(b.lastReadTime ?? DateTime(2000)),
-          SortMode.pageCount => a.pageCount.compareTo(b.pageCount),
-          SortMode.random => 0,
-        };
-      }
-      if (state.sortAscending) {
-        state.mangas.sort(cmp);
-      } else {
-        state.mangas.sort((a, b) => cmp(b, a));
-      }
+      // Random order is set once via _shuffleMangas / enterMangaDir.
+      // _applySort on its own (e.g. from handlePopNext) must not re-shuffle
+      // — just sync the cache and redraw.
+      _syncCacheAndUpdate();
+      return;
     }
+    int cmp(Manga a, Manga b) {
+      return switch (state.sortMode) {
+        SortMode.title => a.title.compareTo(b.title),
+        SortMode.lastRead => (a.lastReadTime ?? DateTime(2000))
+            .compareTo(b.lastReadTime ?? DateTime(2000)),
+        SortMode.pageCount => a.pageCount.compareTo(b.pageCount),
+        SortMode.random => 0,
+      };
+    }
+    if (state.sortAscending) {
+      state.mangas.sort(cmp);
+    } else {
+      state.mangas.sort((a, b) => cmp(b, a));
+    }
+    _syncCacheAndUpdate();
+  }
+
+  void _syncCacheAndUpdate() {
     if (state.currentPath != null && !state.isRemotePath) {
       localMangaService.settingPath2Mangas[state.currentPath!] = state.mangas;
     }
@@ -599,6 +610,7 @@ class MangasPageController
     final result = await Get.toNamed(Routes.lanDiscovery);
     if (result is DiscoveredServer) {
       addConnectedServer(result);
+      await onServerTap(result);
     }
   }
 
@@ -616,6 +628,14 @@ class MangasPageController
       disconnectServer(server);
       Fluttertoast.showToast(msg: '服务器已离线');
       return;
+    }
+
+    // Mark as connected
+    final i = state.connectedServers.indexOf(server);
+    if (i != -1) {
+      state.connectedServers[i] = server.copyWith(isConnected: true);
+      _saveServers();
+      update([bodyId]);
     }
 
     final path = await Get.toNamed(

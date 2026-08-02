@@ -57,9 +57,8 @@ class _FileLogOutput extends LogOutput {
       _openLogForDay(now);
     }
     for (final line in event.lines) {
-      _sink?.write('$line\n');
+      _sink?.writeln(line);
     }
-    _sink?.write('\n');
   }
 
   void dispose() {
@@ -84,6 +83,11 @@ class LogService with ServiceBeanMixin implements ServiceLifeCircleBean {
   );
   Logger? _fileLog;
   _FileLogOutput? _fileOutput;
+  String? _logDir;
+
+  /// The directory where log files are stored.
+  /// Available after [doInit] completes.
+  String? get logDirectoryPath => _logDir;
 
   @override
   List<ServiceLifeCircleBean> get initDependencies => [];
@@ -91,8 +95,8 @@ class LogService with ServiceBeanMixin implements ServiceLifeCircleBean {
   @override
   Future<void> doInit() async {
     try {
-      final dir = await _logDirectory();
-      _fileOutput = _FileLogOutput(dir);
+      _logDir = await _logDirectory();
+      _fileOutput = _FileLogOutput(_logDir!);
       await _fileOutput!._init();
       _fileLog = Logger(
         output: _fileOutput!,

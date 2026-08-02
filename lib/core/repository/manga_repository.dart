@@ -51,4 +51,23 @@ abstract class MangaRepository {
   Future<Result<void>> resetMangasToDefaultGroup(String groupName, String? path);
 
   Future<void> updateMangaReadProgress(MangaId id, int lastReadPage);
+
+  Future<Result<List<Manga>>> getReadingHistory({int limit = 100});
+  Future<Result<ReadingStats>> getReadingStats();
+}
+
+class ReadingStats {
+  final int todayCount;
+  final int weekCount;
+  final int totalReadCount;
+  final int totalMangaCount;
+  final DateTime? mostRecentReadTime;
+
+  const ReadingStats({
+    required this.todayCount,
+    required this.weekCount,
+    required this.totalReadCount,
+    required this.totalMangaCount,
+    this.mostRecentReadTime,
+  });
 }

@@ -1,39 +1,39 @@
+import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/core/utils/log_util.dart';
 import 'package:manga_reader/models/discovered_server.dart';
 import 'package:manga_reader/service/lan_client_service.dart';
-import 'package:manga_reader/service/lan_discovery_service.dart';
-import 'package:manga_reader/ui/pages/lan/lan_discovery/lan_discovery_page_state.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+import 'lan_discovery_page_state.dart';
 
 class LanDiscoveryPageController extends GetxController {
-  final LanDiscoveryService _discoveryService;
-
-  LanDiscoveryPageController({
-    LanDiscoveryService? discoveryService,
-  }) : _discoveryService = discoveryService ?? LanDiscoveryService();
-
   final state = LanDiscoveryPageState();
-
   static const String bodyId = 'lanDiscoveryBodyId';
 
-  Future<void> startScan() async {
-    if (state.isScanning) return;
-    state.isScanning = true;
-    state.discoveredServers = [];
-    update([bodyId]);
+  final _scannerController = MobileScannerController();
 
-    final servers = await _discoveryService.scanLan();
-    state.discoveredServers = servers;
-    state.isScanning = false;
-    update([bodyId]);
+  MobileScannerController get scannerController => _scannerController;
 
-    if (servers.isEmpty) {
-      Fluttertoast.showToast(msg: '未发现服务器，请尝试手动输入 IP 连接');
+  Future<DiscoveredServer?> scanQrCode() async {
+    try {
+      final result = await Get.to<DiscoveredServer?>(
+        () => _QrScannerPage(controller: this),
+        fullscreenDialog: true,
+      );
+      if (result != null) {
+        final ok = await _connectToServer(result);
+        return ok ? result : null;
+      }
+    } catch (e) {
+      LogUtil.e('QR scan failed', error: e);
+      Fluttertoast.showToast(msg: '无法打开相机，请尝试手动输入');
     }
+    return null;
   }
 
-  Future<DiscoveredServer?> connectToServer(DiscoveredServer server) async {
+  Future<bool> _connectToServer(DiscoveredServer server) async {
     final client = LanClientService(
       host: server.host,
       port: server.port,
@@ -46,12 +46,11 @@ class LanDiscoveryPageController extends GetxController {
 
     if (!ok) {
       Fluttertoast.showToast(msg: '无法连接到 ${server.displayName}');
-      return null;
+      return false;
     }
 
     Fluttertoast.showToast(msg: '已连接到 ${server.displayName}');
-    update([bodyId]);
-    return server;
+    return true;
   }
 
   Future<DiscoveredServer?> connectManual() async {
@@ -71,12 +70,82 @@ class LanDiscoveryPageController extends GetxController {
       deviceName: host,
     );
 
-    return connectToServer(server);
+    final ok = await _connectToServer(server);
+    return ok ? server : null;
   }
 
   @override
   void onClose() {
-    _discoveryService.dispose();
+    _scannerController.dispose();
     super.onClose();
+  }
+}
+
+/// Full-screen QR scanner page.
+class _QrScannerPage extends StatefulWidget {
+  final LanDiscoveryPageController controller;
+
+  const _QrScannerPage({required this.controller});
+
+  @override
+  State<_QrScannerPage> createState() => _QrScannerPageState();
+}
+
+class _QrScannerPageState extends State<_QrScannerPage> {
+  // Guard against MobileScanner firing onDetect repeatedly while the route
+  // is being popped — a second Get.back would pop the page below instead.
+  bool _handled = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('扫描二维码'), centerTitle: false),
+      body: MobileScanner(
+        controller: widget.controller.scannerController,
+        onDetect: (capture) {
+          if (_handled) return;
+          final barcodes = capture.barcodes;
+          if (barcodes.isEmpty) return;
+          final value = barcodes.first.rawValue;
+          if (value == null) return;
+          final server = _parseQrValue(value);
+          if (server != null) {
+            if (Get.isRegistered<LanDiscoveryPageController>()) {
+              _handled = true;
+              Get.back(result: server);
+            }
+          } else {
+            Fluttertoast.showToast(msg: '无效的二维码，请扫描服务器页面的二维码');
+          }
+        },
+      ),
+    );
+  }
+
+  static DiscoveredServer? _parseQrValue(String value) {
+    try {
+      final uri = Uri.parse(value);
+      if (uri.scheme == 'mangareader' && uri.host == 'connect') {
+        final host = uri.queryParameters['host'];
+        final port = int.tryParse(uri.queryParameters['port'] ?? '') ?? 9090;
+        final token = uri.queryParameters['token'] ?? '';
+        if (host != null && host.isNotEmpty) {
+          return DiscoveredServer(host: host, port: port, token: token, deviceName: host);
+        }
+      }
+    } catch (_) {}
+    // Fallback: try parsing as raw host:port:token
+    try {
+      final parts = value.split(':');
+      if (parts.length >= 2) {
+        return DiscoveredServer(
+          host: parts[0],
+          port: int.tryParse(parts[1]) ?? 9090,
+          token: parts.length >= 3 ? parts[2] : '',
+          deviceName: parts[0],
+        );
+      }
+    } catch (_) {}
+    return null;
   }
 }

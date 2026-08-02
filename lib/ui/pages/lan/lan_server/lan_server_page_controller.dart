@@ -50,6 +50,8 @@ class LanServerPageController extends GetxController {
     state.isRunning = true;
     state.address = addr;
     state.token = lanServerService.token;
+    final host = addr.split(':')[0];
+    state.connectionUrl = 'mangareader://connect?host=$host&port=9090&token=${lanServerService.token}';
     update([bodyId]);
   }
 
@@ -58,6 +60,7 @@ class LanServerPageController extends GetxController {
     state.isRunning = false;
     state.address = '';
     state.token = '';
+    state.connectionUrl = '';
     update([bodyId]);
   }
 }

@@ -49,14 +49,35 @@ class MangasPage extends StatefulWidget
     return GetBuilder<MangasPageController>(
       id: controller.appBarId,
       builder: (_) {
-        return Scaffold(
-          appBar: state.isSearchMode
-              ? buildSearchAppBar()
-              : state.isSelectMode
-              ? _buildSelectModeAppbar()
-              : buildNormalAppBar(context),
-          body: _buildWrappedBody(context),
-          bottomNavigationBar: _buildBottomBar(),
+        // System back on the bookshelf tab walks back one navigation level:
+        // search → selection → grid group → subdirectory → root. Only at the
+        // root does the default pop (exit app) go through.
+        return PopScope(
+          canPop: state.isAtRoot &&
+              !state.isSearchMode &&
+              !state.isSelectMode &&
+              state.currentGridGroup == null,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            if (state.isSearchMode) {
+              controller.toggleSearchMode();
+            } else if (state.isSelectMode) {
+              controller.toggleSelectMode();
+            } else if (state.currentGridGroup != null) {
+              controller.backFromGridGroup();
+            } else if (!state.isAtRoot) {
+              controller.backToRoot();
+            }
+          },
+          child: Scaffold(
+            appBar: state.isSearchMode
+                ? buildSearchAppBar()
+                : state.isSelectMode
+                ? _buildSelectModeAppbar()
+                : buildNormalAppBar(context),
+            body: _buildWrappedBody(context),
+            bottomNavigationBar: _buildBottomBar(),
+          ),
         );
       },
     );
@@ -344,7 +365,10 @@ class MangasPage extends StatefulWidget
     Get.dialog(CommonDialog(
       title: '删除服务器',
       content: Text('确定要删除"${server.displayName}"吗？'),
-      onConfirm: () => controller.removeConnectedServer(server),
+      onConfirm: () {
+        controller.removeConnectedServer(server);
+        Get.back();
+      },
     ));
   }
 

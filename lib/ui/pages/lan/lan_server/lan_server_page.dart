@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'lan_server_page_controller.dart';
 import 'lan_server_page_state.dart';
@@ -22,25 +23,28 @@ class LanServerPage extends StatelessWidget {
             title: const Text('局域网服务'),
             centerTitle: false,
           ),
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  const Spacer(flex: 1),
-                  // Status indicator
-                  _buildStatusIndicator(state),
-                  const SizedBox(height: 32),
-                  // Server info card
-                  _buildInfoCard(controller, state),
-                  const SizedBox(height: 24),
-                  // Start/Stop button
-                  _buildControlButton(controller, state),
-                  const Spacer(flex: 2),
-                  // Security notice
-                  _buildSecurityNotice(controller, state),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                // Status indicator
+                _buildStatusIndicator(state),
+                const SizedBox(height: 32),
+                // Server info card
+                _buildInfoCard(controller, state),
+                // QR code
+                if (state.isRunning && state.connectionUrl.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _buildQrCode(state),
                 ],
-              ),
+                const SizedBox(height: 24),
+                // Start/Stop button
+                _buildControlButton(controller, state),
+                const SizedBox(height: 40),
+                // Security notice
+                _buildSecurityNotice(controller, state),
+              ],
             ),
           ),
         );
@@ -152,6 +156,26 @@ class LanServerPage extends StatelessWidget {
           icon: const Icon(Icons.copy_rounded, size: 18),
         ),
       ],
+    );
+  }
+
+  Widget _buildQrCode(LanServerPageState state) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: QrImageView(
+          data: state.connectionUrl,
+          version: QrVersions.auto,
+          size: 180,
+          gapless: false,
+          padding: const EdgeInsets.all(8),
+        ),
+      ),
     );
   }
 

@@ -103,6 +103,17 @@ class RemoteMangaRepository implements MangaRepository {
   }
 
   @override
+  Future<Result<List<Manga>>> getReadingHistory({int limit = 100}) async =>
+      _guard(() async => <Manga>[], '获取阅读历史失败');
+
+  @override
+  Future<Result<ReadingStats>> getReadingStats() async =>
+      _guard(() async => const ReadingStats(
+            todayCount: 0, weekCount: 0,
+            totalReadCount: 0, totalMangaCount: 0,
+          ), '获取阅读统计失败');
+
+  @override
   Future<Result<List<GroupInfo>>> fetchGroups(String parentPath) async =>
       _guard(() async {
         final result = await _client.fetchMangas(parentPath);

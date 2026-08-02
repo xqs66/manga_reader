@@ -531,27 +531,24 @@ class ReaderPageController extends GetxController {
     state.imageContainerSizes.removeAt(index);
     update([imageListId]);
 
-    if (!localMangaService.isZipFile(readingManga.path)) {
-      final loadResult = await Get.find<MangaRepository>()
-          .tryLoadManga(Directory(readingManga.path));
-      final afterManga = loadResult.okValue;
-      if (afterManga != null) {
-        mangaList[indexOfReadingManga] = afterManga;
-        state.readInfo.mangaInfo = afterManga;
-        booksController.update([
-          '${booksController.mangaIdPrefix}::$indexOfReadingManga',
-        ]);
-      }
-    } else {
-      final updatedManga = readingManga.copyWith(
-        pageCount: state.readInfo.pageCount,
-        size: File(readingManga.path).lengthSync(),
-      );
-      mangaList[indexOfReadingManga] = updatedManga;
-      state.readInfo.mangaInfo = updatedManga;
-      booksController.update([
-        '${booksController.mangaIdPrefix}::$indexOfReadingManga',
-      ]);
-    }
+    // Re-scan the manga so cover/pageCount reflect the deletion. For ZIP/CBZ,
+    // deleteImageFromZip clears the extracted temp cache, so a fresh scan
+    // regenerates a valid cover at the new first-image path.
+    final loadResult = await Get.find<MangaRepository>()
+        .tryLoadManga(Directory(readingManga.path));
+    final afterManga = loadResult.okValue;
+    final updatedManga = afterManga ??
+        readingManga.copyWith(
+          pageCount: state.readInfo.pageCount,
+          size: File(readingManga.path).lengthSync(),
+        );
+    mangaList[indexOfReadingManga] = updatedManga;
+    state.readInfo.mangaInfo = updatedManga;
+    // Notify by manga id (cards subscribe with 'Manga::<mangaId>') and by bodyId
+    // so the grid/list rebuilds with the refreshed cover.
+    booksController.update([
+      '${booksController.mangaIdPrefix}::${updatedManga.id}',
+      booksController.bodyId,
+    ]);
   }
 }

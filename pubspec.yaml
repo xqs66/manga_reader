@@ -1,7 +1,7 @@
 name: manga_reader
 description: "一个支持本地阅读和局域网跨设备访问的漫画阅读器"
 publish_to: 'none'
-version: 1.0.0+2026060612
+version: 1.0.0
 
 environment:
   sdk: ^3.11.1
@@ -35,9 +35,11 @@ dependencies:
   keframe: ^3.0.0
   shelf: ^1.4.0
   shelf_router: ^1.1.0
-  multicast_dns: ^0.3.2
   flutter_foreground_task: ^9.2.2
   sqlite3_flutter_libs: 0.5.32
+  share_plus: ^12.0.2
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.2.0
 
 dev_dependencies:
   flutter_test:

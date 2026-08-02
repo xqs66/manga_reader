@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:manga_reader/routes/routes.dart';
+import 'package:manga_reader/service/log_service.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:manga_reader/ui/widgets/list_page.dart';
 
 class MorePage extends ListPage {
@@ -28,6 +32,33 @@ class MorePage extends ListPage {
             subtitle: '管理书架分组',
             color: Colors.orange,
             onTap: () => Get.toNamed(Routes.moreGroupManage),
+          ),
+          tile(
+            icon: Icons.cleaning_services_rounded,
+            title: '缓存管理',
+            subtitle: '管理应用缓存文件',
+            color: Colors.cyan,
+            onTap: () => Get.toNamed(Routes.moreCache),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 24),
+      section(
+        '数据',
+        card([
+          tile(
+            icon: Icons.history_rounded,
+            title: '阅读历史',
+            subtitle: '查看最近阅读的漫画',
+            color: Colors.purple,
+            onTap: () => Get.toNamed(Routes.moreHistory),
+          ),
+          tile(
+            icon: Icons.bar_chart_rounded,
+            title: '阅读统计',
+            subtitle: '查看阅读数据统计',
+            color: Colors.deepOrange,
+            onTap: () => Get.toNamed(Routes.moreStats),
           ),
         ]),
       ),
@@ -67,6 +98,32 @@ class MorePage extends ListPage {
             subtitle: 'v1.0.0',
             color: Colors.teal,
             trailing: const SizedBox.shrink(),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 24),
+      section(
+        '日志',
+        card([
+          tile(
+            icon: Icons.share_rounded,
+            title: '导出日志',
+            subtitle: '分享应用日志文件',
+            color: Colors.brown,
+            onTap: () async {
+              final dirPath = logService.logDirectoryPath;
+              if (dirPath == null) return;
+              final dir = Directory(dirPath);
+              if (!dir.existsSync()) return;
+              final files = dir
+                  .listSync()
+                  .whereType<File>()
+                  .where((f) => f.path.endsWith('.log'))
+                  .toList();
+              if (files.isEmpty) return;
+              final xFiles = files.map((f) => XFile(f.path)).toList();
+              await SharePlus.instance.share(ShareParams(files: xFiles));
+            },
           ),
         ]),
       ),

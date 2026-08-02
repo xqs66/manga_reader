@@ -5,7 +5,10 @@ import 'package:manga_reader/ui/pages/home/home_page.dart';
 import 'package:manga_reader/ui/pages/lan/lan_discovery/lan_discovery_page.dart';
 import 'package:manga_reader/ui/pages/lan/lan_server/lan_server_page.dart';
 import 'package:manga_reader/ui/pages/lan/server_paths/server_paths_page.dart';
+import 'package:manga_reader/ui/pages/more/cache/cache_manage_page.dart';
+import 'package:manga_reader/ui/pages/more/history/reading_history_page.dart';
 import 'package:manga_reader/ui/pages/more/manage/group_manage_page.dart';
+import 'package:manga_reader/ui/pages/more/stats/reading_stats_page.dart';
 import 'package:manga_reader/ui/pages/reader/reader_page.dart';
 import 'package:manga_reader/ui/pages/more/manage/path_manage_page.dart';
 import 'package:manga_reader/ui/pages/more/settings/read/read_settings_page.dart';
@@ -20,6 +23,9 @@ class Routes {
   static const String morePaths = '/more/paths';
   static const String moreReadSetting = '/more/readSetting';
   static const String moreGroupManage = '/more/groupManage';
+  static const String moreHistory = '/more/history';
+  static const String moreStats = '/more/stats';
+  static const String moreCache = '/more/cache';
   static const String lanServer = '/lan/server';
   static const String lanDiscovery = '/lan/discovery';
   static const String lanServerPaths = '/lan/serverPaths';
@@ -31,6 +37,9 @@ class Routes {
     GetPage(name: morePaths, page: () => const PathManagePage()),
     GetPage(name: moreReadSetting, page: () => const ReadSettingsPage()),
     GetPage(name: moreGroupManage, page: () => const GroupManagePage()),
+    GetPage(name: moreHistory, page: () => const ReadingHistoryPage()),
+    GetPage(name: moreStats, page: () => const ReadingStatsPage()),
+    GetPage(name: moreCache, page: () => const CacheManagePage()),
     GetPage(name: editMerge, page: () => MergeMangasPage()),
     GetPage(name: editArchive, page: () => const ArchiveMangasPage()),
     GetPage(name: lanServer, page: () => const LanServerPage()),

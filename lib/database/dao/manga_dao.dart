@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart' show OrderingMode, OrderingTerm, Variable;
+import 'package:manga_reader/core/repository/manga_repository.dart';
 import 'package:manga_reader/database/database.dart';
 
 class MangaDao {
@@ -15,6 +17,59 @@ class MangaDao {
     if (ids.isEmpty) return Future.value([]);
     return (appDb.select(appDb.manga)
       ..where((m) => m.id.isIn(ids))).get();
+  }
+
+  static Future<List<MangaData>> getRecentlyReadMangas({int limit = 100}) {
+    return (appDb.select(appDb.manga)
+      ..where((m) => m.lastReadTime.isNotNull())
+      ..orderBy([(m) => OrderingTerm(expression: m.lastReadTime, mode: OrderingMode.desc)])
+      ..limit(limit))
+        .get();
+  }
+
+  static Future<ReadingStats> getReadingStats() async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final weekStart = todayStart.subtract(Duration(days: todayStart.weekday - 1));
+
+    final todayQ = appDb.customSelect(
+      'SELECT COUNT(*) AS cnt FROM manga WHERE last_read_time >= ?',
+      variables: [Variable.withDateTime(todayStart)],
+      readsFrom: {appDb.manga},
+    );
+    final weekQ = appDb.customSelect(
+      'SELECT COUNT(*) AS cnt FROM manga WHERE last_read_time >= ?',
+      variables: [Variable.withDateTime(weekStart)],
+      readsFrom: {appDb.manga},
+    );
+    final totalReadQ = appDb.customSelect(
+      'SELECT COUNT(*) AS cnt FROM manga WHERE last_read_time IS NOT NULL',
+      readsFrom: {appDb.manga},
+    );
+    final totalQ = appDb.customSelect(
+      'SELECT COUNT(*) AS cnt FROM manga',
+      readsFrom: {appDb.manga},
+    );
+    final recentQ = appDb.customSelect(
+      'SELECT MAX(last_read_time) AS recent FROM manga',
+      readsFrom: {appDb.manga},
+    );
+
+    final results = await Future.wait([
+      todayQ.getSingle(),
+      weekQ.getSingle(),
+      totalReadQ.getSingle(),
+      totalQ.getSingle(),
+      recentQ.getSingle(),
+    ]);
+
+    return ReadingStats(
+      todayCount: results[0].read<int>('cnt'),
+      weekCount: results[1].read<int>('cnt'),
+      totalReadCount: results[2].read<int>('cnt'),
+      totalMangaCount: results[3].read<int>('cnt'),
+      mostRecentReadTime: results[4].read<DateTime>('recent'),
+    );
   }
 
   static Future<int> deleteManga(String id) {
@@ -40,7 +95,6 @@ class MangaDao {
           );
         }
       });
-      
     });
   }
 }

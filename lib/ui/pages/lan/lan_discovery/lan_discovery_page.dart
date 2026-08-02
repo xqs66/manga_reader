@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:manga_reader/config/ui_config.dart';
-import 'package:manga_reader/models/discovered_server.dart';
 
 import 'lan_discovery_page_controller.dart';
 import 'lan_discovery_page_state.dart';
@@ -25,14 +23,9 @@ class LanDiscoveryPage extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Scan button
-              _buildScanSection(controller, state),
+              // QR scan button
+              _buildQrScanSection(controller),
               const SizedBox(height: 20),
-              // Discovered servers
-              if (state.discoveredServers.isNotEmpty) ...[
-                _buildDiscoveredServers(controller, state),
-                const SizedBox(height: 20),
-              ],
               // Manual connection
               _buildManualSection(controller, state),
             ],
@@ -42,54 +35,37 @@ class LanDiscoveryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle(String title, {String? subtitle}) {
+  Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(width: 8),
-            Text(
-              subtitle,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-            ),
-          ],
-        ],
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     );
   }
 
-  // ── Scan ──
+  // ── QR Scan ──
 
-  Widget _buildScanSection(
-    LanDiscoveryPageController controller,
-    LanDiscoveryPageState state,
-  ) {
+  Widget _buildQrScanSection(LanDiscoveryPageController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('扫描局域网'),
+        _buildSectionTitle('扫描二维码'),
+        const SizedBox(height: 4),
         SizedBox(
           width: double.infinity,
           height: 44,
-          child: OutlinedButton.icon(
-            onPressed: state.isScanning ? null : controller.startScan,
-            icon: state.isScanning
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.wifi_find_rounded),
-            label: Text(state.isScanning ? '扫描中...' : '开始扫描'),
-            style: OutlinedButton.styleFrom(
+          child: FilledButton.icon(
+            onPressed: () async {
+              final result = await controller.scanQrCode();
+              if (result != null && Get.isRegistered<LanDiscoveryPageController>()) {
+                Get.back(result: result);
+              }
+            },
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            label: const Text('扫描服务器二维码'),
+            style: FilledButton.styleFrom(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -97,97 +73,6 @@ class LanDiscoveryPage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  // ── Discovered servers ──
-
-  Widget _buildDiscoveredServers(
-    LanDiscoveryPageController controller,
-    LanDiscoveryPageState state,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle(
-          '发现的服务器',
-          subtitle: '(${state.discoveredServers.length})',
-        ),
-        ...state.discoveredServers.map((s) => _buildServerCard(
-              controller: controller,
-              server: s,
-            )),
-      ],
-    );
-  }
-
-  Widget _buildServerCard({
-    required LanDiscoveryPageController controller,
-    required DiscoveredServer server,
-  }) {
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: UiConfig.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.computer_rounded,
-                color: UiConfig.primaryColor,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    server.displayName,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${server.host}:${server.port}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            FilledButton(
-              onPressed: () async {
-                final result = await controller.connectToServer(server);
-                if (result != null && Get.isRegistered<LanDiscoveryPageController>()) {
-                  Get.back(result: result);
-                }
-              },
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('连接'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -270,5 +155,4 @@ class LanDiscoveryPage extends StatelessWidget {
       ],
     );
   }
-
 }
